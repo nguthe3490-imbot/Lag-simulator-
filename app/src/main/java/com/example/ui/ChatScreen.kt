@@ -70,6 +70,7 @@ import com.example.ui.theme.NeonPink
 fun ChatScreen(viewModel: MainViewModel) {
     val messages by viewModel.chatMessages.collectAsState()
     val isTyping by viewModel.isTyping.collectAsState()
+    val flirtingStyle by viewModel.flirtingStyle.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
@@ -168,6 +169,50 @@ fun ChatScreen(viewModel: MainViewModel) {
                         imageVector = Icons.Default.DeleteSweep,
                         contentDescription = "Clear Chat",
                         tint = Color.LightGray
+                    )
+                }
+            }
+        }
+
+        // --- Flirting Style Selector ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(CardSpaceBackground)
+                .border(androidx.compose.foundation.BorderStroke(1.dp, CardSpaceBorder))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Phong cách:",
+                color = Color.LightGray,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+            val styles = listOf("Duyên dáng", "Hài hước", "Lãng mạn")
+            styles.forEach { styleName ->
+                val isSelected = styleName == flirtingStyle
+                val chipBg = if (isSelected) {
+                    Brush.linearGradient(colors = listOf(NeonPink.copy(alpha = 0.25f), NeonCyan.copy(alpha = 0.25f)))
+                } else {
+                    Brush.linearGradient(colors = listOf(Color(0xFF1B1A2F), Color(0xFF1B1A2F)))
+                }
+                val borderStrokeColor = if (isSelected) NeonPink else CardSpaceBorder
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(chipBg)
+                        .border(1.dp, borderStrokeColor, RoundedCornerShape(16.dp))
+                        .clickable { viewModel.setFlirtingStyle(styleName) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = styleName,
+                        color = if (isSelected) Color.White else Color.LightGray,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                     )
                 }
             }

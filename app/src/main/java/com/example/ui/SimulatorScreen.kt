@@ -90,6 +90,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
     val currentPing by viewModel.currentPing.collectAsState()
     val pingHistory by viewModel.pingHistoryList.collectAsState()
     val packetLossActive by viewModel.packetLossActive.collectAsState()
+    val currentLagReport by viewModel.currentLagReport.collectAsState()
 
     val scrollState = rememberScrollState()
 
@@ -437,6 +438,236 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Button(
+                        onClick = { viewModel.reportHighLatency() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("report_lag_button"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NeonPink.copy(alpha = 0.15f),
+                            contentColor = NeonPink
+                        ),
+                        border = BorderStroke(1.dp, NeonPink),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Report Lag Icon",
+                            tint = NeonPink,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Báo Cáo Mạng Lag Cho Linh Chi",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        // --- Dedicated Card Area: Linh Chi's Custom Optimization Tips ---
+        AnimatedVisibility(visible = currentLagReport != null) {
+            currentLagReport?.let { report ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("linh_chi_tips_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSpaceBackground),
+                    border = BorderStroke(1.5.dp, ElegantGold)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Title header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(ElegantGold.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = "Linh Chi Tips Icon",
+                                        tint = ElegantGold,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Lời Khuyên Từ Linh Chi",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ElegantGold
+                                )
+                            }
+                            // Time badge
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF1B1A2F))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "Báo cáo: ${report.timestamp}",
+                                    fontSize = 10.sp,
+                                    color = Color.Gray,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        // Summary of recorded metrics
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF0F0E1B))
+                                .border(1.dp, CardSpaceBorder, RoundedCornerShape(8.dp))
+                                .padding(12.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "Sự cố: ${report.mainIssue}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonPink
+                                )
+                                Text(
+                                    text = "Chi tiết đường truyền giả lập tại game [${report.gameName}]: Ping ${report.ping}ms | Jitter ±${report.jitter}ms | Loss ${report.loss}%",
+                                    fontSize = 11.sp,
+                                    color = Color.LightGray
+                                )
+                            }
+                        }
+
+                        // Linh Chi's response according to style
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp, 12.dp, 12.dp, 0.dp))
+                                .background(NeonPink.copy(alpha = 0.08f))
+                                .border(1.dp, NeonPink.copy(alpha = 0.2f), RoundedCornerShape(12.dp, 12.dp, 12.dp, 0.dp))
+                                .padding(12.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "Linh Chi 🌸",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonPink
+                                )
+                                Text(
+                                    text = report.introMessage,
+                                    fontSize = 12.sp,
+                                    color = ElegantTextPrimary,
+                                    lineHeight = 18.sp
+                                )
+                            }
+                        }
+
+                        // Numbered Optimization Tips list
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            report.tips.forEachIndexed { index, tip ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    // Step Number Bubble
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(NeonCyan.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${index + 1}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NeonCyan
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = tip.first,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NeonCyan
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = tip.second,
+                                            fontSize = 12.sp,
+                                            color = Color.LightGray,
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Action Buttons at bottom
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.askLinhChiAboutReport() },
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(44.dp)
+                                    .testTag("ask_more_button"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonPink
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "Trò Chuyện & Thả Thính",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+
+                            Button(
+                                onClick = { viewModel.clearLagReport() },
+                                modifier = Modifier
+                                    .weight(0.7f)
+                                    .height(44.dp)
+                                    .testTag("dismiss_tips_button"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.DarkGray.copy(alpha = 0.6f),
+                                    contentColor = Color.LightGray
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "Đóng",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
