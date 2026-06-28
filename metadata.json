@@ -1,0 +1,6 @@
+{
+  "name": "LagSim & Linh Chi",
+  "description": "Ứng dụng giả lập lag mạng trong game trực tuyến và trò chuyện cùng trợ lý AI Linh Chi ngọt ngào, đưa ra lời khuyên tối ưu kết nối.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
