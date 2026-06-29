@@ -81,12 +81,20 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import com.example.ui.theme.CardSpaceBackground
 import com.example.ui.theme.CardSpaceBorder
 import com.example.ui.theme.NeonCyan
@@ -1486,6 +1494,98 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         }
                     }
 
+                    // 3.5 Interactive Sci-Fi Gun pointing forward with dynamic Muzzle Flash
+                    if (reflexState == "spawned" || reflexState == "delaying" || reflexState == "idle") {
+                        val isFiring = fpsShotVisuals.isNotEmpty()
+                        
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .offset(y = 12.dp)
+                                .width(90.dp)
+                                .height(80.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            // Metal Gun Barrel pointing upward (forward)
+                            Box(
+                                modifier = Modifier
+                                    .width(16.dp)
+                                    .height(55.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color(0xFF64748B), // Slate blue metallic
+                                                Color(0xFF334155),
+                                                Color(0xFF1E293B)
+                                            )
+                                        )
+                                    )
+                                    .border(1.5.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(4.dp))
+                            )
+                            
+                            // Laser indicator light on top of the barrel
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red)
+                            )
+                            
+                            // Futuristic Heavy Stock/Receiver at bottom of screen
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .width(50.dp)
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color(0xFF475569),
+                                                Color(0xFF0F172A)
+                                            )
+                                        )
+                                    )
+                                    .border(1.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                            ) {
+                                // Plasma core reactor glow inside gun body
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .width(22.dp)
+                                        .height(7.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(if (isFiring) Color.Yellow else NeonCyan.copy(alpha = 0.7f))
+                                )
+                            }
+                            
+                            // Bright Dynamic Muzzle Flash flare when shooting
+                            if (isFiring) {
+                                Box(
+                                    modifier = Modifier
+                                        .offset(y = (-24).dp)
+                                        .size(64.dp)
+                                        .drawBehind {
+                                            // Golden-orange energy blast burst radiating outwards
+                                            drawCircle(
+                                                brush = Brush.radialGradient(
+                                                    colors = listOf(
+                                                        Color.White,
+                                                        Color(0xFFFBBF24), // Vivid gold yellow
+                                                        Color(0xFFF97316), // Vivid orange
+                                                        Color.Transparent
+                                                    )
+                                                ),
+                                                radius = size.width / 2f
+                                            )
+                                        }
+                                )
+                            }
+                        }
+                    }
+
                     // 4. Game Screen States overlay
                     when (reflexState) {
                         "idle" -> {
@@ -2160,6 +2260,54 @@ fun MobaGameAreaContent(
                             center = Offset(size.width * 0.75f, size.height * 0.5f),
                             style = Stroke(width = 2f)
                         )
+
+                        // 1.1 Draw Movement Direction Arrow
+                        val dx = mobaHeroDestX - mobaHeroX
+                        val dy = mobaHeroDestY - mobaHeroY
+                        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                        if (dist > 1.5f && mobaHeroHP > 0f) {
+                            val startX = size.width * (mobaHeroX / 100f)
+                            val startY = size.height * (mobaHeroY / 100f)
+                            val endX = size.width * (mobaHeroDestX / 100f)
+                            val endY = size.height * (mobaHeroDestY / 100f)
+                            
+                            val arrowColor = if (mobaHero == "Tulen") Color(0xFF06B6D4) else if (mobaHero == "Murad") Color(0xFFF59E0B) else Color(0xFFFFCC33)
+                            
+                            drawLine(
+                                color = arrowColor.copy(alpha = 0.5f),
+                                start = Offset(startX, startY),
+                                end = Offset(endX, endY),
+                                strokeWidth = 3f,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+                            )
+                            
+                            val angle = kotlin.math.atan2(endY - startY, endX - startX)
+                            val arrowLength = 16f
+                            val arrowAngle = Math.PI / 6
+                            
+                            val x1 = endX - arrowLength * kotlin.math.cos(angle - arrowAngle).toFloat()
+                            val y1 = endY - arrowLength * kotlin.math.sin(angle - arrowAngle).toFloat()
+                            val x2 = endX - arrowLength * kotlin.math.cos(angle + arrowAngle).toFloat()
+                            val y2 = endY - arrowLength * kotlin.math.sin(angle + arrowAngle).toFloat()
+                            
+                            val arrowPath = Path().apply {
+                                moveTo(endX, endY)
+                                lineTo(x1, y1)
+                                lineTo(x2, y2)
+                                close()
+                            }
+                            drawPath(
+                                path = arrowPath,
+                                color = arrowColor
+                            )
+                            
+                            drawCircle(
+                                color = arrowColor.copy(alpha = 0.4f),
+                                radius = 8f,
+                                center = Offset(startX, startY),
+                                style = Stroke(width = 2f)
+                            )
+                        }
                     }
 
                     // 2. Bases
@@ -2263,15 +2411,43 @@ fun MobaGameAreaContent(
 
                     // 7. Projectiles (Đạn bay)
                     mobaProjectiles.forEach { proj ->
-                        Box(
-                            modifier = Modifier
-                                .size((proj.radius * 2.5f).dp)
-                                .offset(
-                                    x = boardWidth * (proj.x / 100f) - (proj.radius * 1.25f).dp,
-                                    y = boardHeight * (proj.y / 100f) - (proj.radius * 1.25f).dp
+                        if (proj.type == "murad_slash_visual") {
+                            // Draw a beautiful golden slash line from its position to targetX/Y
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val sX = size.width * (proj.x / 100f)
+                                val sY = size.height * (proj.y / 100f)
+                                val eX = size.width * (proj.targetX / 100f)
+                                val eY = size.height * (proj.targetY / 100f)
+                                
+                                // Glowing outer golden line
+                                drawLine(
+                                    color = Color(0xFFF59E0B).copy(alpha = 0.8f),
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 6f
                                 )
-                                .background(Color(proj.color), CircleShape)
-                        )
+                                // Bright white core line
+                                drawLine(
+                                    color = Color.White,
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 2.5f
+                                )
+                                // Little cross/star sparkle at start and end
+                                drawCircle(Color(0xFFFFF7ED), radius = 4f, center = Offset(sX, sY))
+                                drawCircle(Color(0xFFFFF7ED), radius = 4f, center = Offset(eX, eY))
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size((proj.radius * 2.5f).dp)
+                                    .offset(
+                                        x = boardWidth * (proj.x / 100f) - (proj.radius * 1.25f).dp,
+                                        y = boardHeight * (proj.y / 100f) - (proj.radius * 1.25f).dp
+                                    )
+                                    .background(Color(proj.color), CircleShape)
+                            )
+                        }
                     }
 
                     // 8. Floating Damage Text overlays
@@ -2523,8 +2699,21 @@ fun MobaGameAreaContent(
                                 Row(horizontalArrangement = Arrangement.Center) {
                                     Spacer(modifier = Modifier.width(30.dp))
                                     IconButton(
-                                        onClick = { viewModel.moveHeroTo(mobaHeroX, (mobaHeroY - 20f).coerceIn(20f, 80f)) },
-                                        modifier = Modifier.size(30.dp)
+                                        onClick = {},
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onPress = {
+                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.UP)
+                                                        try {
+                                                            awaitRelease()
+                                                        } finally {
+                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                        }
+                                                    }
+                                                )
+                                            }
                                     ) {
                                         Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Di chuyển Lên", tint = NeonCyan)
                                     }
@@ -2536,20 +2725,49 @@ fun MobaGameAreaContent(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     IconButton(
-                                        onClick = { viewModel.moveHeroTo((mobaHeroX - 25f).coerceIn(0f, 100f), mobaHeroY) },
-                                        modifier = Modifier.size(30.dp)
+                                        onClick = {},
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onPress = {
+                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.LEFT)
+                                                        try {
+                                                            awaitRelease()
+                                                        } finally {
+                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                        }
+                                                    }
+                                                )
+                                            }
                                     ) {
                                         Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Di chuyển Trái", tint = NeonCyan)
                                     }
                                     IconButton(
-                                        onClick = { viewModel.moveHeroTo(mobaHeroX, mobaHeroY) }, // STOP
+                                        onClick = {
+                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                            viewModel.moveHeroTo(mobaHeroX, mobaHeroY)
+                                        }, // STOP
                                         modifier = Modifier.size(28.dp).background(Color.Red.copy(alpha = 0.25f), CircleShape)
                                     ) {
                                         Icon(Icons.Default.Stop, contentDescription = "Dừng Lại", tint = Color.Red, modifier = Modifier.size(12.dp))
                                     }
                                     IconButton(
-                                        onClick = { viewModel.moveHeroTo((mobaHeroX + 25f).coerceIn(0f, 100f), mobaHeroY) },
-                                        modifier = Modifier.size(30.dp)
+                                        onClick = {},
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onPress = {
+                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.RIGHT)
+                                                        try {
+                                                            awaitRelease()
+                                                        } finally {
+                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                        }
+                                                    }
+                                                )
+                                            }
                                     ) {
                                         Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Di chuyển Phải", tint = NeonCyan)
                                     }
@@ -2558,8 +2776,21 @@ fun MobaGameAreaContent(
                                 Row(horizontalArrangement = Arrangement.Center) {
                                     Spacer(modifier = Modifier.width(30.dp))
                                     IconButton(
-                                        onClick = { viewModel.moveHeroTo(mobaHeroX, (mobaHeroY + 20f).coerceIn(20f, 80f)) },
-                                        modifier = Modifier.size(30.dp)
+                                        onClick = {},
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onPress = {
+                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.DOWN)
+                                                        try {
+                                                            awaitRelease()
+                                                        } finally {
+                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                        }
+                                                    }
+                                                )
+                                            }
                                     ) {
                                         Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Di chuyển Xuống", tint = NeonCyan)
                                     }

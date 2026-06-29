@@ -323,6 +323,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaState = MutableStateFlow("idle") // "idle", "preparing", "playing", "victory", "defeat"
     val mobaState = _mobaState.asStateFlow()
 
+    private val _mobaMoveDirection = MutableStateFlow(MobaMoveDirection.NONE)
+    val mobaMoveDirection = _mobaMoveDirection.asStateFlow()
+
+    fun setMobaMoveDirection(dir: MobaMoveDirection) {
+        _mobaMoveDirection.value = dir
+    }
+
+    private val _mobaJoystickAngle = MutableStateFlow(0f)
+    val mobaJoystickAngle = _mobaJoystickAngle.asStateFlow()
+
+    private val _mobaJoystickActive = MutableStateFlow(false)
+    val mobaJoystickActive = _mobaJoystickActive.asStateFlow()
+
+    fun updateMobaJoystick(angle: Float, active: Boolean) {
+        _mobaJoystickAngle.value = angle
+        _mobaJoystickActive.value = active
+    }
+
     private val _mobaHero = MutableStateFlow("Tulen") // "Tulen", "Valhein"
     val mobaHero = _mobaHero.asStateFlow()
 
@@ -340,6 +358,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _mobaHeroHP = MutableStateFlow(3000f)
     val mobaHeroHP = _mobaHeroHP.asStateFlow()
+
+    private val _mobaDashTrails = MutableStateFlow<List<MobaDashTrail>>(emptyList())
+    val mobaDashTrails = _mobaDashTrails.asStateFlow()
+
+    fun clearMobaDashTrails() {
+        _mobaDashTrails.value = emptyList()
+    }
 
     private val _mobaHeroMaxHP = MutableStateFlow(3000f)
     val mobaHeroMaxHP = _mobaHeroMaxHP.asStateFlow()
@@ -518,6 +543,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun moveHeroTo(targetX: Float, targetY: Float) {
         if (_mobaState.value != "playing") return
         if (_mobaHeroHP.value <= 0f) return // dead hero can't move
+        _mobaMoveDirection.value = MobaMoveDirection.NONE
 
         val actualPing = if (_isSimulating.value) _currentPing.value else 10
         val lossPercent = if (_isSimulating.value) _targetLoss.value else 0
@@ -708,9 +734,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val steps = 5
                         val stepX = (nextX - hX) / steps
                         val stepY = (nextY - hY) / steps
+                        
+                        _mobaDashTrails.value = emptyList()
+
                         for (i in 1..steps) {
-                            _mobaHeroX.value = hX + stepX * i
-                            _mobaHeroY.value = hY + stepY * i
+                            val currX = hX + stepX * i
+                            val currY = hY + stepY * i
+                            _mobaHeroX.value = currX
+                            _mobaHeroY.value = currY
+                            
+                            _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                                id = "murad_s1_${System.currentTimeMillis()}_$i",
+                                x = currX,
+                                y = currY,
+                                color = 0xFFF59E0B,
+                                isTulen = false,
+                                alpha = 0.16f * i
+                            )
                             delay(15)
                         }
 
@@ -718,6 +758,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _mobaHeroY.value = nextY
                         _mobaHeroDestX.value = nextX
                         _mobaHeroDestY.value = nextY
+
+                        viewModelScope.launch {
+                            delay(350)
+                            _mobaDashTrails.value = emptyList()
+                        }
 
                         // Deal AoE damage and stun at destination
                         dealAoeMobaDamage(nextX, nextY, radius = 7f, damage = 250f, type = "murad_s1")
@@ -774,19 +819,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                     for (i in 1..5) {
                         dealAoeMobaDamage(tX, tY, radius = 13f, damage = 180f, type = "murad_ult")
-                        // Spawn gold visual slash particles
-                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
-                            x = tX + Random.nextFloat() * 12f - 6f,
-                            y = tY + Random.nextFloat() * 12f - 6f,
-                            speed = 2.0f,
-                            isEnemy = false,
-                            damage = 0f,
-                            type = "murad_slash_visual",
-                            color = 0xFFF59E0B, // amber gold
-                            radius = 2.0f,
-                            targetX = tX + Random.nextFloat() * 12f - 6f,
-                            targetY = tY + Random.nextFloat() * 12f - 6f,
-                            isHoming = false
+                        
+                        val dx1 = Random.nextFloat() * 14f - 7f
+                        val dy1 = Random.nextFloat() * 14f - 7f
+                        val dx2 = Random.nextFloat() * 14f - 7f
+                        val dy2 = Random.nextFloat() * 14f - 7f
+
+                        _mobaProjectiles.value = _mobaProjectiles.value + listOf(
+                            MobaProjectile(
+                                x = tX + dx1,
+                                y = tY + dy1,
+                                speed = 2.0f,
+                                isEnemy = false,
+                                damage = 0f,
+                                type = "murad_slash_visual",
+                                color = 0xFFF59E0B,
+                                radius = 2.0f,
+                                targetX = tX - dx1,
+                                targetY = tY - dy1,
+                                isHoming = false
+                            ),
+                            MobaProjectile(
+                                x = tX + dx2,
+                                y = tY - dy2,
+                                speed = 2.0f,
+                                isEnemy = false,
+                                damage = 0f,
+                                type = "murad_slash_visual",
+                                color = 0xFFF59E0B,
+                                radius = 2.0f,
+                                targetX = tX - dx2,
+                                targetY = tY + dy2,
+                                isHoming = false
+                            )
                         )
                         delay(120)
                     }
@@ -840,9 +905,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val steps = 5
                     val stepX = (nextX - hX) / steps
                     val stepY = (nextY - hY) / steps
+                    
+                    _mobaDashTrails.value = emptyList()
+
                     for (i in 1..steps) {
-                        _mobaHeroX.value = hX + stepX * i
-                        _mobaHeroY.value = hY + stepY * i
+                        val currX = hX + stepX * i
+                        val currY = hY + stepY * i
+                        _mobaHeroX.value = currX
+                        _mobaHeroY.value = currY
+                        
+                        _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                            id = "tulen_s2_${System.currentTimeMillis()}_$i",
+                            x = currX,
+                            y = currY,
+                            color = 0xFF00FFFF,
+                            isTulen = true,
+                            alpha = 0.16f * i
+                        )
                         delay(15)
                     }
 
@@ -850,6 +929,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _mobaHeroY.value = nextY
                     _mobaHeroDestX.value = nextX
                     _mobaHeroDestY.value = nextY
+
+                    viewModelScope.launch {
+                        delay(350)
+                        _mobaDashTrails.value = emptyList()
+                    }
 
                     // Damage at end
                     dealAoeMobaDamage(nextX, nextY, radius = 8f, damage = 220f, type = "tulen_s2")
@@ -1146,6 +1230,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             // 3. Move Hero
+            val hX = _mobaHeroX.value
+            val hY = _mobaHeroY.value
+            val speedBonus = if (!isTulen && !isMurad) 1f + (_mobaPassiveStacks.value * 0.06f) else 1f
+            val moveSpeed = if (isMurad) 1.55f else 1.3f * speedBonus
+
+            if (_mobaJoystickActive.value) {
+                val angle = _mobaJoystickAngle.value
+                val stepX = kotlin.math.cos(angle) * moveSpeed * 2.2f
+                val stepY = kotlin.math.sin(angle) * moveSpeed * 2.2f
+                _mobaHeroDestX.value = (hX + stepX).coerceIn(0f, 100f)
+                _mobaHeroDestY.value = (hY + stepY).coerceIn(20f, 80f)
+            } else {
+                val activeDir = _mobaMoveDirection.value
+                if (activeDir != MobaMoveDirection.NONE) {
+                    val step = moveSpeed
+                    when (activeDir) {
+                        MobaMoveDirection.UP -> {
+                            _mobaHeroDestX.value = hX
+                            _mobaHeroDestY.value = (hY - step * 2f).coerceIn(20f, 80f)
+                        }
+                        MobaMoveDirection.DOWN -> {
+                            _mobaHeroDestX.value = hX
+                            _mobaHeroDestY.value = (hY + step * 2f).coerceIn(20f, 80f)
+                        }
+                        MobaMoveDirection.LEFT -> {
+                            _mobaHeroDestX.value = (hX - step * 2f).coerceIn(0f, 100f)
+                            _mobaHeroDestY.value = hY
+                        }
+                        MobaMoveDirection.RIGHT -> {
+                            _mobaHeroDestX.value = (hX + step * 2f).coerceIn(0f, 100f)
+                            _mobaHeroDestY.value = hY
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
             val hX = _mobaHeroX.value
             val hY = _mobaHeroY.value
             val destX = _mobaHeroDestX.value
@@ -2531,4 +2652,15 @@ data class LagReport(
     val mainIssue: String,
     val introMessage: String,
     val tips: List<Pair<String, String>>
+)
+
+enum class MobaMoveDirection { NONE, UP, DOWN, LEFT, RIGHT }
+
+data class MobaDashTrail(
+    val id: String,
+    val x: Float,
+    val y: Float,
+    val color: Long,
+    val isTulen: Boolean,
+    val alpha: Float = 0.6f
 )
