@@ -695,16 +695,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             _mobaLog.value = "⚔️ Murad lướt VÔ ẢNH VỰC lần 2! Tiếp tục chém quét gây choáng!"
                         }
 
-                        // Dash towards destination, capped at max range of 15
+                        // Dash towards destination, capped at max range of 15. If standing still, dash 12f units.
                         val destX = _mobaHeroDestX.value
                         val destY = _mobaHeroDestY.value
                         val dist = kotlin.math.sqrt((destX - hX) * (destX - hX) + (destY - hY) * (destY - hY))
-                        val blinkDist = dist.coerceAtMost(15f)
-                        val bAng = if (dist > 0.1f) kotlin.math.atan2(destY - hY, destX - hX) else angle
-                        val nextX = (hX + kotlin.math.cos(bAng) * blinkDist).coerceIn(0f, 100f)
-                        val nextY = (hY + kotlin.math.sin(bAng) * blinkDist).coerceIn(20f, 80f)
+                        val dashDist = if (dist > 1.0f) dist.coerceAtMost(15f) else 12f
+                        val bAng = if (dist > 1.0f) kotlin.math.atan2(destY - hY, destX - hX) else angle
+                        val nextX = (hX + kotlin.math.cos(bAng) * dashDist).coerceIn(0f, 100f)
+                        val nextY = (hY + kotlin.math.sin(bAng) * dashDist).coerceIn(20f, 80f)
 
-                        // Move instantly
+                        // Smooth slide transition
+                        val steps = 5
+                        val stepX = (nextX - hX) / steps
+                        val stepY = (nextY - hY) / steps
+                        for (i in 1..steps) {
+                            _mobaHeroX.value = hX + stepX * i
+                            _mobaHeroY.value = hY + stepY * i
+                            delay(15)
+                        }
+
                         _mobaHeroX.value = nextX
                         _mobaHeroY.value = nextY
                         _mobaHeroDestX.value = nextX
@@ -818,20 +827,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val destX = _mobaHeroDestX.value
                     val destY = _mobaHeroDestY.value
                     val dist = kotlin.math.sqrt((destX - hX) * (destX - hX) + (destY - hY) * (destY - hY))
-                    val blinkDist = dist.coerceAtMost(16f)
+                    val dashDist = if (dist > 1.0f) dist.coerceAtMost(16f) else 12f
                     
-                    val bAng = kotlin.math.atan2(destY - hY, destX - hX)
-                    val nextX = (hX + kotlin.math.cos(bAng) * blinkDist).coerceIn(0f, 100f)
-                    val nextY = (hY + kotlin.math.sin(bAng) * blinkDist).coerceIn(20f, 80f)
+                    val bAng = if (dist > 1.0f) kotlin.math.atan2(destY - hY, destX - hX) else angle
+                    val nextX = (hX + kotlin.math.cos(bAng) * dashDist).coerceIn(0f, 100f)
+                    val nextY = (hY + kotlin.math.sin(bAng) * dashDist).coerceIn(20f, 80f)
 
-                    // Damage at start and end
+                    // Damage at start
                     dealAoeMobaDamage(hX, hY, radius = 8f, damage = 220f, type = "tulen_s2")
-                    dealAoeMobaDamage(nextX, nextY, radius = 8f, damage = 220f, type = "tulen_s2")
+
+                    // Smooth slide transition
+                    val steps = 5
+                    val stepX = (nextX - hX) / steps
+                    val stepY = (nextY - hY) / steps
+                    for (i in 1..steps) {
+                        _mobaHeroX.value = hX + stepX * i
+                        _mobaHeroY.value = hY + stepY * i
+                        delay(15)
+                    }
 
                     _mobaHeroX.value = nextX
                     _mobaHeroY.value = nextY
                     _mobaHeroDestX.value = nextX
                     _mobaHeroDestY.value = nextY
+
+                    // Damage at end
+                    dealAoeMobaDamage(nextX, nextY, radius = 8f, damage = 220f, type = "tulen_s2")
                 }
                 2 -> { // Chiêu 3: Lôi Điểu (Ult tracking shot)
                     if (target == null) {

@@ -1924,6 +1924,21 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 mobaDiagnosticReport = mobaDiagnosticReport
                             )
                         }
+
+                        IconButton(
+                            onClick = { viewModel.setMobaZoomed(false) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(16.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close Zoomed MOBA Game",
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             } else {
