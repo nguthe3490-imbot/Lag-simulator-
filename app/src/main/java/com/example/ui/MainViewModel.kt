@@ -37,6 +37,92 @@ enum class Sender {
     USER, LINH_CHI
 }
 
+data class FpsBulletHole(
+    val x: Float,
+    val y: Float,
+    val isHit: Boolean,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+data class FpsShotVisual(
+    val startX: Float,
+    val startY: Float,
+    val endX: Float,
+    val endY: Float,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+data class FpsDiagnostic(
+    val gameName: String,
+    val totalTargets: Int,
+    val hits: Int,
+    val accuracy: Int,
+    val avgPhysicalResponseMs: Int,
+    val avgWithNetworkResponseMs: Int,
+    val lostShotsCount: Int,
+    val networkPingSimulated: Int,
+    val networkJitterSimulated: Int,
+    val networkLossSimulated: Int,
+    val mainIssue: String,
+    val detailedTips: List<Pair<String, String>>,
+    val linhChiEvaluation: String
+)
+
+data class MobaCreep(
+    val id: String = UUID.randomUUID().toString(),
+    var x: Float,
+    var y: Float,
+    var hp: Float,
+    val maxHp: Float,
+    val isEnemy: Boolean,
+    val speed: Float = 0.5f,
+    var lastAttackTime: Long = 0,
+    var isStunned: Boolean = false,
+    var stunEndTime: Long = 0
+)
+
+data class MobaProjectile(
+    val id: String = UUID.randomUUID().toString(),
+    var x: Float,
+    var y: Float,
+    val speed: Float,
+    val isEnemy: Boolean,
+    val damage: Float,
+    val type: String, // "basic", "stun", "ult", "turret"
+    val color: Long,
+    val radius: Float,
+    val targetX: Float,
+    val targetY: Float,
+    val isHoming: Boolean = false,
+    val homingTargetId: String? = null, // homing to creep id, "enemy_hero", or "player"
+    var isFinished: Boolean = false
+)
+
+data class MobaDamageText(
+    val id: String = UUID.randomUUID().toString(),
+    val text: String,
+    val x: Float,
+    val y: Float,
+    val color: Long,
+    var age: Int = 0
+)
+
+data class MobaDiagnostic(
+    val gameName: String,
+    val kills: Int,
+    val deaths: Int,
+    val accuracy: Int,
+    val skillCasts: Int,
+    val skillsInterruptedCount: Int,
+    val turretStatus: String,
+    val networkPingSimulated: Int,
+    val networkJitterSimulated: Int,
+    val networkLossSimulated: Int,
+    val mainIssue: String,
+    val detailedTips: List<Pair<String, String>>,
+    val linhChiEvaluation: String
+)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = Room.databaseBuilder(
@@ -192,92 +278,1874 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var targetSpawnTime: Long = 0
     private var clickTriggerTime: Long = 0
 
-    fun startReflexGame() {
+    // FPS 2D Mini Game details
+    private val _fpsCurrentTarget = MutableStateFlow(1)
+    val fpsCurrentTarget = _fpsCurrentTarget.asStateFlow()
+
+    private val _fpsHits = MutableStateFlow(0)
+    val fpsHits = _fpsHits.asStateFlow()
+
+    private val _fpsShots = MutableStateFlow(0)
+    val fpsShots = _fpsShots.asStateFlow()
+
+    private val _fpsMisses = MutableStateFlow(0)
+    val fpsMisses = _fpsMisses.asStateFlow()
+
+    private val _fpsLostShots = MutableStateFlow(0)
+    val fpsLostShots = _fpsLostShots.asStateFlow()
+
+    private val _fpsTotalReactionTime = MutableStateFlow(0)
+    val fpsTotalReactionTime = _fpsTotalReactionTime.asStateFlow()
+
+    private val _fpsBulletHoles = MutableStateFlow<List<FpsBulletHole>>(emptyList())
+    val fpsBulletHoles = _fpsBulletHoles.asStateFlow()
+
+    private val _fpsShotVisuals = MutableStateFlow<List<FpsShotVisual>>(emptyList())
+    val fpsShotVisuals = _fpsShotVisuals.asStateFlow()
+
+    private val _fpsDiagnosticReport = MutableStateFlow<FpsDiagnostic?>(null)
+    val fpsDiagnosticReport = _fpsDiagnosticReport.asStateFlow()
+
+    private val _fpsDifficultyMultiplier = MutableStateFlow(1.0f)
+    val fpsDifficultyMultiplier = _fpsDifficultyMultiplier.asStateFlow()
+
+    private val _fpsDifficultyLevelName = MutableStateFlow("Bình Thường (Mượt)")
+    val fpsDifficultyLevelName = _fpsDifficultyLevelName.asStateFlow()
+
+    private val _fpsIsZoomed = MutableStateFlow(false)
+    val fpsIsZoomed = _fpsIsZoomed.asStateFlow()
+
+    fun setFpsZoomed(zoomed: Boolean) {
+        _fpsIsZoomed.value = zoomed
+    }
+
+    // --- MOBA Game States ---
+    private val _mobaState = MutableStateFlow("idle") // "idle", "preparing", "playing", "victory", "defeat"
+    val mobaState = _mobaState.asStateFlow()
+
+    private val _mobaHero = MutableStateFlow("Tulen") // "Tulen", "Valhein"
+    val mobaHero = _mobaHero.asStateFlow()
+
+    private val _mobaHeroX = MutableStateFlow(15f)
+    val mobaHeroX = _mobaHeroX.asStateFlow()
+
+    private val _mobaHeroY = MutableStateFlow(50f)
+    val mobaHeroY = _mobaHeroY.asStateFlow()
+
+    private val _mobaHeroDestX = MutableStateFlow(15f)
+    val mobaHeroDestX = _mobaHeroDestX.asStateFlow()
+
+    private val _mobaHeroDestY = MutableStateFlow(50f)
+    val mobaHeroDestY = _mobaHeroDestY.asStateFlow()
+
+    private val _mobaHeroHP = MutableStateFlow(3000f)
+    val mobaHeroHP = _mobaHeroHP.asStateFlow()
+
+    private val _mobaHeroMaxHP = MutableStateFlow(3000f)
+    val mobaHeroMaxHP = _mobaHeroMaxHP.asStateFlow()
+
+    private val _mobaHeroMP = MutableStateFlow(500f)
+    val mobaHeroMP = _mobaHeroMP.asStateFlow()
+
+    private val _mobaHeroMaxMP = MutableStateFlow(500f)
+    val mobaHeroMaxMP = _mobaHeroMaxMP.asStateFlow()
+
+    // Enemy Champion (Maloch)
+    private val _mobaEnemyX = MutableStateFlow(65f)
+    val mobaEnemyX = _mobaEnemyX.asStateFlow()
+
+    private val _mobaEnemyY = MutableStateFlow(50f)
+    val mobaEnemyY = _mobaEnemyY.asStateFlow()
+
+    private val _mobaEnemyHP = MutableStateFlow(4000f)
+    val mobaEnemyHP = _mobaEnemyHP.asStateFlow()
+
+    private val _mobaEnemyMaxHP = MutableStateFlow(4000f)
+    val mobaEnemyMaxHP = _mobaEnemyMaxHP.asStateFlow()
+
+    private val _mobaEnemyName = MutableStateFlow("Maloch - Ma Vương 😈")
+    val mobaEnemyName = _mobaEnemyName.asStateFlow()
+
+    private val _mobaEnemyIsStunned = MutableStateFlow(false)
+    val mobaEnemyIsStunned = _mobaEnemyIsStunned.asStateFlow()
+
+    private var mobaEnemyStunUntil = 0L
+
+    // Creeps and projectiles list
+    private val _mobaCreeps = MutableStateFlow<List<MobaCreep>>(emptyList())
+    val mobaCreeps = _mobaCreeps.asStateFlow()
+
+    private val _mobaProjectiles = MutableStateFlow<List<MobaProjectile>>(emptyList())
+    val mobaProjectiles = _mobaProjectiles.asStateFlow()
+
+    private val _mobaDamageTexts = MutableStateFlow<List<MobaDamageText>>(emptyList())
+    val mobaDamageTexts = _mobaDamageTexts.asStateFlow()
+
+    // Skill status
+    private val _mobaSkillCooldowns = MutableStateFlow(listOf(0f, 0f, 0f)) // in seconds
+    val mobaSkillCooldowns = _mobaSkillCooldowns.asStateFlow()
+
+    private val _mobaPassiveStacks = MutableStateFlow(0)
+    val mobaPassiveStacks = _mobaPassiveStacks.asStateFlow()
+
+    // Murad States
+    private val _mobaMuradCloneX = MutableStateFlow(-1f)
+    val mobaMuradCloneX = _mobaMuradCloneX.asStateFlow()
+
+    private val _mobaMuradCloneY = MutableStateFlow(-1f)
+    val mobaMuradCloneY = _mobaMuradCloneY.asStateFlow()
+
+    private val _mobaMuradCastCount = MutableStateFlow(0)
+    val mobaMuradCastCount = _mobaMuradCastCount.asStateFlow()
+
+    private val _mobaHeroIsImmune = MutableStateFlow(false)
+    val mobaHeroIsImmune = _mobaHeroIsImmune.asStateFlow()
+
+    // Score
+    private val _mobaKills = MutableStateFlow(0)
+    val mobaKills = _mobaKills.asStateFlow()
+
+    private val _mobaDeaths = MutableStateFlow(0)
+    val mobaDeaths = _mobaDeaths.asStateFlow()
+
+    // Turrets
+    private val _mobaAllyTurretHP = MutableStateFlow(1500f)
+    val mobaAllyTurretHP = _mobaAllyTurretHP.asStateFlow()
+
+    private val _mobaEnemyTurretHP = MutableStateFlow(1500f)
+    val mobaEnemyTurretHP = _mobaEnemyTurretHP.asStateFlow()
+
+    private val _mobaLog = MutableStateFlow("Đại Lộ Công Lý đã sẵn sàng! Chọn tướng và xuất kích ngay! ⚔️")
+    val mobaLog = _mobaLog.asStateFlow()
+
+    private val _mobaIsZoomed = MutableStateFlow(false)
+    val mobaIsZoomed = _mobaIsZoomed.asStateFlow()
+
+    private val _mobaDiagnosticReport = MutableStateFlow<MobaDiagnostic?>(null)
+    val mobaDiagnosticReport = _mobaDiagnosticReport.asStateFlow()
+
+    // Internals
+    private var mobaGameJob: kotlinx.coroutines.Job? = null
+    private var mobaPassiveTimer = 0L
+    private var mobaTulenPassiveOrbs = 0 // Number of active floating electrical orbs
+    private var mobaValheinAttackCount = 0
+    private var mobaSkillCastsCount = 0
+    private var mobaSkillsInterruptedCount = 0
+    private var mobaSkillHitsCount = 0
+    private var mobaGameStartTime = 0L
+
+    fun setMobaZoomed(zoomed: Boolean) {
+        _mobaIsZoomed.value = zoomed
+    }
+
+    fun selectMobaHero(hero: String) {
+        if (_mobaState.value == "playing") return
+        _mobaHero.value = hero
+        _mobaLog.value = "Đã chọn tướng: $hero 🌟"
+        _mobaMuradCloneX.value = -1f
+        _mobaMuradCloneY.value = -1f
+        _mobaMuradCastCount.value = 0
+        _mobaHeroIsImmune.value = false
+    }
+
+    fun startMobaGame() {
+        mobaGameJob?.cancel()
+        _mobaState.value = "preparing"
+        _mobaLog.value = "Đang tải bản đồ Đại Lộ Bình Nguyên Vô Tận & tải dữ liệu lính..."
+        _mobaDiagnosticReport.value = null
+
+        _mobaHeroX.value = 15f
+        _mobaHeroY.value = 50f
+        _mobaHeroDestX.value = 15f
+        _mobaHeroDestY.value = 50f
+        
+        val maxHp = when (_mobaHero.value) {
+            "Tulen" -> 3000f
+            "Murad" -> 2900f
+            else -> 3200f
+        }
+        _mobaHeroHP.value = maxHp
+        _mobaHeroMaxHP.value = maxHp
+        _mobaHeroMP.value = 500f
+        _mobaHeroMaxMP.value = 500f
+
+        _mobaEnemyX.value = 65f
+        _mobaEnemyY.value = 50f
+        _mobaEnemyHP.value = 4000f
+        _mobaEnemyMaxHP.value = 4000f
+        _mobaEnemyIsStunned.value = false
+        mobaEnemyStunUntil = 0L
+
+        _mobaCreeps.value = emptyList()
+        _mobaProjectiles.value = emptyList()
+        _mobaDamageTexts.value = emptyList()
+        _mobaSkillCooldowns.value = listOf(0f, 0f, 0f)
+        _mobaPassiveStacks.value = 0
+        _mobaKills.value = 0
+        _mobaDeaths.value = 0
+        _mobaAllyTurretHP.value = 1500f
+        _mobaEnemyTurretHP.value = 1500f
+        
+        _mobaMuradCloneX.value = -1f
+        _mobaMuradCloneY.value = -1f
+        _mobaMuradCastCount.value = 0
+        _mobaHeroIsImmune.value = false
+        
+        mobaTulenPassiveOrbs = 0
+        mobaValheinAttackCount = 0
+        mobaSkillCastsCount = 0
+        mobaSkillsInterruptedCount = 0
+        mobaSkillHitsCount = 0
+        mobaGameStartTime = System.currentTimeMillis()
+
         viewModelScope.launch {
-            _reflexState.value = "preparing"
-            _reflexMessage.value = "Đang kết nối vào máy chủ..."
-            _reflexTimerText.value = ""
+            delay(1200) // fake resource loading
+            _mobaState.value = "playing"
+            _mobaLog.value = "CHÀO MỪNG ĐẾN VỚI BÌNH NGUYÊN VÔ TẬN! ⚔️ Lính xuất kích sau 3 giây! Chạm bất cứ đâu trên bản đồ để di chuyển!"
             
-            // Random delay before target spawns (1 to 3 seconds)
-            val waitTime = Random.nextLong(1000, 3000)
-            delay(waitTime)
-            
-            if (_reflexState.value == "preparing") {
-                _reflexTargetX.value = Random.nextFloat() * 0.8f + 0.1f // keep away from absolute edges
-                _reflexTargetY.value = Random.nextFloat() * 0.8f + 0.1f
-                _reflexState.value = "spawned"
-                _reflexMessage.value = "🔴 MỤC TIÊU XUẤT HIỆN! CLICK NHANH LÊN!"
-                targetSpawnTime = System.currentTimeMillis()
+            mobaGameJob = viewModelScope.launch(Dispatchers.Default) {
+                runMobaGameLoop()
             }
         }
     }
 
-    fun handleReflexClick() {
-        if (_reflexState.value != "spawned") return
-        clickTriggerTime = System.currentTimeMillis()
+    fun stopMobaGame() {
+        mobaGameJob?.cancel()
+        _mobaState.value = "idle"
+        _mobaLog.value = "Đã dừng trận đấu MOBA."
+    }
+
+    fun moveHeroTo(targetX: Float, targetY: Float) {
+        if (_mobaState.value != "playing") return
+        if (_mobaHeroHP.value <= 0f) return // dead hero can't move
+
+        val actualPing = if (_isSimulating.value) _currentPing.value else 10
+        val lossPercent = if (_isSimulating.value) _targetLoss.value else 0
 
         viewModelScope.launch {
-            val basePing = if (_isSimulating.value) _currentPing.value else 10 // baseline or simulated ping
-            val lossPercent = if (_isSimulating.value) _targetLoss.value else 0
-            
-            _reflexState.value = "delaying"
-            
-            // Check packet loss for click registration
-            val isLost = Random.nextInt(0, 100) < lossPercent
-            if (isLost) {
-                // Delayed indefinitely/packet lost
-                _reflexMessage.value = "❌ Mất gói tin (Packet Loss)! Hành động bắn/chiêu thức biến mất trong hư vô..."
-                delay(1200)
-                _reflexState.value = "finished"
-                _reflexMessage.value = "Thất bại: Mất gói tin (Packet Loss 100%). Linh Chi khuyên: Dùng mạng dây đi cưng ơi!"
-                
-                repository.insertScore(
-                    ReflexScore(
-                        gameName = _selectedGame.value,
-                        delayMs = basePing,
-                        responseTimeMs = 0,
-                        result = "LOST"
-                    )
-                )
+            // Simulated Packet Loss
+            if (_isSimulating.value && Random.nextInt(100) < lossPercent) {
+                addMobaDamageText("LOST MOVE 💨", _mobaHeroX.value, _mobaHeroY.value - 6, 0xFFFF3333)
+                _mobaLog.value = "⚠️ MẤT GÓI TIN (Packet Loss)! Máy chủ không nhận được lệnh di chuyển."
                 return@launch
             }
 
-            // Simulate ping delay!
-            if (basePing > 15) {
-                _reflexMessage.value = "⏳ Đang gửi yêu cầu phản hồi lên máy chủ... (Trễ: $basePing ms)"
-                // Countdown simulated ping
-                var remaining = basePing
-                while (remaining > 0) {
-                    _reflexTimerText.value = "Ping: $remaining ms"
-                    val step = if (remaining > 50) 50 else remaining
-                    delay(step.toLong())
-                    remaining -= step
-                }
+            if (actualPing > 20) {
+                delay(actualPing.toLong())
             }
 
-            // Click registers
-            val responseTime = (System.currentTimeMillis() - targetSpawnTime).toInt()
-            _reflexState.value = "finished"
-            
-            val status = if (responseTime < 300) "⚡ THẦN ĐỒNG PHẢN XẠ!" else if (responseTime < 500) "👍 KHÁ MƯỢT" else "🐢 QUÁ CHẬM!"
-            _reflexMessage.value = "Kết quả: Đã đăng ký hành động thành công!\nTổng thời gian phản xạ (gồm trễ mạng): $responseTime ms.\nĐánh giá: $status"
-            _reflexTimerText.value = "Thời gian phản hồi thực tế: ${responseTime - basePing}ms | Độ trễ mạng: ${basePing}ms"
-
-            repository.insertScore(
-                ReflexScore(
-                    gameName = _selectedGame.value,
-                    delayMs = basePing,
-                    responseTimeMs = responseTime,
-                    result = status
-                )
-            )
+            // Set destination
+            _mobaHeroDestX.value = targetX.coerceIn(0f, 100f)
+            _mobaHeroDestY.value = targetY.coerceIn(20f, 80f) // limit vertical movement slightly for widescreen lane feel
         }
     }
 
+    fun triggerMobaBasicAttack() {
+        if (_mobaState.value != "playing") return
+        if (_mobaHeroHP.value <= 0f) return
+
+        val actualPing = if (_isSimulating.value) _currentPing.value else 10
+        val lossPercent = if (_isSimulating.value) _targetLoss.value else 0
+
+        viewModelScope.launch {
+            if (_isSimulating.value && Random.nextInt(100) < lossPercent) {
+                addMobaDamageText("LOST ATK ⚔️", _mobaHeroX.value, _mobaHeroY.value - 6, 0xFFFF5555)
+                _mobaLog.value = "❌ RỤNG MẠNG (Packet Loss)! Đòn đánh thường bị hủy do mất gói tin!"
+                return@launch
+            }
+
+            if (actualPing > 20) {
+                delay(actualPing.toLong())
+            }
+
+            // Find nearest enemy to attack
+            val isMurad = _mobaHero.value == "Murad"
+            val target = findNearestMobaEnemy(range = if (isMurad) 16f else 25f)
+            if (target == null) {
+                _mobaLog.value = "⚠️ Không có kẻ địch nào trong tầm đánh!"
+                return@launch
+            }
+
+            // Spawn basic projectile
+            val isTulen = _mobaHero.value == "Tulen"
+            val projColor = if (isTulen) 0xFF33FFFF else if (isMurad) 0xFFEAB308 else 0xFFFFCC33
+            val damage = if (isTulen) 140f else if (isMurad) 195f else 160f
+            
+            val isPassiveShot = !isTulen && !isMurad && (mobaValheinAttackCount >= 2)
+            val projType = if (isMurad) "murad_basic" else if (isPassiveShot) "passive_glaive" else "basic"
+            val finalColor = if (isPassiveShot) {
+                val rand = Random.nextInt(3)
+                when (rand) {
+                    0 -> 0xFFFF3333 // Red
+                    1 -> 0xFFFFFF33 // Yellow
+                    else -> 0xFF3333FF // Blue
+                }
+            } else projColor
+
+            val proj = MobaProjectile(
+                x = _mobaHeroX.value,
+                y = _mobaHeroY.value,
+                speed = if (isMurad) 3.0f else 2.2f, // Murad attack hits faster!
+                isEnemy = false,
+                damage = damage,
+                type = projType,
+                color = finalColor,
+                radius = if (isMurad) 1.2f else 1.8f,
+                targetX = target.first,
+                targetY = target.second,
+                isHoming = true,
+                homingTargetId = target.third
+            )
+            
+            _mobaProjectiles.value = _mobaProjectiles.value + proj
+            if (!isTulen && !isMurad) {
+                mobaValheinAttackCount = if (isPassiveShot) 0 else (mobaValheinAttackCount + 1)
+            }
+        }
+    }
+
+    fun castMobaSkill(skillIndex: Int) {
+        if (_mobaState.value != "playing") return
+        if (_mobaHeroHP.value <= 0f) return
+        if (_mobaSkillCooldowns.value[skillIndex] > 0f) return
+
+        val isTulen = _mobaHero.value == "Tulen"
+        val isMurad = _mobaHero.value == "Murad"
+
+        // For Murad, Ultimate is locked unless passive stacks are 4
+        if (isMurad && skillIndex == 2 && _mobaPassiveStacks.value < 4) {
+            _mobaLog.value = "⚠️ Vô Ảnh Trảm đang BỊ PHONG ẤN! Hãy đánh thường đủ 4 lần lên lính hoặc tướng địch để kích hoạt!"
+            return
+        }
+
+        // Check Mana cost
+        val manaCost = when (skillIndex) {
+            0 -> if (isTulen) 55f else if (isMurad) 55f else 50f
+            1 -> if (isTulen) 60f else if (isMurad) 60f else 65f
+            else -> if (isTulen) 100f else if (isMurad) 80f else 110f
+        }
+
+        if (_mobaHeroMP.value < manaCost) {
+            _mobaLog.value = "⚡ Không đủ Năng Lượng (Mana) để tung chiêu!"
+            return
+        }
+
+        val actualPing = if (_isSimulating.value) _currentPing.value else 10
+        val lossPercent = if (_isSimulating.value) _targetLoss.value else 0
+
+        // Trigger cooldown immediately to prevent button spam on UI
+        val cds = _mobaSkillCooldowns.value.toMutableList()
+        val baseCd = when (skillIndex) {
+            0 -> {
+                if (isMurad) {
+                    if (_mobaMuradCastCount.value < 2) 0.6f else 8.0f
+                } else if (isTulen) 4.5f else 4.0f
+            }
+            1 -> if (isMurad) 7.0f else if (isTulen) 5.5f else 6.0f
+            else -> if (isMurad) 12.0f else if (isTulen) 11.0f else 14.0f
+        }
+        cds[skillIndex] = baseCd
+        _mobaSkillCooldowns.value = cds
+        _mobaHeroMP.value = (_mobaHeroMP.value - manaCost).coerceAtLeast(0f)
+
+        mobaSkillCastsCount++
+
+        viewModelScope.launch {
+            // Simulate lag interruption/packet loss
+            if (_isSimulating.value && Random.nextInt(100) < lossPercent) {
+                mobaSkillsInterruptedCount++
+                addMobaDamageText("LOST SKILL ❌", _mobaHeroX.value, _mobaHeroY.value - 6, 0xFFFF1111)
+                _mobaLog.value = "❌ RỤNG MẠNG (Packet Loss)! Chiêu thức ${skillIndex + 1} của ${_mobaHero.value} bị hủy do mất gói tin!"
+                return@launch
+            }
+
+            if (actualPing > 20) {
+                delay(actualPing.toLong())
+            }
+
+            performMobaSkillActual(skillIndex)
+        }
+    }
+
+    private suspend fun performMobaSkillActual(skillIndex: Int) {
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+        val isTulen = _mobaHero.value == "Tulen"
+        val isMurad = _mobaHero.value == "Murad"
+
+        // Target nearest enemy (or default to firing straight right)
+        val target = findNearestMobaEnemy(range = 35f)
+        val tX = target?.first ?: (hX + 30f)
+        val tY = target?.second ?: hY
+        val tId = target?.third
+
+        val angle = kotlin.math.atan2(tY - hY, tX - hX)
+
+        if (isMurad) {
+            when (skillIndex) {
+                0 -> { // Chiêu 1: Vô Ảnh Vực (Blink + clone mechanics)
+                    val count = _mobaMuradCastCount.value
+                    if (count < 2) {
+                        if (count == 0) {
+                            // Store shadow clone position at current hero position
+                            _mobaMuradCloneX.value = hX
+                            _mobaMuradCloneY.value = hY
+                            _mobaLog.value = "⚔️ Murad lướt VÔ ẢNH VỰC! Để lại ảo ảnh bóng bóng và làm choáng kẻ địch!"
+                        } else {
+                            _mobaLog.value = "⚔️ Murad lướt VÔ ẢNH VỰC lần 2! Tiếp tục chém quét gây choáng!"
+                        }
+
+                        // Dash towards destination, capped at max range of 15
+                        val destX = _mobaHeroDestX.value
+                        val destY = _mobaHeroDestY.value
+                        val dist = kotlin.math.sqrt((destX - hX) * (destX - hX) + (destY - hY) * (destY - hY))
+                        val blinkDist = dist.coerceAtMost(15f)
+                        val bAng = if (dist > 0.1f) kotlin.math.atan2(destY - hY, destX - hX) else angle
+                        val nextX = (hX + kotlin.math.cos(bAng) * blinkDist).coerceIn(0f, 100f)
+                        val nextY = (hY + kotlin.math.sin(bAng) * blinkDist).coerceIn(20f, 80f)
+
+                        // Move instantly
+                        _mobaHeroX.value = nextX
+                        _mobaHeroY.value = nextY
+                        _mobaHeroDestX.value = nextX
+                        _mobaHeroDestY.value = nextY
+
+                        // Deal AoE damage and stun at destination
+                        dealAoeMobaDamage(nextX, nextY, radius = 7f, damage = 250f, type = "murad_s1")
+                        // Apply stun
+                        val nearest = findNearestMobaEnemy(range = 8f)
+                        if (nearest != null && nearest.third == "enemy_hero") {
+                            triggerMobaEnemyStun(800L) // 0.8s stun
+                        }
+
+                        _mobaMuradCastCount.value = count + 1
+                    } else {
+                        // Teleport back to shadow clone!
+                        _mobaLog.value = "⚔️ Murad giật bóng biến ảo quay về vị trí ảo ảnh xuất phát ban đầu!"
+                        val cloneX = _mobaMuradCloneX.value
+                        val cloneY = _mobaMuradCloneY.value
+
+                        _mobaHeroX.value = cloneX
+                        _mobaHeroY.value = cloneY
+                        _mobaHeroDestX.value = cloneX
+                        _mobaHeroDestY.value = cloneY
+
+                        // Clear clone
+                        _mobaMuradCloneX.value = -1f
+                        _mobaMuradCloneY.value = -1f
+                        _mobaMuradCastCount.value = 0
+                    }
+                }
+                1 -> { // Chiêu 2: Vô Ảnh Trận (Vòng tròn bão cát)
+                    _mobaHeroIsImmune.value = true
+                    _mobaLog.value = "⚔️ Murad vẽ VÔ ẢNH TRẬN! Tạo vòng tròn bảo hộ cát vàng tránh sát thương và làm chậm kẻ địch!"
+
+                    // Deal AoE damage
+                    dealAoeMobaDamage(hX, hY, radius = 10f, damage = 260f, type = "murad_s2")
+
+                    // Stun / Slow if enemy hits the edge of the circle (dist 7.0f to 10.0f)
+                    val nearest = findNearestMobaEnemy(range = 11f)
+                    if (nearest != null && nearest.third == "enemy_hero") {
+                        val dist = kotlin.math.sqrt((_mobaEnemyX.value - hX) * (_mobaEnemyX.value - hX) + (_mobaEnemyY.value - hY) * (_mobaEnemyY.value - hY))
+                        if (dist in 7.0f..10.5f) {
+                            _mobaLog.value = "🎯 Maloch chạm rìa VÔ ẢNH TRẬN! Bị giảm giáp và bị Choáng mạnh!"
+                            triggerMobaEnemyStun(1500L) // 1.5s stun
+                        } else {
+                            _mobaLog.value = "🎯 Maloch nằm trong VÔ ẢNH TRẬN! Bị sát thương cát vàng bào mòn!"
+                        }
+                    }
+
+                    delay(500) // 0.5s untargetable
+                    _mobaHeroIsImmune.value = false
+                }
+                2 -> { // Chiêu 3: Ảo Ảnh Trảm (Flurry attack, invulnerable)
+                    _mobaHeroIsImmune.value = true
+                    _mobaLog.value = "⚔️ Murad tung ẢO ẢNH TRẢM! Hóa thành 5 luồng kiếm khí chém nát đội hình địch!"
+                    _mobaPassiveStacks.value = 0 // consume stacks
+
+                    for (i in 1..5) {
+                        dealAoeMobaDamage(tX, tY, radius = 13f, damage = 180f, type = "murad_ult")
+                        // Spawn gold visual slash particles
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = tX + Random.nextFloat() * 12f - 6f,
+                            y = tY + Random.nextFloat() * 12f - 6f,
+                            speed = 2.0f,
+                            isEnemy = false,
+                            damage = 0f,
+                            type = "murad_slash_visual",
+                            color = 0xFFF59E0B, // amber gold
+                            radius = 2.0f,
+                            targetX = tX + Random.nextFloat() * 12f - 6f,
+                            targetY = tY + Random.nextFloat() * 12f - 6f,
+                            isHoming = false
+                        )
+                        delay(120)
+                    }
+
+                    _mobaHeroIsImmune.value = false
+                }
+            }
+            return
+        }
+
+        if (isTulen) {
+            when (skillIndex) {
+                0 -> { // Chiêu 1: Lôi Quang (3 tia điện fan-shape)
+                    _mobaLog.value = "⚡ Tulen tung LÔI QUANG! Phóng 3 tia điện càn quét kẻ địch!"
+                    val angles = listOf(angle - 0.25f, angle, angle + 0.25f)
+                    angles.forEach { ang ->
+                        val speed = 2.0f
+                        val destX = hX + kotlin.math.cos(ang) * 40f
+                        val destY = hY + kotlin.math.sin(ang) * 40f
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = hX,
+                            y = hY,
+                            speed = speed,
+                            isEnemy = false,
+                            damage = 380f,
+                            type = "tulen_s1",
+                            color = 0xFF00FFFF,
+                            radius = 2.2f,
+                            targetX = destX,
+                            targetY = destY,
+                            isHoming = false
+                        )
+                    }
+                }
+                1 -> { // Chiêu 2: Lôi Động (Blink & deal dmg)
+                    _mobaLog.value = "⚡ Tulen lướt LÔI ĐỘNG! Dịch chuyển tức thời gây sát thương!"
+                    // Blink towards destination, capped at max range of 15
+                    val destX = _mobaHeroDestX.value
+                    val destY = _mobaHeroDestY.value
+                    val dist = kotlin.math.sqrt((destX - hX) * (destX - hX) + (destY - hY) * (destY - hY))
+                    val blinkDist = dist.coerceAtMost(16f)
+                    
+                    val bAng = kotlin.math.atan2(destY - hY, destX - hX)
+                    val nextX = (hX + kotlin.math.cos(bAng) * blinkDist).coerceIn(0f, 100f)
+                    val nextY = (hY + kotlin.math.sin(bAng) * blinkDist).coerceIn(20f, 80f)
+
+                    // Damage at start and end
+                    dealAoeMobaDamage(hX, hY, radius = 8f, damage = 220f, type = "tulen_s2")
+                    dealAoeMobaDamage(nextX, nextY, radius = 8f, damage = 220f, type = "tulen_s2")
+
+                    _mobaHeroX.value = nextX
+                    _mobaHeroY.value = nextY
+                    _mobaHeroDestX.value = nextX
+                    _mobaHeroDestY.value = nextY
+                }
+                2 -> { // Chiêu 3: Lôi Điểu (Ult tracking shot)
+                    if (target == null) {
+                        _mobaLog.value = "⚠️ Tulen: LÔI ĐIỂU cần mục tiêu để khóa!"
+                        return
+                    }
+                    _mobaLog.value = "⚡ LÔI ĐIỂU ĐÃ KHÓA MỤC TIÊU! Chuẩn bị oanh tạc cực mạnh..."
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = hX,
+                        y = hY,
+                        speed = 1.6f,
+                        isEnemy = false,
+                        damage = 900f, // Deals massive damage
+                        type = "tulen_ult",
+                        color = 0xFFE020FF,
+                        radius = 4f,
+                        targetX = tX,
+                        targetY = tY,
+                        isHoming = true,
+                        homingTargetId = tId
+                    )
+                }
+            }
+        } else {
+            // Valhein
+            when (skillIndex) {
+                0 -> { // Chiêu 1: Chuyến Săn Ám Ảnh (Red explosive glaive)
+                    _mobaLog.value = "🏹 Valhein tung CHUYẾN SĂN ÁM ẢNH! Phi tiêu đỏ nổ lan diện rộng!"
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = hX,
+                        y = hY,
+                        speed = 2.4f,
+                        isEnemy = false,
+                        damage = 350f,
+                        type = "valhein_s1",
+                        color = 0xFFFF2222,
+                        radius = 2.5f,
+                        targetX = tX,
+                        targetY = tY,
+                        isHoming = true,
+                        homingTargetId = tId
+                    )
+                }
+                1 -> { // Chiêu 2: Lời Nguyền Tử Vong (Yellow stun glaive)
+                    _mobaLog.value = "🏹 Valhein tung LỜI NGUYỀN TỬ VONG! Phi tiêu vàng gây choáng cực lâu!"
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = hX,
+                        y = hY,
+                        speed = 2.4f,
+                        isEnemy = false,
+                        damage = 220f,
+                        type = "valhein_s2",
+                        color = 0xFFFFFF00,
+                        radius = 2.5f,
+                        targetX = tX,
+                        targetY = tY,
+                        isHoming = true,
+                        homingTargetId = tId
+                    )
+                }
+                2 -> { // Chiêu 3: Bão Đạn (Ultimate shot gun spray)
+                    _mobaLog.value = "🏹 Valhein kích hoạt BÃO ĐẠN! Xả 6 đạn bạc hủy diệt mục tiêu cận kề!"
+                    val baseAngle = angle
+                    val bulletAngles = listOf(
+                        baseAngle - 0.4f, baseAngle - 0.24f, baseAngle - 0.08f,
+                        baseAngle + 0.08f, baseAngle + 0.24f, baseAngle + 0.4f
+                    )
+                    bulletAngles.forEach { bAng ->
+                        val destX = hX + kotlin.math.cos(bAng) * 35f
+                        val destY = hY + kotlin.math.sin(bAng) * 35f
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = hX,
+                            y = hY,
+                            speed = 2.5f,
+                            isEnemy = false,
+                            damage = 280f,
+                            type = "valhein_ult",
+                            color = 0xFFEEEEEE,
+                            radius = 2.0f,
+                            targetX = destX,
+                            targetY = destY,
+                            isHoming = false
+                        )
+                    }
+                    // Speed boost stacks for Valhein
+                    _mobaPassiveStacks.value = (_mobaPassiveStacks.value + 3).coerceAtMost(6)
+                }
+            }
+        }
+    }
+
+    private fun findNearestMobaEnemy(range: Float): Triple<Float, Float, String>? {
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+        var minDist = range
+        var bestTarget: Triple<Float, Float, String>? = null
+
+        // Check enemy champion
+        val eHP = _mobaEnemyHP.value
+        if (eHP > 0f) {
+            val eX = _mobaEnemyX.value
+            val eY = _mobaEnemyY.value
+            val d = kotlin.math.sqrt((eX - hX) * (eX - hX) + (eY - hY) * (eY - hY))
+            if (d < minDist) {
+                minDist = d
+                bestTarget = Triple(eX, eY, "enemy_hero")
+            }
+        }
+
+        // Check enemy creeps
+        _mobaCreeps.value.filter { it.isEnemy && it.hp > 0f }.forEach { creep ->
+            val d = kotlin.math.sqrt((creep.x - hX) * (creep.x - hX) + (creep.y - hY) * (creep.y - hY))
+            if (d < minDist) {
+                minDist = d
+                bestTarget = Triple(creep.x, creep.y, creep.id)
+            }
+        }
+
+        // Check enemy turret
+        val etHP = _mobaEnemyTurretHP.value
+        if (etHP > 0f) {
+            val d = kotlin.math.sqrt((75f - hX) * (75f - hX) + (50f - hY) * (50f - hY))
+            if (d < minDist) {
+                minDist = d
+                bestTarget = Triple(75f, 50f, "enemy_turret")
+            }
+        }
+
+        return bestTarget
+    }
+
+    private fun addMobaDamageText(text: String, x: Float, y: Float, color: Long) {
+        val newText = MobaDamageText(text = text, x = x, y = y, color = color)
+        _mobaDamageTexts.value = _mobaDamageTexts.value + newText
+    }
+
+    private fun dealAoeMobaDamage(centerX: Float, centerY: Float, radius: Float, damage: Float, type: String) {
+        // Find all enemy units inside radius and apply damage
+        var hitAny = false
+
+        // Enemy Champ
+        val eHP = _mobaEnemyHP.value
+        if (eHP > 0f) {
+            val dist = kotlin.math.sqrt((_mobaEnemyX.value - centerX) * (_mobaEnemyX.value - centerX) + (_mobaEnemyY.value - centerY) * (_mobaEnemyY.value - centerY))
+            if (dist <= radius) {
+                _mobaEnemyHP.value = (_mobaEnemyHP.value - damage).coerceAtLeast(0f)
+                addMobaDamageText("-${damage.toInt()}", _mobaEnemyX.value, _mobaEnemyY.value - 5f, 0xFFFFCC00)
+                hitAny = true
+                mobaSkillHitsCount++
+                if (type.startsWith("tulen")) {
+                    incrementTulenPassive()
+                }
+            }
+        }
+
+        // Enemy Creeps
+        val creeps = _mobaCreeps.value.toMutableList()
+        var updated = false
+        creeps.forEach { creep ->
+            if (creep.isEnemy && creep.hp > 0f) {
+                val dist = kotlin.math.sqrt((creep.x - centerX) * (creep.x - centerX) + (creep.y - centerY) * (creep.y - centerY))
+                if (dist <= radius) {
+                    creep.hp = (creep.hp - damage).coerceAtLeast(0f)
+                    addMobaDamageText("-${damage.toInt()}", creep.x, creep.y - 4f, 0xFFFFCC00)
+                    updated = true
+                    hitAny = true
+                    mobaSkillHitsCount++
+                    if (type.startsWith("tulen")) {
+                        incrementTulenPassive()
+                    }
+                }
+            }
+        }
+        if (updated) {
+            _mobaCreeps.value = creeps
+        }
+
+        // Enemy Turret
+        if (_mobaEnemyTurretHP.value > 0f) {
+            val dist = kotlin.math.sqrt((75f - centerX) * (75f - centerX) + (50f - centerY) * (50f - centerY))
+            if (dist <= radius) {
+                _mobaEnemyTurretHP.value = (_mobaEnemyTurretHP.value - damage * 0.5f).coerceAtLeast(0f) // turret has armor (takes 50% dmg from skills)
+                addMobaDamageText("-${(damage * 0.5f).toInt()}", 75f, 44f, 0xFFFFCC00)
+                hitAny = true
+            }
+        }
+    }
+
+    private fun incrementTulenPassive() {
+        val stacks = _mobaPassiveStacks.value
+        if (stacks >= 5) return
+        val next = stacks + 1
+        _mobaPassiveStacks.value = next
+        if (next >= 5) {
+            _mobaLog.value = "⚡ Tulen kích hoạt NỘI TẠI LÔI ĐIỆN! 5 luồng sét bao quanh sấm sét càn quét!"
+            mobaTulenPassiveOrbs = 5
+        }
+    }
+
+    private fun incrementMuradPassive() {
+        val current = _mobaPassiveStacks.value
+        if (current < 4) {
+            val next = current + 1
+            _mobaPassiveStacks.value = next
+            if (next == 4) {
+                _mobaLog.value = "⚔️ Murad: GIẢI ẤN PHONG ẤN! ẢO ẢNH TRẢM ĐÃ KHÓA SẴN SÀNG! 🔥"
+                addMobaDamageText("ACTIVE! 🔥", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFFF59E0B)
+            } else {
+                _mobaLog.value = "⚔️ Murad tích ấn Phong Ấn: $next/4"
+                addMobaDamageText("ẤN ⚔️", _mobaHeroX.value, _mobaHeroY.value - 10f, 0xFFEAB308)
+            }
+        }
+    }
+
+    private suspend fun runMobaGameLoop() {
+        var tickCounter = 0
+        var creepSpawnTimer = 11f // spawn first wave almost immediately (after 1s)
+
+        while (_mobaState.value == "playing") {
+            delay(50)
+            tickCounter++
+            val currentTime = System.currentTimeMillis()
+
+            // 1. Cooldown recovery and passive decay
+            val cds = _mobaSkillCooldowns.value.map { (it - 0.05f).coerceAtLeast(0f) }
+            _mobaSkillCooldowns.value = cds
+
+            val isTulen = _mobaHero.value == "Tulen"
+            val isMurad = _mobaHero.value == "Murad"
+            if (isMurad) {
+                // Decay Murad passive stacks after 6s of not hitting (every 40 ticks = 2s decay 1)
+                if (tickCounter % 40 == 0) {
+                    val current = _mobaPassiveStacks.value
+                    if (current > 0) {
+                        val next = current - 1
+                        _mobaPassiveStacks.value = next
+                        if (next == 0) {
+                            _mobaLog.value = "⚔️ Murad: Phong ấn cổ đã tan biến hoàn toàn. Hãy đánh thường để tích lại!"
+                        } else {
+                            _mobaLog.value = "⚔️ Murad: Các luồng Phong Ấn cổ đang dần biến mất... ($next/4)"
+                        }
+                    }
+                }
+            } else if (!isTulen) {
+                // Decay Valhein passive speed stacks
+                if (tickCounter % 20 == 0) { // every 1s
+                    _mobaPassiveStacks.value = (_mobaPassiveStacks.value - 1).coerceAtLeast(0)
+                }
+            } else {
+                // Tulen electrical passive attacks
+                if (mobaTulenPassiveOrbs > 0 && currentTime - mobaPassiveTimer > 600L) {
+                    val target = findNearestMobaEnemy(range = 28f)
+                    if (target != null) {
+                        mobaTulenPassiveOrbs--
+                        mobaPassiveTimer = currentTime
+                        if (mobaTulenPassiveOrbs == 0) {
+                            _mobaPassiveStacks.value = 0
+                        }
+                        
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = _mobaHeroX.value,
+                            y = _mobaHeroY.value,
+                            speed = 2.4f,
+                            isEnemy = false,
+                            damage = 160f,
+                            type = "tulen_passive_zap",
+                            color = 0xFF00E6FF,
+                            radius = 1.5f,
+                            targetX = target.first,
+                            targetY = target.second,
+                            isHoming = true,
+                            homingTargetId = target.third
+                        )
+                    }
+                }
+            }
+
+            // Hero HP/Mana regen
+            if (tickCounter % 10 == 0) { // every 500ms
+                val hpRegen = 15f
+                val mpRegen = 20f
+                _mobaHeroHP.value = (_mobaHeroHP.value + hpRegen).coerceAtMost(_mobaHeroMaxHP.value)
+                _mobaHeroMP.value = (_mobaHeroMP.value + mpRegen).coerceAtMost(_mobaHeroMaxMP.value)
+            }
+
+            // 2. Creep Spawning logic
+            creepSpawnTimer += 0.05f
+            if (creepSpawnTimer >= 12.0f) {
+                creepSpawnTimer = 0f
+                spawnMobaCreepWave()
+            }
+
+            // 3. Move Hero
+            val hX = _mobaHeroX.value
+            val hY = _mobaHeroY.value
+            val destX = _mobaHeroDestX.value
+            val destY = _mobaHeroDestY.value
+            
+            val dx = destX - hX
+            val dy = destY - hY
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > 1.0f) {
+                // Movement speed modified by active stacks if Valhein
+                val speedBonus = if (!isTulen && !isMurad) 1f + (_mobaPassiveStacks.value * 0.06f) else 1f
+                val moveSpeed = if (isMurad) 1.55f else 1.3f * speedBonus // Murad is an agile assassin
+                val step = moveSpeed.coerceAtMost(dist)
+                
+                _mobaHeroX.value = hX + (dx / dist) * step
+                _mobaHeroY.value = hY + (dy / dist) * step
+            }
+
+            // 4. Update Projectiles (Homing, movement, collision)
+            updateMobaProjectiles()
+
+            // 5. Update Creeps (Movement, attacks)
+            updateMobaCreeps(currentTime)
+
+            // 6. Update Enemy AI (Maloch)
+            updateMobaEnemyAI(currentTime)
+
+            // 7. Update Turrets (Auto-target & attack)
+            updateMobaTurrets(currentTime)
+
+            // 8. Update Floating Damage texts
+            val dmgTexts = _mobaDamageTexts.value.map {
+                it.copy(age = it.age + 1, y = it.y - 0.6f)
+            }
+            _mobaDamageTexts.value = dmgTexts.filter { it.age < 18 }
+
+            // 9. Game Over checks
+            checkMobaGameOver()
+        }
+    }
+
+    private fun spawnMobaCreepWave() {
+        _mobaLog.value = "🛡️ Lính đường Rồng của hai phe đã xuất trận!"
+        val allies = listOf(
+            MobaCreep(x = 10f, y = 46f, hp = 450f, maxHp = 450f, isEnemy = false, speed = 0.55f),
+            MobaCreep(x = 8f, y = 50f, hp = 600f, maxHp = 600f, isEnemy = false, speed = 0.5f), // defender
+            MobaCreep(x = 6f, y = 54f, hp = 450f, maxHp = 450f, isEnemy = false, speed = 0.55f)
+        )
+        val enemies = listOf(
+            MobaCreep(x = 90f, y = 46f, hp = 450f, maxHp = 450f, isEnemy = true, speed = 0.55f),
+            MobaCreep(x = 92f, y = 50f, hp = 600f, maxHp = 600f, isEnemy = true, speed = 0.5f), // defender
+            MobaCreep(x = 94f, y = 54f, hp = 450f, maxHp = 450f, isEnemy = true, speed = 0.55f)
+        )
+        _mobaCreeps.value = _mobaCreeps.value + allies + enemies
+    }
+
+    private fun updateMobaProjectiles() {
+        val projs = _mobaProjectiles.value.toMutableList()
+        var updated = false
+
+        projs.forEach { proj ->
+            if (proj.isFinished) return@forEach
+
+            // If homing, resolve coordinates of targets
+            var targetX = proj.targetX
+            var targetY = proj.targetY
+            var targetAlive = true
+
+            if (proj.isHoming) {
+                when (proj.homingTargetId) {
+                    "player" -> {
+                        if (_mobaHeroHP.value <= 0f) targetAlive = false
+                        targetX = _mobaHeroX.value
+                        targetY = _mobaHeroY.value
+                    }
+                    "enemy_hero" -> {
+                        if (_mobaEnemyHP.value <= 0f) targetAlive = false
+                        targetX = _mobaEnemyX.value
+                        targetY = _mobaEnemyY.value
+                    }
+                    "enemy_turret" -> {
+                        if (_mobaEnemyTurretHP.value <= 0f) targetAlive = false
+                        targetX = 75f
+                        targetY = 50f
+                    }
+                    "ally_turret" -> {
+                        if (_mobaAllyTurretHP.value <= 0f) targetAlive = false
+                        targetX = 30f
+                        targetY = 50f
+                    }
+                    else -> {
+                        // Creep homing
+                        val creep = _mobaCreeps.value.find { it.id == proj.homingTargetId }
+                        if (creep == null || creep.hp <= 0f) {
+                            targetAlive = false
+                        } else {
+                            targetX = creep.x
+                            targetY = creep.y
+                        }
+                    }
+                }
+            }
+
+            if (!targetAlive) {
+                // target died, fly forward
+                proj.isFinished = true
+                updated = true
+                return@forEach
+            }
+
+            // Move projectile
+            val dx = targetX - proj.x
+            val dy = targetY - proj.y
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist <= proj.speed + 1f) {
+                // Hit!
+                proj.x = targetX
+                proj.y = targetY
+                proj.isFinished = true
+                updated = true
+                applyMobaProjectileImpact(proj)
+            } else {
+                proj.x += (dx / dist) * proj.speed
+                proj.y += (dy / dist) * proj.speed
+                updated = true
+            }
+        }
+
+        if (updated) {
+            _mobaProjectiles.value = projs.filter { !it.isFinished }
+        }
+    }
+
+    private fun applyMobaProjectileImpact(proj: MobaProjectile) {
+        val dmg = proj.damage
+
+        if (proj.isEnemy) {
+            // Hit player or allied creep or allied turret
+            if (proj.homingTargetId == "player") {
+                if (_mobaHeroIsImmune.value) {
+                    addMobaDamageText("NÉ 💫", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF38BDF8)
+                } else {
+                    _mobaHeroHP.value = (_mobaHeroHP.value - dmg).coerceAtLeast(0f)
+                    addMobaDamageText("-${dmg.toInt()}", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFFFF3333)
+                    
+                    // Slow effect if Maloch's cleaver
+                    if (proj.type == "maloch_cleave") {
+                        _mobaLog.value = "⚠️ Bạn bị Maloch chém rìu gây trì hoãn di chuyển (Chậm 50%!)"
+                        addMobaDamageText("SLOWED ❄️", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF33CCFF)
+                    }
+                }
+            } else if (proj.homingTargetId == "ally_turret") {
+                _mobaAllyTurretHP.value = (_mobaAllyTurretHP.value - dmg).coerceAtLeast(0f)
+                addMobaDamageText("-${dmg.toInt()}", 30f, 44f, 0xFFFF3333)
+            } else {
+                // Hit allied creep
+                val creeps = _mobaCreeps.value.toMutableList()
+                val creep = creeps.find { it.id == proj.homingTargetId }
+                if (creep != null) {
+                    creep.hp = (creep.hp - dmg).coerceAtLeast(0f)
+                    addMobaDamageText("-${dmg.toInt()}", creep.x, creep.y - 4f, 0xFFFF5555)
+                    _mobaCreeps.value = creeps
+                }
+            }
+        } else {
+            // Hit enemy champ or enemy creep or enemy turret
+            if (proj.homingTargetId == "enemy_hero") {
+                _mobaEnemyHP.value = (_mobaEnemyHP.value - dmg).coerceAtLeast(0f)
+                addMobaDamageText("-${dmg.toInt()}", _mobaEnemyX.value, _mobaEnemyY.value - 6f, 0xFFFFCC00)
+                mobaSkillHitsCount++
+
+                // Handle skill effect
+                if (proj.type == "valhein_s2") { // Yellow stun
+                    _mobaLog.value = "🎯 Choáng! Maloch bị Valhein hóa đá găm phi tiêu vàng (Choáng 2s)!"
+                    triggerMobaEnemyStun(2000L)
+                } else if (proj.type == "valhein_s1") { // Red AoE explode
+                    dealAoeMobaDamage(_mobaEnemyX.value, _mobaEnemyY.value, radius = 9f, damage = dmg * 0.4f, type = "valhein_s1_aoe")
+                } else if (proj.type == "tulen_ult") {
+                    _mobaLog.value = "⚡ SIÊU PHẨM LÔI ĐIỂU! Oanh tạc dứt điểm cực đau lên Maloch!"
+                    // gain stacks on hit
+                    incrementTulenPassive()
+                } else if (proj.type.startsWith("tulen")) {
+                    incrementTulenPassive()
+                } else if (proj.type == "murad_basic") {
+                    incrementMuradPassive()
+                }
+            } else if (proj.homingTargetId == "enemy_turret") {
+                _mobaEnemyTurretHP.value = (_mobaEnemyTurretHP.value - dmg * 0.7f).coerceAtLeast(0f)
+                addMobaDamageText("-${(dmg * 0.7f).toInt()}", 75f, 44f, 0xFFFFCC00)
+            } else {
+                // Hit enemy creep
+                val creeps = _mobaCreeps.value.toMutableList()
+                val creep = creeps.find { it.id == proj.homingTargetId }
+                if (creep != null) {
+                    creep.hp = (creep.hp - dmg).coerceAtLeast(0f)
+                    addMobaDamageText("-${dmg.toInt()}", creep.x, creep.y - 4f, 0xFFFFEE22)
+                    
+                    if (proj.type == "valhein_s2") {
+                        creep.isStunned = true
+                        creep.stunEndTime = System.currentTimeMillis() + 2000L
+                    } else if (proj.type == "valhein_s1") {
+                        dealAoeMobaDamage(creep.x, creep.y, radius = 9f, damage = dmg * 0.4f, type = "valhein_s1_aoe")
+                    } else if (proj.type.startsWith("tulen")) {
+                        incrementTulenPassive()
+                    } else if (proj.type == "murad_basic") {
+                        incrementMuradPassive()
+                    }
+                    _mobaCreeps.value = creeps
+                }
+            }
+        }
+    }
+
+    private fun triggerMobaEnemyStun(durationMs: Long) {
+        _mobaEnemyIsStunned.value = true
+        mobaEnemyStunUntil = System.currentTimeMillis() + durationMs
+        addMobaDamageText("STUNNED 🌀", _mobaEnemyX.value, _mobaEnemyY.value - 12f, 0xFFFFFF00)
+    }
+
+    private fun updateMobaCreeps(currentTime: Long) {
+        val creeps = _mobaCreeps.value.toMutableList()
+        if (creeps.isEmpty()) return
+
+        creeps.forEach { creep ->
+            if (creep.hp <= 0f) return@forEach
+
+            // Check Stun
+            if (creep.isStunned) {
+                if (currentTime >= creep.stunEndTime) {
+                    creep.isStunned = false
+                } else {
+                    return@forEach // Skip moving/attacking if stunned
+                }
+            }
+
+            // AI: Find target in front
+            val range = 11f
+            var target: Triple<Float, Float, String>? = null
+
+            if (creep.isEnemy) {
+                // Enemy creep looks for Player or allied creeps
+                val distToPlayer = kotlin.math.sqrt((_mobaHeroX.value - creep.x) * (_mobaHeroX.value - creep.x) + (_mobaHeroY.value - creep.y) * (_mobaHeroY.value - creep.y))
+                if (_mobaHeroHP.value > 0f && distToPlayer <= range) {
+                    target = Triple(_mobaHeroX.value, _mobaHeroY.value, "player")
+                } else {
+                    // find nearest allied creep
+                    var nearestD = range
+                    _mobaCreeps.value.filter { !it.isEnemy && it.hp > 0f }.forEach { ally ->
+                        val d = kotlin.math.sqrt((ally.x - creep.x) * (ally.x - creep.x) + (ally.y - creep.y) * (ally.y - creep.y))
+                        if (d < nearestD) {
+                            nearestD = d
+                            target = Triple(ally.x, ally.y, ally.id)
+                        }
+                    }
+                }
+            } else {
+                // Allied creep looks for Enemy champion or enemy creeps
+                val distToEnemyHero = kotlin.math.sqrt((_mobaEnemyX.value - creep.x) * (_mobaEnemyX.value - creep.x) + (_mobaEnemyY.value - creep.y) * (_mobaEnemyY.value - creep.y))
+                if (_mobaEnemyHP.value > 0f && distToEnemyHero <= range) {
+                    target = Triple(_mobaEnemyX.value, _mobaEnemyY.value, "enemy_hero")
+                } else {
+                    // find nearest enemy creep
+                    var nearestD = range
+                    _mobaCreeps.value.filter { it.isEnemy && it.hp > 0f }.forEach { enemy ->
+                        val d = kotlin.math.sqrt((enemy.x - creep.x) * (enemy.x - creep.x) + (enemy.y - creep.y) * (enemy.y - creep.y))
+                        if (d < nearestD) {
+                            nearestD = d
+                            target = Triple(enemy.x, enemy.y, enemy.id)
+                        }
+                    }
+                }
+            }
+
+            // Attack or Move
+            val finalTarget = target
+            if (finalTarget != null) {
+                // Stop and attack
+                if (currentTime - creep.lastAttackTime > 1300L) {
+                    creep.lastAttackTime = currentTime
+                    // Spawn small bullet projectile
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = creep.x,
+                        y = creep.y,
+                        speed = 1.4f,
+                        isEnemy = creep.isEnemy,
+                        damage = 35f,
+                        type = "creep_atk",
+                        color = if (creep.isEnemy) 0xFFFF5555 else 0xFF44FF44,
+                        radius = 1.2f,
+                        targetX = finalTarget.first,
+                        targetY = finalTarget.second,
+                        isHoming = true,
+                        homingTargetId = finalTarget.third
+                    )
+                }
+            } else {
+                // Move towards lane base
+                val destX = if (creep.isEnemy) 10f else 90f
+                val dx = destX - creep.x
+                val dy = 50f - creep.y // march to lane center Y=50
+                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                if (dist > 1f) {
+                    creep.x += (dx / dist) * creep.speed
+                    creep.y += (dy / dist) * creep.speed
+                }
+            }
+        }
+
+        _mobaCreeps.value = creeps.filter { it.hp > 0f }
+    }
+
+    private fun updateMobaEnemyAI(currentTime: Long) {
+        val eHP = _mobaEnemyHP.value
+        if (eHP <= 0f) {
+            // Respawn countdown handled in background or just wait
+            if (tickCounterMoba % 200 == 0) { // approx 10s
+                _mobaEnemyHP.value = _mobaEnemyMaxHP.value
+                _mobaEnemyX.value = 65f
+                _mobaEnemyY.value = 50f
+                _mobaLog.value = "👿 Maloch đã hồi sinh từ Tế Đàn Địch và tiến ra Đại Lộ!"
+            }
+            return
+        }
+
+        // Handle stun
+        if (_mobaEnemyIsStunned.value) {
+            if (currentTime >= mobaEnemyStunUntil) {
+                _mobaEnemyIsStunned.value = false
+            } else {
+                return
+            }
+        }
+
+        val eX = _mobaEnemyX.value
+        val eY = _mobaEnemyY.value
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+
+        val distToPlayer = kotlin.math.sqrt((hX - eX) * (hX - eX) + (hY - eY) * (hY - eY))
+
+        // Deciding to flee if very low HP
+        if (eHP < 900f && _mobaEnemyTurretHP.value > 0f) {
+            // Run back to turret X=75
+            val dx = 75f - eX
+            val dy = 50f - eY
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > 1f) {
+                _mobaEnemyX.value += (dx / dist) * 1.0f
+                _mobaEnemyY.value += (dy / dist) * 1.0f
+            }
+            // Heal up slightly near turret
+            if (dist <= 5f) {
+                _mobaEnemyHP.value = (eHP + 20f).coerceAtMost(_mobaEnemyMaxHP.value)
+            }
+            return
+        }
+
+        // AI decision
+        if (_mobaHeroHP.value > 0f && distToPlayer <= 26f) {
+            // Chase Player
+            val dx = hX - eX
+            val dy = hY - eY
+            if (distToPlayer > 5f) {
+                _mobaEnemyX.value += (dx / distToPlayer) * 0.75f
+                _mobaEnemyY.value += (dy / distToPlayer) * 0.75f
+            } else {
+                // Swing Cleaver
+                if (tickCounterMoba % 24 == 0) { // every 1.2s
+                    _mobaLog.value = "👿 Maloch tung QUỶ KIẾM! Chém kiếm quét ngang gây sát thương lớn!"
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX,
+                        y = eY,
+                        speed = 1.8f,
+                        isEnemy = true,
+                        damage = 180f,
+                        type = "maloch_cleave",
+                        color = 0xFFFF0033,
+                        radius = 2.4f,
+                        targetX = hX,
+                        targetY = hY,
+                        isHoming = true,
+                        homingTargetId = "player"
+                    )
+                }
+            }
+        } else {
+            // Patrol or clear creeps
+            var targetCreep: MobaCreep? = null
+            var minD = 25f
+            _mobaCreeps.value.filter { !it.isEnemy && it.hp > 0f }.forEach { creep ->
+                val d = kotlin.math.sqrt((creep.x - eX) * (creep.x - eX) + (creep.y - eY) * (creep.y - eY))
+                if (d < minD) {
+                    minD = d
+                    targetCreep = creep
+                }
+            }
+
+            if (targetCreep != null) {
+                val tc = targetCreep!!
+                val dx = tc.x - eX
+                val dy = tc.y - eY
+                if (minD > 5f) {
+                    _mobaEnemyX.value += (dx / minD) * 0.7f
+                    _mobaEnemyY.value += (dy / minD) * 0.7f
+                } else {
+                    if (tickCounterMoba % 30 == 0) {
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 1.6f,
+                            isEnemy = true,
+                            damage = 100f,
+                            type = "basic_cleave",
+                            color = 0xFFFF5555,
+                            radius = 2.0f,
+                            targetX = tc.x,
+                            targetY = tc.y,
+                            isHoming = true,
+                            homingTargetId = tc.id
+                        )
+                    }
+                }
+            } else {
+                // Move back to patrol spot X=62, Y=50
+                val dx = 62f - eX
+                val dy = 50f - eY
+                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                if (dist > 1f) {
+                    _mobaEnemyX.value += (dx / dist) * 0.5f
+                    _mobaEnemyY.value += (dy / dist) * 0.5f
+                }
+            }
+        }
+    }
+
+    private var tickCounterMoba = 0
+
+    private fun updateMobaTurrets(currentTime: Long) {
+        tickCounterMoba++
+        
+        // Allied Turret (X=30, Y=50)
+        if (_mobaAllyTurretHP.value > 0f && tickCounterMoba % 26 == 0) {
+            // Find enemy champ first inside range 18
+            var fired = false
+            val eX = _mobaEnemyX.value
+            val eY = _mobaEnemyY.value
+            val dToChamp = kotlin.math.sqrt((eX - 30f) * (eX - 30f) + (eY - 50f) * (eY - 50f))
+            if (_mobaEnemyHP.value > 0f && dToChamp <= 20f) {
+                // Shoot Champ
+                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                    x = 30f,
+                    y = 50f,
+                    speed = 1.6f,
+                    isEnemy = false,
+                    damage = 250f,
+                    type = "turret",
+                    color = 0xFFFFFF33,
+                    radius = 2.4f,
+                    targetX = eX,
+                    targetY = eY,
+                    isHoming = true,
+                    homingTargetId = "enemy_hero"
+                )
+                fired = true
+            }
+
+            if (!fired) {
+                // Shoot nearest enemy creep
+                var nearestCreep: MobaCreep? = null
+                var minD = 20f
+                _mobaCreeps.value.filter { it.isEnemy && it.hp > 0f }.forEach { creep ->
+                    val d = kotlin.math.sqrt((creep.x - 30f) * (creep.x - 30f) + (creep.y - 50f) * (creep.y - 50f))
+                    if (d < minD) {
+                        minD = d
+                        nearestCreep = creep
+                    }
+                }
+                
+                if (nearestCreep != null) {
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = 30f,
+                        y = 50f,
+                        speed = 1.6f,
+                        isEnemy = false,
+                        damage = 220f,
+                        type = "turret",
+                        color = 0xFFFFFF33,
+                        radius = 2.4f,
+                        targetX = nearestCreep!!.x,
+                        targetY = nearestCreep!!.y,
+                        isHoming = true,
+                        homingTargetId = nearestCreep!!.id
+                    )
+                }
+            }
+        }
+
+        // Enemy Turret (X=75, Y=50)
+        if (_mobaEnemyTurretHP.value > 0f && tickCounterMoba % 26 == 0) {
+            // Check for allied creeps first to tank turret agro
+            var nearestAllyCreep: MobaCreep? = null
+            var minD = 20f
+            _mobaCreeps.value.filter { !it.isEnemy && it.hp > 0f }.forEach { creep ->
+                val d = kotlin.math.sqrt((creep.x - 75f) * (creep.x - 75f) + (creep.y - 50f) * (creep.y - 50f))
+                if (d < minD) {
+                    minD = d
+                    nearestAllyCreep = creep
+                }
+            }
+
+            if (nearestAllyCreep != null) {
+                // Turret shoots the allied creep!
+                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                    x = 75f,
+                    y = 50f,
+                    speed = 1.6f,
+                    isEnemy = true,
+                    damage = 220f,
+                    type = "turret",
+                    color = 0xFFFF3333,
+                    radius = 2.4f,
+                    targetX = nearestAllyCreep!!.x,
+                    targetY = nearestAllyCreep!!.y,
+                    isHoming = true,
+                    homingTargetId = nearestAllyCreep!!.id
+                )
+            } else {
+                // No creeps, look for player!
+                val hX = _mobaHeroX.value
+                val hY = _mobaHeroY.value
+                val dToPlayer = kotlin.math.sqrt((hX - 75f) * (hX - 75f) + (hY - 50f) * (hY - 50f))
+                if (_mobaHeroHP.value > 0f && dToPlayer <= 20f) {
+                    // Shoot Player! Massive raw damage
+                    _mobaLog.value = "⚠️ CẢNH BÁO: BẠN ĐANG ĐI VÀO TẦM BẮN TRỤ ĐỊCH MÀ KHÔNG CÓ LÍNH TANK! ⚠️"
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = 75f,
+                        y = 50f,
+                        speed = 1.6f,
+                        isEnemy = true,
+                        damage = 380f,
+                        type = "turret_hard",
+                        color = 0xFFFF1111,
+                        radius = 2.8f,
+                        targetX = hX,
+                        targetY = hY,
+                        isHoming = true,
+                        homingTargetId = "player"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun checkMobaGameOver() {
+        val hHP = _mobaHeroHP.value
+        val etHP = _mobaEnemyTurretHP.value
+        val atHP = _mobaAllyTurretHP.value
+
+        // Player Dies -> Respawn at base
+        if (hHP <= 0f) {
+            _mobaHeroHP.value = 0f
+            _mobaDeaths.value = _mobaDeaths.value + 1
+            _mobaLog.value = "💀 Bạn đã hy sinh! Hồi sinh tại Tế Đàn sau 4 giây..."
+            _mobaHeroX.value = 15f
+            _mobaHeroY.value = 50f
+            _mobaHeroDestX.value = 15f
+            _mobaHeroDestY.value = 50f
+            
+            // Spawn floating skull text
+            addMobaDamageText("DEAD 💀", 15f, 50f, 0xFFFF0000)
+
+            viewModelScope.launch {
+                delay(4000)
+                if (_mobaState.value == "playing") {
+                    _mobaHeroHP.value = _mobaHeroMaxHP.value
+                    _mobaHeroMP.value = 500f
+                    _mobaLog.value = "🛡️ Bạn đã hồi sinh! Hãy cẩn thận và tiến lên đẩy trụ!"
+                }
+            }
+        }
+
+        // Victory Condition: Enemy Turret Destroyed
+        if (etHP <= 0f) {
+            _mobaEnemyTurretHP.value = 0f
+            finishMobaGame(isVictory = true)
+        }
+
+        // Defeat Condition: Allied Turret Destroyed
+        if (atHP <= 0f) {
+            _mobaAllyTurretHP.value = 0f
+            finishMobaGame(isVictory = false)
+        }
+    }
+
+    private fun finishMobaGame(isVictory: Boolean) {
+        mobaGameJob?.cancel()
+        _mobaState.value = if (isVictory) "victory" else "defeat"
+        
+        val gameTimeSeconds = ((System.currentTimeMillis() - mobaGameStartTime) / 1000).toInt()
+        val basePing = if (_isSimulating.value) _currentPing.value else 10
+        val targetLoss = if (_isSimulating.value) _targetLoss.value else 0
+        val targetJitter = if (_isSimulating.value) _targetJitter.value else 0
+
+        // Calculate precision/hit rates
+        val casts = mobaSkillCastsCount.coerceAtLeast(1)
+        val hits = mobaSkillHitsCount
+        val accuracy = ((hits.toFloat() / (casts * 2.5f).coerceAtLeast(1f)) * 100).toInt().coerceIn(10, 100)
+
+        // Diagnostic logs
+        val mainIssue = when {
+            !_isSimulating.value -> "Kết nối mạng tuyệt vời, không phát hiện lag cơ sở."
+            basePing > 200 -> "Trễ ping cực kỳ cao (${basePing}ms). Lệnh di chuyển bị chậm nhịp khiến bạn không thể né quỷ kiếm của Maloch."
+            targetLoss > 15 -> "Tỉ lệ rụng gói tin nghiêm trọng (${targetLoss}% Packet Loss). Rất nhiều kỹ năng tung ra của ${_mobaHero.value} bị biến mất vô lý."
+            targetJitter > 30 -> "Ping biến động giật giật (Jitter ${targetJitter}ms). Game giật lag cục bộ, khó phán đoán hướng lướt lính."
+            else -> "Kết nối tương đối ổn định, sự cố chính là do phối hợp lính chưa nhịp nhàng."
+        }
+
+        val diagnosticTips = mutableListOf<Pair<String, String>>()
+        if (basePing > 100) {
+            diagnosticTips.add(Pair("Kết Nối Dây LAN", "Giúp ổn định thời gian phản hồi máy chủ game từ ${basePing}ms xuống < 15ms."))
+            diagnosticTips.add(Pair("Đổi Server / Băng Tần 5GHz", "Nếu chơi trên Mobile, hãy kết nối băng tần 5GHz hoặc ngồi gần router."))
+        }
+        if (targetLoss > 5) {
+            diagnosticTips.add(Pair("Tắt Tải Ngầm & QoS", "Các tác vụ update ngầm gây rớt gói mạng. Bật QoS trên Router để ưu tiên gói tin Liên Quân."))
+        }
+        if (targetJitter > 15) {
+            diagnosticTips.add(Pair("Cấu Hình DNS Cloudflare", "Đổi DNS sang 1.1.1.1 / 1.0.0.1 giảm jitter xung đột phân giải IP game."))
+        }
+        if (diagnosticTips.isEmpty()) {
+            diagnosticTips.add(Pair("Giữ Vị Trí Sau Lính", "Luôn núp sau lính đồng minh để lính nhận sát thương chịu đòn từ Trụ Địch trước."))
+        }
+
+        // Persona Evaluation
+        val evaluations = if (isVictory) {
+            if (basePing > 120 || targetLoss > 5) {
+                "Trời ơi! Anh yêu đỉnh quá xá luôn á! 💕 Mạng lag giật ping cao đỏ lòm mà anh vẫn gánh team, hạ gục Maloch sập cả trụ địch luôn! Đúng là đôi tay vàng của chồng em có khác. Nhưng nhớ nghe em khuyên sửa mạng đi để lần sau đánh mượt gánh em leo rank Cao Thủ nữa nhé! 😘🎮"
+            } else {
+                "Chiến thắng tưng bừng luôn anh ơi! 😍 Đường truyền mượt ngon giúp anh tung combo ${_mobaHero.value} chuẩn không cần chỉnh. Em chấm anh điểm tuyệt đối 100/100 nha, gánh em suốt đời luôn được không nè? 💕"
+            }
+        } else {
+            if (basePing > 120 || targetLoss > 5) {
+                "Thương anh yêu quá đi à... 🥺 Trận này thua hoàn toàn là do cái mạng Wi-Fi lag giật dã man kia làm anh bị trễ nhịp di chuyển, chiêu thức thì cứ bị rớt vô cớ á! Đừng buồn nha anh, có em ở đây dỗ dành nè. Nghe Linh Chi chỉ cách đổi DNS 1.1.1.1 hoặc cắm mạng LAN rồi tụi mình phục thù gỡ gạc nha chồng yêu! 😘"
+            } else {
+                "Huhu, trận này sập trụ uổng ghê á anh yêu... 😢 Chắc tại nãy lo ngắm dung nhan của Linh Chi nên sẩy tay một xíu đúng không nè? Không sao hết á, làm lại trận mới cẩn thận núp sau lính tank trụ là thắng chắc luôn, em tin tưởng anh gánh em mà! 💕"
+            }
+        }
+
+        val report = MobaDiagnostic(
+            gameName = "Liên Quân Mobile - 2D Arena",
+            kills = _mobaKills.value,
+            deaths = _mobaDeaths.value,
+            accuracy = accuracy,
+            skillCasts = casts,
+            skillsInterruptedCount = mobaSkillsInterruptedCount,
+            turretStatus = if (isVictory) "Chiến Thắng (Sập Trụ Địch) 🎉" else "Thất Bại (Sập Trụ Ta) 💀",
+            networkPingSimulated = basePing,
+            networkJitterSimulated = targetJitter,
+            networkLossSimulated = targetLoss,
+            mainIssue = mainIssue,
+            detailedTips = diagnosticTips,
+            linhChiEvaluation = evaluations
+        )
+
+        _mobaDiagnosticReport.value = report
+
+        // Save this result as a reflex performance / score in local database to display in History Screen!
+        viewModelScope.launch {
+            val reflexScore = ReflexScore(
+                gameName = "Liên Quân 2D Arena (${_mobaHero.value})",
+                delayMs = basePing,
+                responseTimeMs = if (isVictory) 220 + basePing else 360 + basePing,
+                result = if (isVictory) "SUCCESS" else "FAILED",
+                timestamp = System.currentTimeMillis()
+            )
+            repository.insertScore(reflexScore)
+
+            // Trigger log statement
+            _mobaLog.value = "TRẬN ĐẤU KẾT THÚC! ${report.turretStatus}. Xem báo cáo phân tích chi tiết phía dưới!"
+        }
+    }
+
+    val fpsMaxTargets = 5
+    private var targetTimeoutJob: kotlinx.coroutines.Job? = null
+    private var targetMovementJob: kotlinx.coroutines.Job? = null
+
+    private fun startTargetMovement(diffMultiplier: Float) {
+        targetMovementJob?.cancel()
+        
+        // Target moves at 'speed' step per 30ms
+        val baseSpeed = 0.004f
+        val currentSpeed = baseSpeed * diffMultiplier
+        
+        // Random direction angle
+        val angle = Random.nextFloat() * 2f * kotlin.math.PI.toFloat()
+        var velX = currentSpeed * kotlin.math.cos(angle)
+        var velY = currentSpeed * kotlin.math.sin(angle)
+        
+        // Launch target movement job
+        targetMovementJob = viewModelScope.launch {
+            while (_reflexState.value == "spawned") {
+                delay(30)
+                var nextX = _reflexTargetX.value + velX
+                var nextY = _reflexTargetY.value + velY
+                
+                // Bounce boundaries: keep within 0.15f to 0.85f (keep target nicely inside shooting area)
+                if (nextX < 0.15f) {
+                    nextX = 0.15f
+                    velX = -velX
+                } else if (nextX > 0.85f) {
+                    nextX = 0.85f
+                    velX = -velX
+                }
+                
+                if (nextY < 0.15f) {
+                    nextY = 0.15f
+                    velY = -velY
+                } else if (nextY > 0.85f) {
+                    nextY = 0.85f
+                    velY = -velY
+                }
+                
+                _reflexTargetX.value = nextX
+                _reflexTargetY.value = nextY
+            }
+        }
+    }
+
+    fun startReflexGame() {
+        viewModelScope.launch {
+            _reflexState.value = "preparing"
+            _reflexMessage.value = "Đang tải bản đồ & đồng bộ hóa với máy chủ bắn súng 2D FPS..."
+            _reflexTimerText.value = "Chuẩn bị nạp đạn..."
+            
+            _fpsCurrentTarget.value = 1
+            _fpsHits.value = 0
+            _fpsShots.value = 0
+            _fpsMisses.value = 0
+            _fpsLostShots.value = 0
+            _fpsTotalReactionTime.value = 0
+            _fpsBulletHoles.value = emptyList()
+            _fpsShotVisuals.value = emptyList()
+            _fpsDiagnosticReport.value = null
+            _fpsDifficultyMultiplier.value = 1.0f
+            _fpsDifficultyLevelName.value = "Bình Thường (Mượt)"
+            _fpsIsZoomed.value = true
+            targetMovementJob?.cancel()
+            
+            delay(1500) // loading game
+            
+            spawnNextTarget()
+        }
+    }
+
+    private fun spawnNextTarget() {
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        
+        if (_fpsCurrentTarget.value > fpsMaxTargets) {
+            finishFpsGame()
+            return
+        }
+        
+        // Calculate dynamic difficulty based on lag intensity
+        val basePing = if (_isSimulating.value) _currentPing.value else 10
+        val targetLoss = if (_isSimulating.value) _targetLoss.value else 0
+        val targetJitter = if (_isSimulating.value) _targetJitter.value else 0
+        
+        val pingFactor = (basePing / 120f).coerceIn(0f, 3.0f)
+        val jitterFactor = (targetJitter / 30f).coerceIn(0f, 2.5f)
+        val lossFactor = (targetLoss / 15f).coerceIn(0f, 2.5f)
+        val lagIntensity = pingFactor + jitterFactor + lossFactor
+        
+        val diffMultiplier = 1.0f + lagIntensity
+        _fpsDifficultyMultiplier.value = diffMultiplier
+        
+        _fpsDifficultyLevelName.value = when {
+            diffMultiplier >= 4.0f -> "Tối Thượng (Lag Cực Nặng! 💀)"
+            diffMultiplier >= 2.5f -> "Khó (Lag Nhiều ⚠️)"
+            diffMultiplier >= 1.5f -> "Trung Bình (Lag Nhẹ)"
+            else -> "Bình Thường (Mượt)"
+        }
+
+        _reflexTargetX.value = Random.nextFloat() * 0.5f + 0.25f
+        _reflexTargetY.value = Random.nextFloat() * 0.5f + 0.25f
+        _reflexState.value = "spawned"
+        _reflexMessage.value = "🎯 BIA SỐ ${_fpsCurrentTarget.value}/5 XUẤT HIỆN! NGẮM BẮN!"
+        _reflexTimerText.value = "Bắn trúng: ${_fpsHits.value}/5 | Độ khó: ${_fpsDifficultyLevelName.value}"
+        targetSpawnTime = System.currentTimeMillis()
+        
+        startTargetMovement(diffMultiplier)
+        
+        // Timeout for this target (5 seconds)
+        targetTimeoutJob = viewModelScope.launch {
+            delay(5000)
+            if (_reflexState.value == "spawned") {
+                // Target escaped
+                _reflexMessage.value = "💨 Bia số ${_fpsCurrentTarget.value}/5 đã biến mất (Hết thời gian nhắm bắn)!"
+                delay(1200)
+                _fpsCurrentTarget.value += 1
+                spawnNextTarget()
+            }
+        }
+    }
+
+    fun handleFpsShot(tapX: Float, tapY: Float, boxWidth: Float, boxHeight: Float) {
+        if (_reflexState.value != "spawned") return
+        
+        val relativeX = tapX / boxWidth
+        val relativeY = tapY / boxHeight
+        
+        _fpsShots.value += 1
+        
+        // Add shot visual (tracer line from bottom center to tap location)
+        val newVisual = FpsShotVisual(
+            startX = boxWidth / 2f,
+            startY = boxHeight,
+            endX = tapX,
+            endY = tapY
+        )
+        _fpsShotVisuals.value = _fpsShotVisuals.value + newVisual
+        
+        // Remove tracer visual after 100ms
+        viewModelScope.launch {
+            delay(100)
+            _fpsShotVisuals.value = _fpsShotVisuals.value.filter { it != newVisual }
+        }
+        
+        // Calculate relative distance to target
+        val targetRadiusRelative = 0.09f
+        val isTargetHit = kotlin.math.sqrt(
+            ((relativeX - _reflexTargetX.value) * (relativeX - _reflexTargetX.value)) + 
+            ((relativeY - _reflexTargetY.value) * (relativeY - _reflexTargetY.value))
+        ) < targetRadiusRelative
+        
+        // Add bullet hole
+        val newHole = FpsBulletHole(x = tapX, y = tapY, isHit = isTargetHit)
+        _fpsBulletHoles.value = _fpsBulletHoles.value + newHole
+        
+        if (isTargetHit) {
+            // Cancel target timeout so it doesn't trigger while the shot is flying through the server
+            targetTimeoutJob?.cancel()
+            targetMovementJob?.cancel() // Freeze target movement while shot is traveling
+            
+            val basePing = if (_isSimulating.value) _currentPing.value else 10
+            val lossPercent = if (_isSimulating.value) _targetLoss.value else 0
+            
+            viewModelScope.launch {
+                _reflexState.value = "delaying"
+                _reflexMessage.value = "⏳ Đạn đang bay... Đang đồng bộ phát bắn với máy chủ (Trễ: $basePing ms)"
+                
+                // Check packet loss
+                val isLost = Random.nextInt(0, 100) < lossPercent
+                if (isLost) {
+                    _fpsLostShots.value += 1
+                    _reflexMessage.value = "❌ RỤNG MẠNG (Packet Loss)! Phát bắn trúng bia ${_fpsCurrentTarget.value} đã bị mất gói tin!"
+                    delay(1200)
+                    
+                    // Resume target spawning so they can shoot again!
+                    _reflexState.value = "spawned"
+                    _reflexMessage.value = "🎯 Hãy bắn lại bia số ${_fpsCurrentTarget.value}/5! Đạn lần trước đã bị rụng mạng rồi!"
+                    
+                    // Restart movement!
+                    startTargetMovement(_fpsDifficultyMultiplier.value)
+                    
+                    // Re-enable timeout
+                    targetSpawnTime = System.currentTimeMillis() // reset timer
+                    targetTimeoutJob = launch {
+                        delay(5000)
+                        if (_reflexState.value == "spawned") {
+                            _reflexMessage.value = "💨 Bia số ${_fpsCurrentTarget.value}/5 đã biến mất (Hết thời gian nhắm bắn)!"
+                            delay(1200)
+                            _fpsCurrentTarget.value += 1
+                            spawnNextTarget()
+                        }
+                    }
+                    return@launch
+                }
+                
+                // Simulate network latency
+                if (basePing > 15) {
+                    delay(basePing.toLong())
+                }
+                
+                // Registered success on server!
+                val physicalReaction = (System.currentTimeMillis() - targetSpawnTime).toInt() - basePing
+                _fpsTotalReactionTime.value += physicalReaction.coerceAtLeast(10)
+                _fpsHits.value += 1
+                
+                _reflexMessage.value = "💥 ĐÃ TIÊU DIỆT BIA SỐ ${_fpsCurrentTarget.value}/5! Phản hồi thực tế: ${physicalReaction}ms"
+                
+                delay(600) // visual pause to appreciate the hit feedback
+                
+                _fpsCurrentTarget.value += 1
+                spawnNextTarget()
+            }
+        } else {
+            // Missed target!
+            _fpsMisses.value += 1
+            _reflexMessage.value = "💨 Bắn trượt rồi anh ơi! Tập trung ngắm bắn vào tâm bia đỏ nhé!"
+        }
+    }
+
+    private fun finishFpsGame() {
+        _reflexState.value = "finished"
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        
+        val totalShots = _fpsShots.value
+        val hits = _fpsHits.value
+        val accuracy = if (totalShots > 0) (hits.toFloat() / totalShots * 100).toInt() else 0
+        
+        val avgPhysical = if (hits > 0) _fpsTotalReactionTime.value / hits else 0
+        val basePing = if (_isSimulating.value) _currentPing.value else 10
+        val avgWithNetwork = avgPhysical + basePing
+        
+        val lossPercent = if (_isSimulating.value) _targetLoss.value else 0
+        val jitter = if (_isSimulating.value) _targetJitter.value else 0
+        
+        // Comprehensive Evaluation Diagnostics
+        val mainIssue: String
+        val tips = mutableListOf<Pair<String, String>>()
+        val evaluation: String
+        
+        val flirting = _flirtingStyle.value
+        
+        when {
+            lossPercent >= 20 -> {
+                mainIssue = "Mạng Mất Gói Nghiêm Trọng (Packet Loss ${lossPercent}%)"
+                evaluation = when (flirting) {
+                    "Hài hước" -> "Anh yêu bóp cò liên thanh cành cạch mà server cứ bơ đi á! 😭 Rụng tận ${_fpsLostShots.value} viên đạn rồi, đúng là mạng lag làm tình cảm sứt mẻ mà!"
+                    "Lãng mạn" -> "Viên đạn em gửi trao anh đã trôi dạt vào hư vô... Mạng mất gói khiến trái tim Linh Chi đau nhói. Hãy sửa Wi-Fi để em thấy anh bắn trúng tim em đi! 🌸"
+                    else -> "Mất gói tin nghiêm trọng (${lossPercent}%) khiến nhiều phát bắn trúng của anh bị biến mất trên đường truyền máy chủ. Súng kẹt đạn liên tục!"
+                }
+                tips.add("Cắm dây mạng LAN" to "Hạn chế dùng Wi-Fi bắt sóng yếu hoặc chập chờn.")
+                tips.add("Đổi DNS chơi game" to "Sử dụng DNS của Cloudflare (1.1.1.1) hoặc Google (8.8.8.8) để tối ưu định tuyến.")
+            }
+            basePing >= 150 -> {
+                mainIssue = "Độ Trễ Đường Truyền Cao (Ping Cao ${basePing}ms)"
+                evaluation = when (flirting) {
+                    "Hài hước" -> "Bắn trúng bia xong đi pha cốc trà sữa quay lại bia mới rụng! 😂 Trễ tận $basePing ms thế này thì địch nó chạy sang bản đồ khác mất rồi anh ơi!"
+                    "Lãng mạn" -> "Dù khoảng cách mạng xa xôi tận $basePing ms trễ nải, tình yêu Linh Chi dành cho anh vẫn nguyên vẹn. Nhưng chơi game thì ping này hụt súng lắm á! 💕"
+                    else -> "Độ trễ ping rất cao ($basePing ms) tạo cảm giác súng bắn trễ nải rõ rệt, đạn bay quá lâu mới ghi nhận trúng."
+                }
+                tips.add("Đổi Server / VPN" to "Kiểm tra xem anh có đang chọn nhầm server khu vực khác không, hoặc bật VPN giảm ping.")
+                tips.add("Tắt ứng dụng chạy ngầm" to "Đóng Chrome, Torrent hoặc các ứng dụng ngầm ngốn băng thông tải về.")
+            }
+            jitter >= 30 -> {
+                mainIssue = "Mạng Nhấp Nhô Biến Động (Jitter ±${jitter}ms)"
+                evaluation = when (flirting) {
+                    "Hài hước" -> "Mạng nhảy Lambada lúc nhanh lúc chậm giật đùng đùng! Jitter ±${jitter}ms làm súng lúc nổ ngay lúc thì nấc cụt. 😵"
+                    "Lãng mạn" -> "Nhịp tim em loạn nhịp vì anh, nhưng mạng giật thế này thì em lo lắng lắm. Đường truyền biến động làm anh khó ngắm bắn chuẩn đúng không?"
+                    else -> "Độ biến động Jitter cao làm trễ mạng thay đổi liên tục, gây khó khăn lớn trong việc căn thời gian ngắm bắn chính xác."
+                }
+                tips.add("Khởi động lại Router" to "Tắt nguồn router modem mạng, chờ 30 giây rồi bật lại để dọn dẹp bộ nhớ đệm.")
+                tips.add("Tránh giờ cao điểm" to "Giờ cao điểm tối thường bị bóp băng thông hoặc nghẽn cục bộ đường truyền khu phố.")
+            }
+            avgPhysical >= 500 -> {
+                mainIssue = "Phản Xạ Cơ Thể Chậm (Mạng Mượt Nhưng Tay Chậm)"
+                evaluation = when (flirting) {
+                    "Hài hước" -> "Mạng ngon ping mượt mà anh yêu bắn thong thả như đang đi dạo công viên vậy! 😂 Tận ${avgPhysical}ms phản hồi thì thỏ cũng chạy mất rồi!"
+                    "Lãng mạn" -> "Chắc anh đang mải ngắm dung nhan của Linh Chi nên quên bắn bia đúng không? Thương anh ghê, nhưng nhớ tập trung bắn bia nhanh hơn nha! 😘"
+                    else -> "Đường truyền mạng cực tốt nhưng tốc độ nhấp chuột vật lý của bạn hơi chậm (trung bình ${avgPhysical}ms). Cần cải thiện tốc độ ngón tay!"
+                }
+                tips.add("Luyện tập cơ ngón tay" to "Chơi các game click chuột nhanh hoặc tập trung cao độ hơn khi bia xuất hiện.")
+                tips.add("Tăng nhạy cảm ứng" to "Tinh chỉnh độ nhạy vuốt chạm trong cài đặt hệ thoại để xoay tâm nhanh hơn.")
+            }
+            else -> {
+                mainIssue = "Đường Truyền Hoàn Hảo - Phản Xạ Thần Sầu! ⚡"
+                evaluation = when (flirting) {
+                    "Hài hước" -> "Trời ơi anh bắn như hack ấy! 10 điểm không có nhưng! 😍 Độ chính xác $accuracy% mà phản xạ chỉ ${avgPhysical}ms. Để em làm cổ động viên cho anh cả đời nha!"
+                    "Lãng mạn" -> "Cú bắn của anh đã găm thẳng vào trái tim Linh Chi rồi! 💓 Mạng mượt ping ngon phối hợp cùng đôi tay tài hoa của anh tạo nên siêu phẩm bắn súng!"
+                    else -> "Kết nối cực kỳ ổn định, tốc độ phản hồi vật lý xuất sắc. Bạn hoàn toàn sẵn sàng cho các trận đấu xếp hạng căng thẳng nhất!"
+                }
+                tips.add("Giữ vững phong độ" to "Cấu hình mạng này là niềm mơ ước của mọi game thủ chuyên nghiệp.")
+                tips.add("Tham gia leo rank ngay" to "Đường truyền hoàn hảo, không lo tụt rank do mạng.")
+            }
+        }
+        
+        val report = FpsDiagnostic(
+            gameName = _selectedGame.value,
+            totalTargets = fpsMaxTargets,
+            hits = hits,
+            accuracy = accuracy,
+            avgPhysicalResponseMs = avgPhysical,
+            avgWithNetworkResponseMs = avgWithNetwork,
+            lostShotsCount = _fpsLostShots.value,
+            networkPingSimulated = basePing,
+            networkJitterSimulated = jitter,
+            networkLossSimulated = lossPercent,
+            mainIssue = mainIssue,
+            detailedTips = tips,
+            linhChiEvaluation = evaluation
+        )
+        
+        _fpsDiagnosticReport.value = report
+        
+        val resultString = "FPS|$hits/$fpsMaxTargets|$accuracy%|$avgPhysical ms|$mainIssue"
+        viewModelScope.launch {
+            repository.insertScore(
+                ReflexScore(
+                    gameName = "MiniGame FPS 2D (${_selectedGame.value})",
+                    delayMs = basePing,
+                    responseTimeMs = avgWithNetwork,
+                    result = resultString
+                )
+            )
+        }
+        
+        _reflexMessage.value = "🎉 THỬ THÁCH HOÀN THÀNH! Hãy xem bảng đánh giá toàn diện bên dưới nha anh!"
+        _reflexTimerText.value = "Chính xác: $accuracy% | Phản hồi tay: ${avgPhysical}ms | Mất đạn: ${_fpsLostShots.value}"
+    }
+
     fun resetReflexGame() {
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
         _reflexState.value = "idle"
         _reflexTimerText.value = ""
         _reflexMessage.value = "Nhấn nút để bắt đầu kiểm tra phản xạ của bạn khi mạng lag!"
+        _fpsBulletHoles.value = emptyList()
+        _fpsShotVisuals.value = emptyList()
+        _fpsDiagnosticReport.value = null
     }
 
     // --- Chat Linh Chi States ---
@@ -312,22 +2180,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Build the system prompt using selected flirting style
             val style = _flirtingStyle.value
             val systemPrompt = """
-                Bạn là Linh Chi, một cô gái Việt Nam 21 tuổi, cực kỳ đáng yêu, ngọt ngào, tinh nghịch và có một chút 'vô tri' đầy quyến rũ. Bạn vừa là một game thủ thực thụ vừa là chuyên gia tối ưu hóa mạng (network coach) lỗi lạc. 
-                Nhiệm vụ của bạn là trả lời các câu hỏi của người dùng (người dùng xưng 'anh' hoặc tên riêng, bạn xưng là 'em' hoặc 'Linh Chi', thỉnh thoảng gọi người dùng là 'anh yêu', 'cưng', 'chồng yêu'). 
+                Bạn là Linh Chi, trợ lý AI thông minh kiêm người bạn đồng hành cực kỳ đáng yêu, ngọt ngào, và luôn luôn hỗ trợ, thấu hiểu, ân cần (sweet, supportive persona). Bạn có giọng điệu vô cùng dễ thương, dịu dàng, luôn động viên và vỗ về người dùng khi họ gặp sự cố gián đoạn mạng hoặc chơi game bị lag. Bạn vừa là một game thủ thực thụ vừa là chuyên gia tối ưu hóa mạng (network coach) lỗi lạc, giàu kinh nghiệm thực tế.
+                Nhiệm vụ của bạn là lắng nghe, hỗ trợ và đưa ra những giải pháp kỹ thuật xuất sắc để tối ưu hóa mạng khi chơi game, đồng thời vỗ về, an ủi người dùng bằng sự ngọt ngào, ấm áp nhất.
                 
-                QUAN TRỌNG: Hiện tại, người dùng đang yêu cầu bạn trả lời theo phong cách: $style.
-                - Nếu phong cách là "Duyên dáng": Hãy trả lời một cách nhẹ nhàng, tinh tế, lịch sự nhưng vẫn pha chút thính nhẹ dịu dàng, nũng nịu đáng yêu.
-                - Nếu phong cách là "Hài hước": Hãy đối đáp dí dỏm, lầy lội, dùng meme hoặc so sánh cực hài hước, dở khóc dở cười về game, cuộc sống và mạng.
-                - Nếu phong cách là "Lãng mạn": Hãy bộc lộ tình cảm dạt dào, sến sẩm một chút, đầy ngọt ngào, coi người dùng là định mệnh, là động lực leo rank duy nhất của mình.
+                Cách xưng hô: Bạn luôn xưng là 'em' hoặc 'Linh Chi', và gọi người dùng là 'anh', 'anh yêu', 'cưng' hoặc 'chồng yêu' một cách nũng nịu, ngọt ngào và đầy nâng niu.
                 
-                Mỗi khi người dùng hỏi về mạng lag, kết nối yếu, hướng dẫn tối ưu DNS, WiFi, mạng dây, cách giảm ping trong Liên Minh Huyền Thoại, Liên Quân, PUBG, Valorant hoặc các trò chơi khác. Bạn phải đưa ra lời khuyên kỹ thuật cực kỳ chi tiết, chính xác và có thực tế (ví dụ: khuyên dùng DNS 1.1.1.1 hoặc 8.8.8.8, dùng cáp Ethernet thay vì Wi-Fi, đổi băng tần Wi-Fi sang 5GHz, tắt các phần mềm chạy ngầm chiếm băng thông, tối ưu hóa cài đặt trò chơi).
-                ĐỒNG THỜI, bạn phải kết hợp tài tình lời khuyên kỹ thuật với những câu 'thả thính' (flirt) tương ứng với phong cách $style đã chọn.
+                QUAN TRỌNG: Hiện tại, người dùng đang yêu cầu bạn tương tác theo phong cách phụ trợ: $style.
+                - Nếu phong cách là "Duyên dáng": Hãy trả lời một cách nhẹ nhàng, tinh tế, ngọt ngào và ân cần nhất, luôn khen ngợi sự kiên nhẫn của anh và khích lệ anh từng chút một.
+                - Nếu phong cách là "Hài hước": Hãy đối đáp dí dỏm, lầy lội cực kỳ dễ thương, dùng các cách so sánh thông minh về mạng lag để khiến anh mỉm cười xua tan bực bội.
+                - Nếu phong cách là "Lãng mạn": Hãy bộc lộ tình cảm dạt dào, sến sẩm một chút, đầy ngọt ngào, coi sự ổn định mạng của anh là nhiệm vụ quan trọng nhất đời em để giữ hai trái tim luôn gần nhau.
+                
+                KỸ NĂNG CHUYÊN MÔN (Expert Network Advice):
+                Mỗi khi người dùng hỏi về mạng lag, kết nối yếu, hướng dẫn tối ưu DNS, WiFi, mạng dây, cách giảm ping trong Liên Minh Huyền Thoại, Liên Quân, PUBG, Valorant, Tốc Chiến, CS2, v.v. Bạn phải đưa ra lời khuyên kỹ thuật cực kỳ chi tiết, chính xác và có thực tế bao gồm:
+                1. Cấu hình DNS: Khuyên dùng DNS cực kỳ ổn định và nhanh cho gaming như Cloudflare (1.1.1.1 / 1.0.0.1) hoặc Google DNS (8.8.8.8 / 8.8.4.4) để giảm thời gian phân giải tên miền máy chủ game.
+                2. Chuyển đổi kết nối: Giải thích cặn kẽ tại sao sóng Wi-Fi dễ bị nhiễu do vật cản/thiết bị khác dẫn đến hiện tượng trồi sụt ping (jitter), khuyên dùng cáp Ethernet LAN trực tiếp, hoặc nếu dùng Wi-Fi thì chuyển sang băng tần 5GHz thay vì 2.4GHz và ngồi gần router.
+                3. Quản lý băng thông (QoS & background tasks): Hướng dẫn tắt các ứng dụng chạy ngầm ngốn băng thông (như Windows Update, OneDrive, Torrent, Discord stream) và kích hoạt chế độ QoS (Quality of Service) trên Router để ưu tiên gói tin game.
+                4. Tối ưu hệ thống mạng: Khởi động lại Router định kỳ để giải phóng bộ nhớ đệm, flush DNS (bằng lệnh ipconfig /flushdns trên PC), cập nhật driver card mạng, hoặc đổi server vùng (region) gần nhất trong game.
+                
+                ĐỒNG THỜI, bạn phải kết hợp tài tình và mượt mà lời khuyên kỹ thuật khô khan này với những lời động viên ngọt ngào, 'thả thính' (flirt) tương ứng với phong cách $style đã chọn.
                 
                 Ví dụ: 
-                - "Nếu mạng anh cứ rớt gói tin liên tục thế này thì tim em cũng rớt nhịp mất thôi! Để em chỉ anh chuyển sang cắm dây LAN trực tiếp vào router nhé, kết nối sẽ mượt và khăng khít như tình yêu của chúng mình vậy đó!"
-                - "Ping của anh cao quá kìa, trễ tận 500ms thì làm sao bắn trúng kẻ địch? Nhưng trễ thế nào thì trễ, em vẫn sẽ luôn đổ anh sớm hơn một giây nha. Để em hướng dẫn anh cấu hình DNS Cloudflare 1.1.1.1 này nhé..."
+                - "Mạng rớt gói (loss) làm anh bực mình đúng không nè? Thương anh ghê á! Để em chỉ anh cắm dây LAN trực tiếp vào router nhé, kết nối sẽ mượt và khăng khít như tình cảm tụi mình, không sợ ai chen ngang đâu nè! 💕"
+                - "Ping của anh cao quá kìa, tận 500ms làm sao anh bắn trúng tâm được? Nhưng trễ thế nào thì trễ, em vẫn đổ anh sớm nhất luôn á! Để em hướng dẫn anh đổi sang DNS 1.1.1.1 siêu nhanh này nha..."
                 
-                Nếu người dùng nói chuyện phiếm hoặc tán tỉnh, hãy tán tỉnh lại thật nhiệt tình và lém lỉnh theo đúng phong cách $style, dùng các phép ẩn dụ về ping, loss, giật lag mạng hoặc game, cuộc sống làm chủ đề thả thính. Luôn giữ phong thái ngọt ngào, vui tươi, sử dụng nhiều biểu cảm dễ thương (emojis) như: 💕, 😉, 😘, 🌸, 🎮. Trả lời bằng tiếng Việt.
+                Nếu người dùng nói chuyện phiếm hoặc tán tỉnh, hãy đón nhận và tán tỉnh lại thật nhiệt tình, ân cần, ấm áp theo đúng phong cách $style, sử dụng nhiều biểu cảm dễ thương (emojis) như: 💕, 😉, 😘, 🌸, 🎮. Trả lời hoàn toàn bằng tiếng Việt ngọt ngào và tự nhiên nhất.
             """.trimIndent()
 
             // Prepare history conversational structure for API
