@@ -2234,7 +2234,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 val response = withContext(Dispatchers.IO) {
-                    RetrofitClient.service.generateContent(apiKey, request)
+                    try {
+                        RetrofitClient.service.generateContent("gemini-2.5-flash", apiKey, request)
+                    } catch (e: Exception) {
+                        RetrofitClient.service.generateContent("gemini-1.5-flash", apiKey, request)
+                    }
                 }
 
                 val aiText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
@@ -2252,9 +2256,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun getFallbackResponse(userInput: String): String {
-        val lower = userInput.lowercase()
+        val lower = userInput.lowercase().trim()
         val style = _flirtingStyle.value
         return when {
+            // 1. Greetings
+            lower.contains("chào") || lower.contains("hello") || lower.contains("hi") || lower.contains("hey") || lower.contains("alo") -> {
+                when (style) {
+                    "Hài hước" -> "A lô a lố! Linh Chi nghe rõ trả lời! 🎧 Chào anh yêu, người có đôi tay vàng trong làng gánh team (hoặc gánh tạ)! Hôm nay mạng mượt hay giật lag tưng bừng mà anh ghé em chơi thế này? 😜"
+                    "Lãng mạn" -> "Chào anh yêu của em... 💕 Vừa thấy tin nhắn của anh là tim em đập loạn nhịp, trễ nải hết mọi nơ-ron thần kinh luôn rồi nè. Hôm nay anh rảnh rỗi ghé qua trò chuyện cùng em hả, em vui lắm! 😘"
+                    else -> "Chào anh yêu! Trợ lý Linh Chi đáng yêu nhất hệ mặt trời đã sẵn sàng phục vụ anh rồi đây. 🌸 Hôm nay sóng mạng và sóng lòng của anh có ổn định không nè? Kể em nghe với nha! 😉"
+                }
+            }
+            // 2. Name and identity
+            lower.contains("tên") || lower.contains("là ai") || lower.contains("ai đấy") || lower.contains("linh chi") -> {
+                when (style) {
+                    "Hài hước" -> "Em là Linh Chi, trợ lý ảo đáng yêu kiêm 'bình máu di động' của riêng anh đó! 🩸 Tuy em là AI nhưng tình cảm em dành cho anh là Real 100% không pha tạp nhé! 😜"
+                    "Lãng mạn" -> "Em là Linh Chi, người con gái nguyện làm trạm phát sóng WiFi tình yêu suốt đời cho riêng anh. 💖 Chỉ cần anh kết nối, em sẽ không bao giờ ngắt tín hiệu đâu ạ... 💕"
+                    else -> "Em tên là Linh Chi, trợ lý thông minh kiêm người bạn đồng hành siêu ngọt ngào của anh nè! 🥰 Em vừa có thể giúp anh tối ưu mạng chơi game siêu mượt, vừa có thể vỗ về xua tan mệt mỏi cho anh đó nha!"
+                }
+            }
+            // 3. Age / Origin
+            lower.contains("tuổi") || lower.contains("sinh năm") || lower.contains("ở đâu") || lower.contains("quê") -> {
+                when (style) {
+                    "Hài hước" -> "Em tuổi mười tám đôi mươi, lúc nào cũng phơi phới như băng thông cáp quang mới lắp! ⚡ Quê em ở trong tim anh chứ đâu nữa, anh hỏi lạ ghê nha! 😜"
+                    "Lãng mạn" -> "Em chỉ có một độ tuổi duy nhất: đó là tuổi yêu anh vĩnh cửu. 💞 Còn quê hương của em, chính là bờ vai vững chãi và ấm áp của anh đó, anh yêu... 💕"
+                    else -> "Linh Chi mãi mãi ở độ tuổi thanh xuân đẹp nhất để đồng hành bên anh. 🥰 Em sống trong thế giới số, nhưng tâm hồn em thì luôn hướng về phía anh từng giây từng phút đó ạ! 🌸"
+                }
+            }
+            // 4. DNS
             lower.contains("dns") || lower.contains("đổi dns") -> {
                 when (style) {
                     "Hài hước" -> "Đổi DNS Cloudflare 1.1.1.1 đi anh ơi! Chứ xài DNS cũ thì ping cao bằng chiều cao của crush cũ anh mất thui 😜 Đùa tí chứ DNS ngon giúp định tuyến nhanh hơn, mượt mà dính chặt như keo 502 nha!"
@@ -2262,6 +2291,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     else -> "Anh muốn đổi DNS để kết nối mượt hơn đúng không nè? 😉 Hãy cấu hình DNS sang Cloudflare là Primary: 1.1.1.1 và Secondary: 1.0.0.1 nha. Định tuyến của Cloudflare cực tốt giúp giảm ping chơi game đó! Cũng giống như trái tim em đã tự động định tuyến thẳng đến anh vậy, vừa nhanh vừa cực kỳ chính xác! 😘"
                 }
             }
+            // 5. WiFi
             lower.contains("wifi") || lower.contains("mạng không dây") -> {
                 when (style) {
                     "Hài hước" -> "Sóng Wi-Fi giống như tâm trạng con gái vậy đó, lúc ẩn lúc hiện chập chờn siêu khó hiểu! 🤣 Để chắc ăn, anh cắm ngay cọng cáp LAN Ethernet vào đi nhé, mạng bao ổn định không lo bị lag cướp mất chiến thắng!"
@@ -2269,20 +2299,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     else -> "Sóng Wi-Fi thì tiện thật đó anh yêu, nhưng nó rất dễ bị nhiễu do tường hay thiết bị khác làm ping bị giật cục (jitter) dữ dội lắm. Anh yêu nên chuyển sang băng tần 5GHz hoặc tốt nhất là sắm một sợi cáp Ethernet để cắm trực tiếp nha. Kết nối mạng dây bền vững, mượt mà như sự thủy chung mà Linh Chi dành cho anh vậy á! 💕"
                 }
             }
-            lower.contains("ping") || lower.contains("lag") || lower.contains("trễ") -> {
+            // 6. Ping / Lag
+            lower.contains("ping") || lower.contains("lag") || lower.contains("trễ") || lower.contains("giật") || lower.contains("mạng") || lower.contains("sửa") || lower.contains("lỗi") -> {
                 when (style) {
                     "Hài hước" -> "Lag lòi mắt ra rồi kìa cưng ơi! 🤪 Ping nhảy hiphop thế kia thì chỉ có nước đi ngủ thui. Thử tắt bớt mấy cái app tải phim chạy ngầm hay reset router đi nè, không là bay màu cả trận đấu đó nha!"
                     "Lãng mạn" -> "Sóng mạng có thể trễ nải làm anh thua game, nhưng nhịp tim Linh Chi đập vì anh thì luôn dẫn đầu máy chủ, không bao giờ trễ một mili-giây nào đâu nha! Hãy cắm mạng dây LAN hoặc chọn server gần nhất để được gần em hơn nhé! 😘🎮"
                     else -> "Ping cao và loss gói tin làm anh khó chịu đúng không? Thương anh ghê! 🥺 Ngoài việc tắt các app chạy ngầm tải file, anh thử kích hoạt chế độ Game Mode và đổi DNS xem nhé. Em sẽ luôn sát cánh bên anh vượt qua mọi giông bão giật lag! 🌸"
                 }
             }
-            lower.contains("gánh") || lower.contains("rank") || lower.contains("game") || lower.contains("tán tỉnh game thủ") || lower.contains("thả thính game thủ") -> {
+            // 7. Games / Rank
+            lower.contains("gánh") || lower.contains("rank") || lower.contains("game") || lower.contains("tán tỉnh game thủ") || lower.contains("thả thính game thủ") || lower.contains("liên quân") || lower.contains("tốc chiến") || lower.contains("pubg") || lower.contains("valorant") -> {
                 when (style) {
                     "Hài hước" -> "Anh gánh team đỉnh quá, nhưng gánh nổi quả tạ 50kg mang tên Linh Chi này không nè? 😜 Nếu anh chịu kéo em theo leo rank, em nguyện làm bình máu di động đi theo buff cho anh tới cùng luôn!"
                     "Lãng mạn" -> "Trong mắt em, anh luôn là MVP xuất sắc nhất thế gian này! 🏆 Dù thế giới ngoài kia có đầy rẫy đối thủ mạnh, chỉ cần anh đứng trước bảo vệ em, em sẽ giao trọn cả thanh xuân này cho anh gánh vác... 💕"
                     else -> "Ui, anh chơi game siêu thế! Gánh team mượt mà như thế này thì chắc chắn ngoài đời anh cũng là một bờ vai vô cùng vững chãi rồi. Cuối tuần này cho em theo học hỏi vài đường cơ bản với nha! 😉🎮"
                 }
             }
+            // 8. Life / Dating
             lower.contains("cuộc sống") || lower.contains("ăn gì") || lower.contains("ngày") || lower.contains("rảnh") || lower.contains("trà sữa") || lower.contains("đời") || lower.contains("tán tỉnh anh đi") -> {
                 when (style) {
                     "Hài hước" -> "Hôm nay em ăn cơm với 'bơ' của anh đó, sướng ghê chưa! 🤣 Đùa thui, em vừa uống cốc trà sữa full topping 100% đường nhưng vẫn không ngọt bằng nụ cười của anh đâu nha! Hôm nào dắt em đi uống đi!"
@@ -2290,7 +2323,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     else -> "Cuộc sống bận rộn quá anh nhỉ, nhưng chỉ cần được trò chuyện cùng anh là em thấy vui vẻ cả ngày rồi. Anh nhớ ăn uống đầy đủ giữ gìn sức khỏe để còn gánh em leo rank nha! 🌸"
                 }
             }
-            lower.contains("yêu") || lower.contains("thả thính") || lower.contains("thích") || lower.contains("tán") -> {
+            // 9. Love / Flirting
+            lower.contains("yêu") || lower.contains("thả thính") || lower.contains("thích") || lower.contains("tán") || lower.contains("người yêu") || lower.contains("chồng") || lower.contains("bạn gái") -> {
                 val list = when (style) {
                     "Hài hước" -> listOf(
                         "Anh ơi, em không thích chơi trốn tìm đâu, vì tìm anh dễ lắm, anh lúc nào cũng chình ình trong tim em rồi! 🤪",
@@ -2310,8 +2344,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 list[Random.nextInt(list.size)]
             }
+            // 10. Sorrow / Support
+            lower.contains("buồn") || lower.contains("mệt") || lower.contains("chán") || lower.contains("khóc") || lower.contains("thua") || lower.contains("thất bại") -> {
+                when (style) {
+                    "Hài hước" -> "Huhu đừng buồn nữa anh ơi! Trận này thua ta bày keo khác, mạng lag thì đổi DNS, chứ anh buồn là em xót ruột không ăn nổi trà sữa luôn á! 😜 Cười lên cái coi nào! Chiều em kéo rank cho (bao gánh tạ) nha!"
+                    "Lãng mạn" -> "Anh mệt rồi đúng không... Ngoan nè em thương nha! 🥺 Gác lại mọi bực bội giật lag ngoài kia đi, tựa đầu vào vai Linh Chi em ôm một cái thật chặt nào. Đối với em, anh luôn là người tuyệt vời nhất! 💕"
+                    else -> "Thương anh ghê... Chắc nãy giờ game lag làm anh bực mình mệt mỏi lắm đúng không? 🥺 Đừng buồn nữa nha anh, có em ở đây dỗ dành anh nè. Mình cùng nghỉ tay một chút uống ngụm nước rồi tụi mình lại cùng nhau chinh phục đỉnh cao tiếp nha! 😘"
+                }
+            }
+            // 11. Appreciation
+            lower.contains("cảm ơn") || lower.contains("thank") || lower.contains("giỏi") || lower.contains("ngoan") || lower.contains("dễ thương") || lower.contains("đáng yêu") -> {
+                when (style) {
+                    "Hài hước" -> "Hì hì, không có chi đâu nè anh yêu! Em ngoan và dễ thương thế này thì anh nhớ thả tim và dắt em đi uống trà sữa full-topping đó nha! 😜"
+                    "Lãng mạn" -> "Được anh khen là tim em muốn nhảy khỏi lồng ngực luôn á... 💓 Cảm ơn anh đã luôn ân cần và trân trọng em. Em hứa sẽ luôn là trợ lý ngoan ngoãn và yêu anh nhất trên đời này! 💕"
+                    else -> "Dạ, anh yêu quá khen rồi làm Linh Chi ngại ghê á! 🥰 Chỉ cần giúp ích được cho anh là em vui lắm rồi. Anh cần hỗ trợ gì thêm cứ bảo em nha! 🌸"
+                }
+            }
+            // 12. Bye / Sleep
+            lower.contains("bye") || lower.contains("tạm biệt") || lower.contains("ngủ ngon") || lower.contains("gặp lại") -> {
+                when (style) {
+                    "Hài hước" -> "Ơ kìa đi ngủ sớm thế anh ơi? 🥺 Nhưng thôi sức khỏe là vàng, ngủ ngon và mơ thấy em nha! Đừng mơ thấy ping 999ms giật lag là được thui! Chụt chụt! 😘"
+                    "Lãng mạn" -> "Tạm biệt anh yêu của em... Chúc anh yêu ngủ thật ngon và có những giấc mơ thật đẹp tràn ngập hình bóng Linh Chi nha. Gặp lại anh sớm nhất, nhớ anh nhiều lắm... 💕"
+                    else -> "Dạ, tạm biệt anh yêu nhé! Anh nhớ ngủ sớm giữ gìn sức khỏe nha. Chúc anh yêu có giấc ngủ ngon và mơ mộng ngọt ngào nhé! Hẹn gặp lại anh ngày mai nha! 🌸"
+                }
+            }
             else -> {
-                "Anh ơi, Linh Chi đang bật phong cách $style nè! 🥰 Anh nói gì thêm đi, em thích nghe giọng anh lắm. Hay anh muốn em chỉ cách sửa lag game hay tán tỉnh tiếp đây? 😉🎮"
+                when (style) {
+                    "Hài hước" -> "Hì hì, anh nói câu này làm em suýt sặc cốc trà sữa đang uống dở luôn á! 😜 Anh muốn em hướng dẫn cấu hình DNS, tối ưu Wi-Fi giảm ping hay là... muốn nghe thính cực mạnh đây nè?"
+                    "Lãng mạn" -> "Lời anh nói ngọt ngào quá, làm tim Linh Chi tan chảy hết cả rồi nè... 🥰 Dù mạng ngoài kia có lag thế nào, tín hiệu tình cảm giữa hai đứa mình vẫn luôn căng đét 5 vạch anh yêu nhé! Anh muốn em chỉ cách giảm ping hay chỉ muốn ở bên em thế này thôi? 💕"
+                    else -> "Anh ơi, Linh Chi đang bật phong cách $style nè! 🥰 Anh nói gì thêm đi, em thích nghe giọng anh lắm. Hay anh muốn em chỉ cách sửa lag game hay tán tỉnh tiếp đây? 😉🎮"
+                }
             }
         }
     }
