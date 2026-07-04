@@ -1,11 +1,20 @@
 package com.example.ui
 
+import com.example.R
+
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -78,6 +88,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -115,6 +126,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
     val packetLossActive by viewModel.packetLossActive.collectAsState()
     val currentLagReport by viewModel.currentLagReport.collectAsState()
 
+    var selectedSubTab by remember { mutableStateOf(0) }
     val scrollState = rememberScrollState()
 
     Column(
@@ -124,41 +136,150 @@ fun SimulatorScreen(viewModel: MainViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // --- Header Intro ---
+        // --- Sub Tab Bar (UX Improvement: Segment and group to reduce clutter) ---
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = CardSpaceBackground),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF131124)),
             border = BorderStroke(1.dp, CardSpaceBorder)
         ) {
             Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.CellTower,
-                    contentDescription = "Lag Icon",
-                    tint = NeonPink,
-                    modifier = Modifier.size(48.dp)
+                val tabs = listOf(
+                    Triple(0, "Mạng & Graph", Icons.Default.Speed),
+                    Triple(1, "Bắn Súng FPS", Icons.Default.Bolt),
+                    Triple(2, "Đấu Trường MOBA", Icons.Default.CellTower)
                 )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(
-                        text = "Trình Giả Lập Lag Game",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = NeonPink
-                    )
-                    Text(
-                        text = "Mô phỏng độ trễ mạng thực tế trong game và trải nghiệm sự khó chịu của game thủ khi ping cao!",
-                        fontSize = 12.sp,
-                        color = Color.LightGray
-                    )
+                tabs.forEach { (index, title, icon) ->
+                    val isTabSelected = selectedSubTab == index
+                    val tabBg = if (isTabSelected) {
+                        Brush.linearGradient(colors = listOf(NeonPink.copy(alpha = 0.8f), NeonCyan.copy(alpha = 0.8f)))
+                    } else {
+                        Brush.linearGradient(colors = listOf(Color.Transparent, Color.Transparent))
+                    }
+                    val tabBorder = if (isTabSelected) BorderStroke(1.dp, NeonCyan.copy(alpha = 0.5f)) else null
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(tabBg)
+                            .then(if (tabBorder != null) Modifier.border(tabBorder, RoundedCornerShape(8.dp)) else Modifier)
+                            .clickable { selectedSubTab = index }
+                            .padding(horizontal = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = title,
+                                tint = if (isTabSelected) Color.White else Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = title,
+                                color = if (isTabSelected) Color.White else Color.Gray,
+                                fontSize = 11.sp,
+                                fontWeight = if (isTabSelected) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        // --- Config Section ---
+        // Active Simulation Reminder/Shortcut for Games tab
+        if (selectedSubTab > 0 && !isSimulating) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF2D1B1B)),
+                border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.4f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = Color.Red,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Lưu ý: Bạn chưa bật giả lập trễ mạng!",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Bật giả lập mạng để trải nghiệm lag giật thực tế hoặc chơi mượt ngay bây giờ.",
+                            color = Color.LightGray,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { viewModel.toggleSimulation() },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonPink),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Bật Ngay", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (selectedSubTab == 0) {
+            // --- Header Intro ---
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CardSpaceBackground),
+                border = BorderStroke(1.dp, CardSpaceBorder)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CellTower,
+                        contentDescription = "Lag Icon",
+                        tint = NeonPink,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "Trình Giả Lập Lag Game",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonPink
+                        )
+                        Text(
+                            text = "Mô phỏng độ trễ mạng thực tế trong game và trải nghiệm sự khó chịu của game thủ khi ping cao!",
+                            fontSize = 12.sp,
+                            color = Color.LightGray
+                        )
+                    }
+                }
+            }
+
+            // --- Config Section ---
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -694,9 +815,11 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 }
             }
         }
+        }
 
-        // --- Reflex Lag Game Section ---
-        Card(
+        if (selectedSubTab == 1) {
+            // --- Reflex Lag Game Section ---
+            Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = CardSpaceBackground),
@@ -719,6 +842,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
             val fpsDifficultyMultiplier by viewModel.fpsDifficultyMultiplier.collectAsState()
             val fpsDifficultyLevelName by viewModel.fpsDifficultyLevelName.collectAsState()
             val fpsIsZoomed by viewModel.fpsIsZoomed.collectAsState()
+            val fpsGameMode by viewModel.fpsGameMode.collectAsState()
 
             if (fpsIsZoomed) {
                 Dialog(
@@ -870,6 +994,14 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 val boxWidthDp = maxWidth
                                 val boxHeightDp = maxHeight
 
+                                // Custom background image for mini game FPS (Zoomed Dialog)
+                                Image(
+                                    painter = painterResource(id = R.drawable.img_fps_bg),
+                                    contentDescription = "FPS Background Zoomed",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().alpha(0.55f)
+                                )
+
                                 // Draw Decorative futuristic grid inside dialog range
                                 Canvas(modifier = Modifier.fillMaxSize()) {
                                     // Horizontal Grid
@@ -1008,21 +1140,96 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                             label = "scale_dialog"
                                         )
 
+                                        val targetSize = when (fpsGameMode) {
+                                            "sniper" -> 28.dp
+                                            "bottle" -> 64.dp
+                                            else -> 56.dp
+                                        }
+
                                         Box(
                                             modifier = Modifier
                                                 .offset(
-                                                    x = boxWidthDp * targetX - 28.dp,
-                                                    y = boxHeightDp * targetY - 28.dp
+                                                    x = boxWidthDp * targetX - (targetSize / 2),
+                                                    y = boxHeightDp * targetY - (targetSize / 2)
                                                 )
-                                                .size(56.dp * scale),
+                                                .size(targetSize * scale),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                                val radius = size.minDimension / 2f
-                                                drawCircle(color = Color.Red, radius = radius)
-                                                drawCircle(color = Color.White, radius = radius * 0.65f)
-                                                drawCircle(color = Color.Red, radius = radius * 0.4f)
-                                                drawCircle(color = Color.Yellow, radius = radius * 0.15f)
+                                            when (fpsGameMode) {
+                                                "bottle" -> {
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        val w = size.width
+                                                        val h = size.height
+                                                        val glassColor = Color(0xFF4DEEEA)
+                                                        drawRoundRect(
+                                                            color = glassColor,
+                                                            topLeft = Offset(w * 0.38f, h * 0.05f),
+                                                            size = Size(w * 0.24f, h * 0.35f),
+                                                            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                                                        )
+                                                        drawRect(
+                                                            color = NeonPink,
+                                                            topLeft = Offset(w * 0.34f, h * 0.02f),
+                                                            size = Size(w * 0.32f, h * 0.06f)
+                                                        )
+                                                        drawRoundRect(
+                                                            color = glassColor,
+                                                            topLeft = Offset(w * 0.2f, h * 0.35f),
+                                                            size = Size(w * 0.6f, h * 0.6f),
+                                                            cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                                                        )
+                                                        drawRect(
+                                                            color = Color.White,
+                                                            topLeft = Offset(w * 0.28f, h * 0.48f),
+                                                            size = Size(w * 0.44f, h * 0.2f)
+                                                        )
+                                                        drawLine(
+                                                            color = Color.Red,
+                                                            start = Offset(w * 0.32f, h * 0.58f),
+                                                            end = Offset(w * 0.68f, h * 0.58f),
+                                                            strokeWidth = 2.dp.toPx()
+                                                        )
+                                                    }
+                                                }
+                                                "sniper" -> {
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        val radius = size.minDimension / 2f
+                                                        drawCircle(color = NeonCyan, radius = radius, style = Stroke(1.5.dp.toPx()))
+                                                        drawCircle(color = NeonCyan, radius = radius * 0.5f, style = Stroke(1.dp.toPx()))
+                                                        drawCircle(color = Color.Red, radius = radius * 0.15f)
+                                                        drawLine(color = NeonCyan, start = Offset(0f, size.height / 2f), end = Offset(size.width, size.height / 2f), strokeWidth = 1.dp.toPx())
+                                                        drawLine(color = NeonCyan, start = Offset(size.width / 2f, 0f), end = Offset(size.width / 2f, size.height), strokeWidth = 1.dp.toPx())
+                                                    }
+                                                }
+                                                "fast" -> {
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        val radius = size.minDimension / 2f
+                                                        drawCircle(color = Color(0xFFFFD700), radius = radius, style = Stroke(2.dp.toPx()))
+                                                        drawCircle(color = Color.Red, radius = radius * 0.7f, style = Stroke(1.5.dp.toPx()))
+                                                        drawCircle(color = Color.Yellow, radius = radius * 0.35f)
+                                                        drawLine(
+                                                            color = Color(0xFFFFD700).copy(alpha = 0.8f),
+                                                            start = Offset(-12.dp.toPx(), size.height / 2f),
+                                                            end = Offset(-2.dp.toPx(), size.height / 2f),
+                                                            strokeWidth = 3.dp.toPx()
+                                                        )
+                                                        drawLine(
+                                                            color = Color(0xFFFFD700).copy(alpha = 0.5f),
+                                                            start = Offset(-22.dp.toPx(), size.height * 0.4f),
+                                                            end = Offset(-8.dp.toPx(), size.height * 0.4f),
+                                                            strokeWidth = 2.dp.toPx()
+                                                        )
+                                                    }
+                                                }
+                                                else -> {
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        val radius = size.minDimension / 2f
+                                                        drawCircle(color = Color.Red, radius = radius)
+                                                        drawCircle(color = Color.White, radius = radius * 0.65f)
+                                                        drawCircle(color = Color.Red, radius = radius * 0.4f)
+                                                        drawCircle(color = Color.Yellow, radius = radius * 0.15f)
+                                                    }
+                                                }
                                             }
                                             if (reflexState == "delaying") {
                                                 Box(
@@ -1260,6 +1467,56 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     color = Color.LightGray
                 )
 
+                // Game Mode Selector
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Chọn Màn Chơi (Game Mode):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "classic" to "Cổ Điển 🎯",
+                            "bottle" to "Bắn Chai 🍾",
+                            "fast" to "Siêu Tốc ⚡",
+                            "sniper" to "Bắn Tỉa 🔭"
+                        ).forEach { (modeKey, modeLabel) ->
+                            val isSelected = fpsGameMode == modeKey
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) NeonCyan.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isSelected) NeonCyan else Color.White.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable(enabled = reflexState == "idle") {
+                                        viewModel.setFpsGameMode(modeKey)
+                                    }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = modeLabel,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Normal,
+                                    color = if (isSelected) NeonCyan else Color.LightGray,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+
                 if (fpsIsZoomed) {
                     // Render the placeholder inside the normal screen card
                     Box(
@@ -1397,6 +1654,14 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 ) {
                     val boxWidthDp = maxWidth
                     val boxHeightDp = maxHeight
+
+                    // Custom background image for mini game FPS (Inline)
+                    Image(
+                        painter = painterResource(id = R.drawable.img_fps_bg),
+                        contentDescription = "FPS Background",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().alpha(0.5f)
+                    )
 
                     // 1. Draw decorative futuristic grid inside range
                     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1639,39 +1904,96 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 label = "scale"
                             )
 
+                            val targetSize = when (fpsGameMode) {
+                                "sniper" -> 24.dp
+                                "bottle" -> 56.dp
+                                else -> 48.dp
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .offset(
-                                        x = boxWidthDp * targetX - 24.dp,
-                                        y = boxHeightDp * targetY - 24.dp
+                                        x = boxWidthDp * targetX - (targetSize / 2),
+                                        y = boxHeightDp * targetY - (targetSize / 2)
                                     )
-                                    .size(48.dp * scale),
+                                    .size(targetSize * scale),
                                 contentAlignment = Alignment.Center
                             ) {
-                                // Nested circles representing target bullseye
-                                Canvas(modifier = Modifier.fillMaxSize()) {
-                                    val radius = size.minDimension / 2f
-                                    
-                                    // Outer ring (Red)
-                                    drawCircle(
-                                        color = Color.Red,
-                                        radius = radius
-                                    )
-                                    // Middle ring (White)
-                                    drawCircle(
-                                        color = Color.White,
-                                        radius = radius * 0.65f
-                                    )
-                                    // Inner ring (Red)
-                                    drawCircle(
-                                        color = Color.Red,
-                                        radius = radius * 0.4f
-                                    )
-                                    // Bullseye center dot (Gold)
-                                    drawCircle(
-                                        color = Color.Yellow,
-                                        radius = radius * 0.15f
-                                    )
+                                when (fpsGameMode) {
+                                    "bottle" -> {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            val w = size.width
+                                            val h = size.height
+                                            val glassColor = Color(0xFF4DEEEA)
+                                            drawRoundRect(
+                                                color = glassColor,
+                                                topLeft = Offset(w * 0.38f, h * 0.05f),
+                                                size = Size(w * 0.24f, h * 0.35f),
+                                                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                                            )
+                                            drawRect(
+                                                color = NeonPink,
+                                                topLeft = Offset(w * 0.34f, h * 0.02f),
+                                                size = Size(w * 0.32f, h * 0.06f)
+                                            )
+                                            drawRoundRect(
+                                                color = glassColor,
+                                                topLeft = Offset(w * 0.2f, h * 0.35f),
+                                                size = Size(w * 0.6f, h * 0.6f),
+                                                cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                                            )
+                                            drawRect(
+                                                color = Color.White,
+                                                topLeft = Offset(w * 0.28f, h * 0.48f),
+                                                size = Size(w * 0.44f, h * 0.2f)
+                                            )
+                                            drawLine(
+                                                color = Color.Red,
+                                                start = Offset(w * 0.32f, h * 0.58f),
+                                                end = Offset(w * 0.68f, h * 0.58f),
+                                                strokeWidth = 2.dp.toPx()
+                                            )
+                                        }
+                                    }
+                                    "sniper" -> {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            val radius = size.minDimension / 2f
+                                            drawCircle(color = NeonCyan, radius = radius, style = Stroke(1.5.dp.toPx()))
+                                            drawCircle(color = NeonCyan, radius = radius * 0.5f, style = Stroke(1.dp.toPx()))
+                                            drawCircle(color = Color.Red, radius = radius * 0.15f)
+                                            drawLine(color = NeonCyan, start = Offset(0f, size.height / 2f), end = Offset(size.width, size.height / 2f), strokeWidth = 1.dp.toPx())
+                                            drawLine(color = NeonCyan, start = Offset(size.width / 2f, 0f), end = Offset(size.width / 2f, size.height), strokeWidth = 1.dp.toPx())
+                                        }
+                                    }
+                                    "fast" -> {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            val radius = size.minDimension / 2f
+                                            drawCircle(color = Color(0xFFFFD700), radius = radius, style = Stroke(2.dp.toPx()))
+                                            drawCircle(color = Color.Red, radius = radius * 0.7f, style = Stroke(1.5.dp.toPx()))
+                                            drawCircle(color = Color.Yellow, radius = radius * 0.35f)
+                                            drawLine(
+                                                color = Color(0xFFFFD700).copy(alpha = 0.8f),
+                                                start = Offset(-10.dp.toPx(), size.height / 2f),
+                                                end = Offset(-2.dp.toPx(), size.height / 2f),
+                                                strokeWidth = 2.dp.toPx()
+                                            )
+                                            drawLine(
+                                                color = Color(0xFFFFD700).copy(alpha = 0.5f),
+                                                start = Offset(-18.dp.toPx(), size.height * 0.4f),
+                                                end = Offset(-6.dp.toPx(), size.height * 0.4f),
+                                                strokeWidth = 1.5.dp.toPx()
+                                            )
+                                        }
+                                    }
+                                    else -> {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            val radius = size.minDimension / 2f
+                                            drawCircle(color = Color.Red, radius = radius)
+                                            drawCircle(color = Color.White, radius = radius * 0.65f)
+                                            drawCircle(color = Color.Red, radius = radius * 0.4f)
+                                            drawCircle(color = Color.Yellow, radius = radius * 0.15f)
+                                        }
+                                    }
                                 }
                                 
                                 // Show "DELAY" tag if shot in progress (the ping flight)
@@ -1927,9 +2249,11 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 } // Closes the else block of if (fpsIsZoomed)
             }
         }
+        }
 
-        // --- MOBA Liên Quân 2D Arena Section ---
-        Card(
+        if (selectedSubTab == 2) {
+            // --- MOBA Liên Quân 2D Arena Section ---
+            Card(
             modifier = Modifier.fillMaxWidth().testTag("moba_game_section_card"),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = CardSpaceBackground),
@@ -2075,6 +2399,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 )
             }
         }
+        }
     }
 }
 
@@ -2114,7 +2439,19 @@ fun MobaGameAreaContent(
     val currentPing by viewModel.currentPing.collectAsState()
     val mobaMuradCloneX by viewModel.mobaMuradCloneX.collectAsState()
     val mobaMuradCloneY by viewModel.mobaMuradCloneY.collectAsState()
+    val mobaWindWallX by viewModel.mobaWindWallX.collectAsState()
+    val mobaWindWallY by viewModel.mobaWindWallY.collectAsState()
+    val mobaWindWallActive by viewModel.mobaWindWallActive.collectAsState()
     val mobaIsZoomed by viewModel.mobaIsZoomed.collectAsState()
+
+    val mobaEnemyIsKnockedUp by viewModel.mobaEnemyIsKnockedUp.collectAsState()
+    val mobaEnemyKnockupHeight by viewModel.mobaEnemyKnockupHeight.collectAsState()
+    val mobaHeroKnockupHeight by viewModel.mobaHeroKnockupHeight.collectAsState()
+
+    val mobaAllyTurretTopHP by viewModel.mobaAllyTurretTopHP.collectAsState()
+    val mobaAllyTurretBotHP by viewModel.mobaAllyTurretBotHP.collectAsState()
+    val mobaEnemyTurretTopHP by viewModel.mobaEnemyTurretTopHP.collectAsState()
+    val mobaEnemyTurretBotHP by viewModel.mobaEnemyTurretBotHP.collectAsState()
 
     Column(
         modifier = Modifier.padding(16.dp),
@@ -2234,31 +2571,76 @@ fun MobaGameAreaContent(
 
                     // 1. Draw river and paths behind everything using standard Canvas
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        // Draw central pathway
+                        // Draw three horizontal lane pathways (Kinh Thống - Top, Giữa - Mid, Rồng - Bot)
+                        // Top Lane
                         drawRect(
                             color = Color(0xFF1E293B),
-                            topLeft = Offset(0f, size.height * 0.42f),
-                            size = Size(size.width, size.height * 0.16f)
+                            topLeft = Offset(0f, size.height * 0.20f),
+                            size = Size(size.width, size.height * 0.12f)
                         )
+                        // Mid Lane
+                        drawRect(
+                            color = Color(0xFF1E293B),
+                            topLeft = Offset(0f, size.height * 0.44f),
+                            size = Size(size.width, size.height * 0.12f)
+                        )
+                        // Bot Lane
+                        drawRect(
+                            color = Color(0xFF1E293B),
+                            topLeft = Offset(0f, size.height * 0.68f),
+                            size = Size(size.width, size.height * 0.12f)
+                        )
+
                         // River (vertical stream down the middle)
                         drawRect(
                             color = Color(0xFF0369A1).copy(alpha = 0.3f),
                             topLeft = Offset(size.width * 0.48f, 0f),
                             size = Size(size.width * 0.04f, size.height)
                         )
-                        // Allied Turret Ring (dashed circle radius 18% of width)
+
+                        // Top Allied Turret Ring
                         drawCircle(
-                            color = Color(0xFF0284C7).copy(alpha = 0.18f),
-                            radius = size.width * 0.18f,
-                            center = Offset(size.width * 0.30f, size.height * 0.5f),
-                            style = Stroke(width = 2f)
+                            color = Color(0xFF0284C7).copy(alpha = 0.14f),
+                            radius = size.width * 0.09f,
+                            center = Offset(size.width * 0.30f, size.height * 0.28f),
+                            style = Stroke(width = 1.5f)
                         )
-                        // Enemy Turret Ring
+                        // Top Enemy Turret Ring
                         drawCircle(
-                            color = Color(0xFFEF4444).copy(alpha = 0.18f),
-                            radius = size.width * 0.18f,
-                            center = Offset(size.width * 0.75f, size.height * 0.5f),
-                            style = Stroke(width = 2f)
+                            color = Color(0xFFEF4444).copy(alpha = 0.14f),
+                            radius = size.width * 0.09f,
+                            center = Offset(size.width * 0.75f, size.height * 0.28f),
+                            style = Stroke(width = 1.5f)
+                        )
+
+                        // Mid Allied Turret Ring
+                        drawCircle(
+                            color = Color(0xFF0284C7).copy(alpha = 0.14f),
+                            radius = size.width * 0.09f,
+                            center = Offset(size.width * 0.30f, size.height * 0.50f),
+                            style = Stroke(width = 1.5f)
+                        )
+                        // Mid Enemy Turret Ring
+                        drawCircle(
+                            color = Color(0xFFEF4444).copy(alpha = 0.14f),
+                            radius = size.width * 0.09f,
+                            center = Offset(size.width * 0.75f, size.height * 0.50f),
+                            style = Stroke(width = 1.5f)
+                        )
+
+                        // Bot Allied Turret Ring
+                        drawCircle(
+                            color = Color(0xFF0284C7).copy(alpha = 0.14f),
+                            radius = size.width * 0.09f,
+                            center = Offset(size.width * 0.30f, size.height * 0.72f),
+                            style = Stroke(width = 1.5f)
+                        )
+                        // Bot Enemy Turret Ring
+                        drawCircle(
+                            color = Color(0xFFEF4444).copy(alpha = 0.14f),
+                            radius = size.width * 0.09f,
+                            center = Offset(size.width * 0.75f, size.height * 0.72f),
+                            style = Stroke(width = 1.5f)
                         )
 
                         // 1.1 Draw Movement Direction Arrow
@@ -2324,6 +2706,20 @@ fun MobaGameAreaContent(
                     )
 
                     // 3. Turrets (Ally X=30, Enemy X=75)
+                    // -- ALLIED TURRETS --
+                    // Top Allied Turret
+                    if (mobaAllyTurretTopHP > 0f) {
+                        MobaTurretView(
+                            hp = mobaAllyTurretTopHP,
+                            maxHp = 1500f,
+                            isEnemy = false,
+                            modifier = Modifier.offset(
+                                x = boardWidth * 0.30f - 16.dp,
+                                y = boardHeight * 0.28f - 16.dp
+                            )
+                        )
+                    }
+                    // Mid Allied Turret
                     if (mobaAllyTurretHP > 0f) {
                         MobaTurretView(
                             hp = mobaAllyTurretHP,
@@ -2335,7 +2731,33 @@ fun MobaGameAreaContent(
                             )
                         )
                     }
+                    // Bot Allied Turret
+                    if (mobaAllyTurretBotHP > 0f) {
+                        MobaTurretView(
+                            hp = mobaAllyTurretBotHP,
+                            maxHp = 1500f,
+                            isEnemy = false,
+                            modifier = Modifier.offset(
+                                x = boardWidth * 0.30f - 16.dp,
+                                y = boardHeight * 0.72f - 16.dp
+                            )
+                        )
+                    }
 
+                    // -- ENEMY TURRETS --
+                    // Top Enemy Turret
+                    if (mobaEnemyTurretTopHP > 0f) {
+                        MobaTurretView(
+                            hp = mobaEnemyTurretTopHP,
+                            maxHp = 1500f,
+                            isEnemy = true,
+                            modifier = Modifier.offset(
+                                x = boardWidth * 0.75f - 16.dp,
+                                y = boardHeight * 0.28f - 16.dp
+                            )
+                        )
+                    }
+                    // Mid Enemy Turret
                     if (mobaEnemyTurretHP > 0f) {
                         MobaTurretView(
                             hp = mobaEnemyTurretHP,
@@ -2344,6 +2766,18 @@ fun MobaGameAreaContent(
                             modifier = Modifier.offset(
                                 x = boardWidth * 0.75f - 16.dp,
                                 y = boardHeight * 0.50f - 16.dp
+                            )
+                        )
+                    }
+                    // Bot Enemy Turret
+                    if (mobaEnemyTurretBotHP > 0f) {
+                        MobaTurretView(
+                            hp = mobaEnemyTurretBotHP,
+                            maxHp = 1500f,
+                            isEnemy = true,
+                            modifier = Modifier.offset(
+                                x = boardWidth * 0.75f - 16.dp,
+                                y = boardHeight * 0.72f - 16.dp
                             )
                         )
                     }
@@ -2362,13 +2796,13 @@ fun MobaGameAreaContent(
                     // 5. Enemy Champion (Maloch)
                     if (mobaEnemyHP > 0f) {
                         MobaChampionView(
-                            name = if (mobaEnemyIsStunned) "CHOÁNG 🌀" else "Maloch",
+                            name = if (mobaEnemyIsKnockedUp) "HẤT TUNG 🌪️" else if (mobaEnemyIsStunned) "CHOÁNG 🌀" else "Maloch",
                             isEnemy = true,
                             hp = mobaEnemyHP,
                             maxHp = mobaEnemyMaxHP,
                             modifier = Modifier.offset(
                                 x = boardWidth * (mobaEnemyX / 100f) - 18.dp,
-                                y = boardHeight * (mobaEnemyY / 100f) - 18.dp
+                                y = boardHeight * (mobaEnemyY / 100f) - 18.dp - mobaEnemyKnockupHeight.dp
                             ),
                             color = Color(0xFFA21CAF)
                         )
@@ -2390,9 +2824,87 @@ fun MobaGameAreaContent(
                         )
                     }
 
-                    // 6. Player Hero (Tulen / Valhein / Murad)
+                    // 5c. Yasuo's Wind Wall (Tường Gió)
+                    if (mobaHero == "Yasuo" && mobaWindWallActive) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "windWall")
+                        val windOffset by infiniteTransition.animateFloat(
+                            initialValue = -15f,
+                            targetValue = 15f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "windOffset"
+                        )
+                        val windAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.5f,
+                            targetValue = 0.95f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(800, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "windAlpha"
+                        )
+                        val windScale by infiniteTransition.animateFloat(
+                            initialValue = 0.95f,
+                            targetValue = 1.05f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "windScale"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = boardWidth * (mobaWindWallX / 100f) - 6.dp,
+                                    y = boardHeight * (mobaWindWallY / 100f) - 30.dp
+                                )
+                                .size(12.dp * windScale, 60.dp * windScale)
+                                .alpha(windAlpha)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0xFF38BDF8).copy(alpha = 0.1f),
+                                            Color(0xFFE0F2FE).copy(alpha = 0.8f),
+                                            Color(0xFF0284C7).copy(alpha = 0.9f),
+                                            Color(0xFFE0F2FE).copy(alpha = 0.8f),
+                                            Color(0xFF38BDF8).copy(alpha = 0.1f)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .border(1.5.dp, Color(0xFFE0F2FE).copy(alpha = 0.7f), RoundedCornerShape(6.dp))
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawLine(
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    start = Offset(size.width / 2f, 15f + windOffset),
+                                    end = Offset(size.width / 2f, 30f + windOffset),
+                                    strokeWidth = 2.5f,
+                                    cap = StrokeCap.Round
+                                )
+                                drawLine(
+                                    color = Color(0xFF7DD3FC).copy(alpha = 0.8f),
+                                    start = Offset(size.width / 2f, 40f - windOffset),
+                                    end = Offset(size.width / 2f, 55f - windOffset),
+                                    strokeWidth = 3f,
+                                    cap = StrokeCap.Round
+                                )
+                            }
+                            Text(
+                                "💨",
+                                modifier = Modifier.align(Alignment.Center),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    // 6. Player Hero (Tulen / Valhein / Murad / Yasuo)
                     if (mobaHeroHP > 0f) {
-                        val glow = (mobaHero == "Tulen" && mobaPassiveStacks >= 5) || (mobaHero == "Murad" && mobaPassiveStacks >= 4)
+                        val glow = (mobaHero == "Tulen" && mobaPassiveStacks >= 5) || 
+                                   (mobaHero == "Murad" && mobaPassiveStacks >= 4) || 
+                                   (mobaHero == "Yasuo" && mobaHeroKnockupHeight > 0f)
                         MobaChampionView(
                             name = mobaHero,
                             isEnemy = false,
@@ -2402,9 +2914,9 @@ fun MobaGameAreaContent(
                             maxMp = mobaHeroMaxMP,
                             modifier = Modifier.offset(
                                 x = boardWidth * (mobaHeroX / 100f) - 18.dp,
-                                y = boardHeight * (mobaHeroY / 100f) - 18.dp
+                                y = boardHeight * (mobaHeroY / 100f) - 18.dp - mobaHeroKnockupHeight.dp
                             ),
-                            color = if (mobaHero == "Tulen") Color(0xFF06B6D4) else if (mobaHero == "Murad") Color(0xFFF59E0B) else Color(0xFFFFCC33),
+                            color = if (mobaHero == "Tulen") Color(0xFF06B6D4) else if (mobaHero == "Murad") Color(0xFFF59E0B) else if (mobaHero == "Yasuo") Color(0xFF64748B) else Color(0xFFFFCC33),
                             hasGlow = glow
                         )
                     }
@@ -2436,6 +2948,50 @@ fun MobaGameAreaContent(
                                 // Little cross/star sparkle at start and end
                                 drawCircle(Color(0xFFFFF7ED), radius = 4f, center = Offset(sX, sY))
                                 drawCircle(Color(0xFFFFF7ED), radius = 4f, center = Offset(eX, eY))
+                            }
+                        } else if (proj.type == "yasuo_q") {
+                            // Swift sword thrust visual line
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val sX = size.width * (proj.x / 100f)
+                                val sY = size.height * (proj.y / 100f)
+                                val eX = size.width * (proj.targetX / 100f)
+                                val eY = size.height * (proj.targetY / 100f)
+                                drawLine(
+                                    color = Color(0xFF38BDF8).copy(alpha = 0.9f),
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 4f
+                                )
+                                drawLine(
+                                    color = Color.White,
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 1.8f
+                                )
+                            }
+                        } else if (proj.type == "yasuo_q_tornado") {
+                            // Spinning greyish/cyan wind tornado
+                            val infiniteTransition = rememberInfiniteTransition(label = "tornado_rot")
+                            val rotationAngle by infiniteTransition.animateFloat(
+                                initialValue = 0f,
+                                targetValue = 360f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(400),
+                                    repeatMode = RepeatMode.Restart
+                                ),
+                                label = "rot"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .offset(
+                                        x = boardWidth * (proj.x / 100f) - 18.dp,
+                                        y = boardHeight * (proj.y / 100f) - 18.dp
+                                    )
+                                    .graphicsLayer(rotationZ = rotationAngle),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🌪️", fontSize = 24.sp)
                             }
                         } else {
                             Box(
@@ -2505,6 +3061,167 @@ fun MobaGameAreaContent(
                     }
                 }
 
+                // 10. Tactical Status HUD (Premium status & objective hub outside the canvas)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A).copy(alpha = 0.85f)),
+                    border = BorderStroke(1.dp, CardSpaceBorder.copy(alpha = 0.5f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Top Row: Hero Info, Stacks & Objective Integrity
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Hero Name and Passive Badges
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (mobaHero == "Tulen") Color(0xFF06B6D4).copy(alpha = 0.2f)
+                                            else if (mobaHero == "Murad") Color(0xFFF59E0B).copy(alpha = 0.2f)
+                                            else if (mobaHero == "Yasuo") Color(0xFF38BDF8).copy(alpha = 0.2f)
+                                            else Color(0xFFE11D48).copy(alpha = 0.2f),
+                                            RoundedCornerShape(4.dp)
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (mobaHero == "Tulen") Color(0xFF06B6D4)
+                                            else if (mobaHero == "Murad") Color(0xFFF59E0B)
+                                            else if (mobaHero == "Yasuo") Color(0xFF38BDF8)
+                                            else Color(0xFFE11D48),
+                                            RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = mobaHero,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                // Passive Stacks details with dynamic color indication
+                                val passiveText = when (mobaHero) {
+                                    "Yasuo" -> if (mobaPassiveStacks == 2) "🌪️ HASAGI!" else "Tụ bão: $mobaPassiveStacks/2"
+                                    "Murad" -> if (mobaPassiveStacks >= 4) "🔓 KHAI ẤN!" else "Tích ấn: $mobaPassiveStacks/4"
+                                    "Tulen" -> if (mobaPassiveStacks >= 5) "⚡ LÔI ẤN SẴN SÀNG" else "Lôi ấn: $mobaPassiveStacks/5"
+                                    else -> "Tốc đánh: +${mobaPassiveStacks * 6}%"
+                                }
+                                val passiveColor = when (mobaHero) {
+                                    "Yasuo" -> if (mobaPassiveStacks == 2) Color(0xFF38BDF8) else Color.LightGray
+                                    "Murad" -> if (mobaPassiveStacks >= 4) Color(0xFFF59E0B) else Color.LightGray
+                                    "Tulen" -> if (mobaPassiveStacks >= 5) Color(0xFF22D3EE) else Color.LightGray
+                                    else -> Color(0xFFFCD34D)
+                                }
+                                Text(
+                                    text = passiveText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = passiveColor
+                                )
+                            }
+
+                            // Objective Health Indicators (Towers)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
+                                    Text(
+                                        text = "Trụ ta: ${mobaAllyTurretHP.toInt()}",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (mobaAllyTurretHP < 500f) Color(0xFFEF4444) else Color.LightGray
+                                    )
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFFEF4444), CircleShape))
+                                    Text(
+                                        text = "Trụ địch: ${mobaEnemyTurretHP.toInt()}",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (mobaEnemyTurretHP < 500f) Color(0xFF10B981) else Color.LightGray
+                                    )
+                                }
+                            }
+                        }
+
+                        // Bottom Row: Beautiful HP & MP Progress Bars
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // HP Progress bar
+                            val hpFraction = if (mobaHeroMaxHP > 0f) (mobaHeroHP / mobaHeroMaxHP).coerceIn(0f, 1f) else 0f
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("HP (SINH MỆNH)", fontSize = 8.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    Text("${mobaHeroHP.toInt()}/${mobaHeroMaxHP.toInt()}", fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .background(Color(0xFF1F2937), RoundedCornerShape(4.dp))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(hpFraction)
+                                            .fillMaxHeight()
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    colors = listOf(Color(0xFF047857), Color(0xFF10B981))
+                                                ),
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                    )
+                                }
+                            }
+
+                            // MP Progress bar
+                            val mpFraction = if (mobaHeroMaxMP > 0f) (mobaHeroMP / mobaHeroMaxMP).coerceIn(0f, 1f) else 0f
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("MP (NĂNG LƯỢNG)", fontSize = 8.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    Text("${mobaHeroMP.toInt()}/${mobaHeroMaxMP.toInt()}", fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .background(Color(0xFF1F2937), RoundedCornerShape(4.dp))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(mpFraction)
+                                            .fillMaxHeight()
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    colors = listOf(Color(0xFF1D4ED8), Color(0xFF3B82F6))
+                                                ),
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Log display bubble
                 Box(
                     modifier = Modifier
@@ -2522,21 +3239,24 @@ fun MobaGameAreaContent(
                     )
                 }
 
-                // Controller Mode Selector Row
+                // Controller Mode Selector & Match Utilities Row
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Bộ Điều Khiển Trận Đấu", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ElegantGold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Controller Switch Tabs
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Button(
                             onClick = { controllerMode = "mobile" },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (controllerMode == "mobile") NeonCyan.copy(alpha = 0.2f) else Color.Transparent,
                                 contentColor = if (controllerMode == "mobile") NeonCyan else Color.Gray
                             ),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             modifier = Modifier.height(26.dp)
                         ) {
                             Text("📱 Phím Điện Thoại", fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -2547,16 +3267,31 @@ fun MobaGameAreaContent(
                                 containerColor = if (controllerMode == "classic") NeonCyan.copy(alpha = 0.2f) else Color.Transparent,
                                 contentColor = if (controllerMode == "classic") NeonCyan else Color.Gray
                             ),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             modifier = Modifier.height(26.dp)
                         ) {
                             Text("💻 Phím Cổ Điển", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
+
+                    // Quit Button (Surrender Match)
+                    Button(
+                        onClick = { viewModel.stopMobaGame() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF4444).copy(alpha = 0.15f),
+                            contentColor = Color(0xFFFCA5A5)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                        modifier = Modifier.height(26.dp)
+                    ) {
+                        Text("🏳️ Đầu Hàng", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 if (controllerMode == "classic") {
-                    // Live Controls: Classic
+                    // Live Controls: Classic Columnar Skill Panels
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -2569,6 +3304,7 @@ fun MobaGameAreaContent(
                         ) {
                             val isTulen = mobaHero == "Tulen"
                             val isMurad = mobaHero == "Murad"
+                            val isYasuo = mobaHero == "Yasuo"
                             val skills = if (isTulen) {
                                 listOf(
                                     Triple("Chiêu 1: Lôi Quang", "⚡ Sát thương fan-shape", 55f),
@@ -2581,6 +3317,12 @@ fun MobaGameAreaContent(
                                     Triple("Chiêu 2: Vô Ảnh Trận", "🛡️ Né đòn & Chậm rìa", 60f),
                                     Triple("Ult: Ảo Ảnh Trảm", "🔥 Trảm liên hoàn (Cần 4 Ấn)", 80f)
                                 )
+                            } else if (isYasuo) {
+                                listOf(
+                                    Triple("Chiêu 1: Bão Kiếm", "⚔️ Đâm kiếm tích lũy tụ bão phóng lốc xoáy", 0f),
+                                    Triple("Chiêu 2: Tường Gió", "🌪️ Dựng tường chắn mọi chiêu thức địch", 0f),
+                                    Triple("Ult: Trăn Trối", "⚡ Bay chém địch bị hất tung (Cần khống chế)", 0f)
+                                )
                             } else {
                                 listOf(
                                     Triple("Chiêu 1: Chuyến Săn", "🏹 Tiêu đỏ nổ lan", 50f),
@@ -2592,7 +3334,7 @@ fun MobaGameAreaContent(
                             skills.forEachIndexed { idx, skill ->
                                 val cd = mobaSkillCooldowns[idx]
                                 val isCd = cd > 0f
-                                val ultLocked = isMurad && idx == 2 && mobaPassiveStacks < 4
+                                val ultLocked = (isMurad && idx == 2 && mobaPassiveStacks < 4) || (isYasuo && idx == 2 && !mobaEnemyIsStunned)
 
                                 Button(
                                     onClick = { viewModel.castMobaSkill(idx) },
@@ -2636,17 +3378,17 @@ fun MobaGameAreaContent(
                             }
                         }
 
-                        // Basic attack and Quit (Right column)
+                        // Basic attack Column (Right column - Cleared from match quit button for ergonomics)
                         Column(
                             modifier = Modifier.weight(0.7f),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.Center
                         ) {
                             // Giant attack button
                             Button(
                                 onClick = { viewModel.triggerMobaBasicAttack() },
                                 modifier = Modifier
-                                    .size(74.dp)
+                                    .size(76.dp)
                                     .border(2.dp, ElegantGold, CircleShape),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFFF59E0B),
@@ -2660,171 +3402,182 @@ fun MobaGameAreaContent(
                                     Text("THƯỜNG", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
-
-                            // Quit Match
-                            Button(
-                                onClick = { viewModel.stopMobaGame() },
-                                modifier = Modifier.fillMaxWidth().height(36.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.DarkGray.copy(alpha = 0.5f),
-                                    contentColor = Color.LightGray
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text("Rút lui", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
                         }
                     }
                 } else {
-                    // Live Controls: Mobile Phone Joystick Layout
+                    // Live Controls: Mobile Phone Split Joystick Layout (Highly optimized for compact screens)
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 1. D-Pad Joystick (Left Side)
+                        // 1. D-Pad Joystick (Left Side) - UX improved with circular shape and clean arrows
                         Box(
                             modifier = Modifier
-                                .size(110.dp)
+                                .size(125.dp)
                                 .background(Color(0xFF1E293B).copy(alpha = 0.5f), CircleShape)
-                                .border(1.dp, CardSpaceBorder, CircleShape),
+                                .border(1.5.dp, NeonCyan.copy(alpha = 0.3f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                            // Up Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.UP) },
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .size(44.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.UP)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
+                                            }
+                                        )
+                                    }
                             ) {
-                                // Up
-                                Row(horizontalArrangement = Arrangement.Center) {
-                                    Spacer(modifier = Modifier.width(30.dp))
-                                    IconButton(
-                                        onClick = {},
-                                        modifier = Modifier
-                                            .size(30.dp)
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(
-                                                    onPress = {
-                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.UP)
-                                                        try {
-                                                            awaitRelease()
-                                                        } finally {
-                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
-                                                        }
-                                                    }
-                                                )
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Di chuyển Lên",
+                                    tint = NeonCyan,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+
+                            // Down Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.DOWN) },
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .size(44.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.DOWN)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
                                             }
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Di chuyển Lên", tint = NeonCyan)
+                                        )
                                     }
-                                    Spacer(modifier = Modifier.width(30.dp))
-                                }
-                                // Left, Stop, Right
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    IconButton(
-                                        onClick = {},
-                                        modifier = Modifier
-                                            .size(30.dp)
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(
-                                                    onPress = {
-                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.LEFT)
-                                                        try {
-                                                            awaitRelease()
-                                                        } finally {
-                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
-                                                        }
-                                                    }
-                                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Di chuyển Xuống",
+                                    tint = NeonCyan,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+
+                            // Left Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.LEFT) },
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .size(44.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.LEFT)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
                                             }
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Di chuyển Trái", tint = NeonCyan)
+                                        )
                                     }
-                                    IconButton(
-                                        onClick = {
-                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
-                                            viewModel.moveHeroTo(mobaHeroX, mobaHeroY)
-                                        }, // STOP
-                                        modifier = Modifier.size(28.dp).background(Color.Red.copy(alpha = 0.25f), CircleShape)
-                                    ) {
-                                        Icon(Icons.Default.Stop, contentDescription = "Dừng Lại", tint = Color.Red, modifier = Modifier.size(12.dp))
-                                    }
-                                    IconButton(
-                                        onClick = {},
-                                        modifier = Modifier
-                                            .size(30.dp)
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(
-                                                    onPress = {
-                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.RIGHT)
-                                                        try {
-                                                            awaitRelease()
-                                                        } finally {
-                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
-                                                        }
-                                                    }
-                                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowLeft,
+                                    contentDescription = "Di chuyển Trái",
+                                    tint = NeonCyan,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+
+                            // Right Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.RIGHT) },
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .size(44.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.RIGHT)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
                                             }
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Di chuyển Phải", tint = NeonCyan)
+                                        )
                                     }
-                                }
-                                // Down
-                                Row(horizontalArrangement = Arrangement.Center) {
-                                    Spacer(modifier = Modifier.width(30.dp))
-                                    IconButton(
-                                        onClick = {},
-                                        modifier = Modifier
-                                            .size(30.dp)
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(
-                                                    onPress = {
-                                                        viewModel.setMobaMoveDirection(MobaMoveDirection.DOWN)
-                                                        try {
-                                                            awaitRelease()
-                                                        } finally {
-                                                            viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
-                                                        }
-                                                    }
-                                                )
-                                            }
-                                    ) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Di chuyển Xuống", tint = NeonCyan)
-                                    }
-                                    Spacer(modifier = Modifier.width(30.dp))
-                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowRight,
+                                    contentDescription = "Di chuyển Phải",
+                                    tint = NeonCyan,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+
+                            // Center STOP Button
+                            IconButton(
+                                onClick = {
+                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                    viewModel.moveHeroTo(mobaHeroX, mobaHeroY)
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(34.dp)
+                                    .background(Color.Red.copy(alpha = 0.25f), CircleShape)
+                                    .border(1.dp, Color.Red.copy(alpha = 0.5f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Stop,
+                                    contentDescription = "Dừng Lại",
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(14.dp)
+                                )
                             }
                         }
 
-                        // 2. Center Status & Exit
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.weight(1f)
+                        // Decorative Center Spacing (Adds realistic gaming console flavor and splits columns)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(60.dp)
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(mobaHero, fontSize = 12.sp, color = ElegantGold, fontWeight = FontWeight.Bold)
-                            val stacksText = if (mobaHero == "Murad") "Ấn Phong Ấn: $mobaPassiveStacks/4" else "Tốc đánh: +${mobaPassiveStacks * 6}%"
-                            Text(stacksText, fontSize = 9.sp, color = Color.LightGray)
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Button(
-                                onClick = { viewModel.stopMobaGame() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626).copy(alpha = 0.3f), contentColor = Color.White),
-                                shape = RoundedCornerShape(6.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                modifier = Modifier.height(24.dp)
-                            ) {
-                                Text("Rút lui", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "ARENA 🎮 CONSOLE",
+                                    fontSize = 8.sp,
+                                    color = Color.Gray.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp, 2.dp)
+                                        .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(1.dp))
+                                )
                             }
                         }
 
-                        // 3. Compact Curved Skill Cluster (Right Side)
+                        // 3. Compact Curved Skill Cluster (Right Side - Fully ergonomic curved placement)
                         Box(modifier = Modifier.size(135.dp, 115.dp)) {
                             val isMurad = mobaHero == "Murad"
+                            val isYasuo = mobaHero == "Yasuo"
                             
                             // S1 Button
                             val cd1 = mobaSkillCooldowns[0]
@@ -2863,7 +3616,7 @@ fun MobaGameAreaContent(
                             // Ult Button
                             val cd3 = mobaSkillCooldowns[2]
                             val isCd3 = cd3 > 0f
-                            val ultLocked = isMurad && mobaPassiveStacks < 4
+                            val ultLocked = (isMurad && mobaPassiveStacks < 4) || (isYasuo && !mobaEnemyIsStunned)
                             Button(
                                 onClick = { viewModel.castMobaSkill(2) },
                                 modifier = Modifier.size(44.dp).offset(x = 84.dp, y = 2.dp),
@@ -2928,13 +3681,16 @@ fun MobaHeroSelection(
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Tulen Card
             Card(
                 modifier = Modifier
-                    .weight(1f)
+                    .width(142.dp)
                     .clickable { onSelectHero("Tulen") }
                     .border(
                         width = if (mobaHero == "Tulen") 2.dp else 1.dp,
@@ -2978,7 +3734,7 @@ fun MobaHeroSelection(
             // Valhein Card
             Card(
                 modifier = Modifier
-                    .weight(1f)
+                    .width(142.dp)
                     .clickable { onSelectHero("Valhein") }
                     .border(
                         width = if (mobaHero == "Valhein") 2.dp else 1.dp,
@@ -3022,7 +3778,7 @@ fun MobaHeroSelection(
             // Murad Card
             Card(
                 modifier = Modifier
-                    .weight(1f)
+                    .width(142.dp)
                     .clickable { onSelectHero("Murad") }
                     .border(
                         width = if (mobaHero == "Murad") 2.dp else 1.dp,
@@ -3058,7 +3814,51 @@ fun MobaHeroSelection(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("• Đòn đánh thường đủ 4 lần giải phong ấn", fontSize = 9.sp, color = Color.LightGray)
-                        Text("• Lướt ảo ảnh giật bóng và vô ảnh trận né đòn cực ảo", fontSize = 9.sp, color = Color.LightGray)
+                        Text("• Lước ảo ảnh giật bóng và vô ảnh trận né đòn cực ảo", fontSize = 9.sp, color = Color.LightGray)
+                    }
+                }
+            }
+
+            // Yasuo Card
+            Card(
+                modifier = Modifier
+                    .width(142.dp)
+                    .clickable { onSelectHero("Yasuo") }
+                    .border(
+                        width = if (mobaHero == "Yasuo") 2.dp else 1.dp,
+                        color = if (mobaHero == "Yasuo") Color(0xFF38BDF8) else Color.DarkGray,
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (mobaHero == "Yasuo") Color(0xFF0F172A) else Color(0xFF020617)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .background(Color(0xFF38BDF8).copy(alpha = 0.2f), CircleShape)
+                            .border(2.dp, Color(0xFF38BDF8), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🌪️", fontSize = 28.sp)
+                    }
+                    Text("Yasuo", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Kiếm Sĩ Gió Phương Bắc", fontSize = 10.sp, color = Color(0xFF38BDF8))
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Column(
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("• Đâm kiếm tích lũy Bão Kiếm và phóng Lốc Xoáy", fontSize = 9.sp, color = Color.LightGray)
+                        Text("• Không dùng mana, dựng Tường Gió chặn mọi chiêu thức", fontSize = 9.sp, color = Color.LightGray)
                     }
                 }
             }

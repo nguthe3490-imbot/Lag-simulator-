@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.ChatScreen
 import com.example.ui.HistoryScreen
 import com.example.ui.MainViewModel
+import com.example.ui.NetworkTestScreen
 import com.example.ui.SimulatorScreen
+import androidx.compose.material.icons.filled.Speed
 import com.example.ui.theme.CardSpaceBackground
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonPink
@@ -94,6 +96,33 @@ fun MainAppContainer(viewModel: MainViewModel) {
                     onClick = { viewModel.setTab(1) },
                     icon = {
                         Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = "Analyzer",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = "Phân Tích",
+                            fontSize = 11.sp,
+                            fontWeight = if (currentTab == 1) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFFCCC48E),
+                        selectedTextColor = Color(0xFFCCC48E),
+                        indicatorColor = Color(0xFFCCC48E).copy(alpha = 0.15f),
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray
+                    ),
+                    modifier = Modifier.testTag("nav_tab_analyzer")
+                )
+
+                NavigationBarItem(
+                    selected = currentTab == 2,
+                    onClick = { viewModel.setTab(2) },
+                    icon = {
+                        Icon(
                             imageVector = Icons.Default.Forum,
                             contentDescription = "Assistant",
                             modifier = Modifier.size(24.dp)
@@ -103,7 +132,7 @@ fun MainAppContainer(viewModel: MainViewModel) {
                         Text(
                             text = "Linh Chi",
                             fontSize = 11.sp,
-                            fontWeight = if (currentTab == 1) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (currentTab == 2) FontWeight.Bold else FontWeight.Normal
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
@@ -117,8 +146,8 @@ fun MainAppContainer(viewModel: MainViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = currentTab == 2,
-                    onClick = { viewModel.setTab(2) },
+                    selected = currentTab == 3,
+                    onClick = { viewModel.setTab(3) },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.History,
@@ -130,7 +159,7 @@ fun MainAppContainer(viewModel: MainViewModel) {
                         Text(
                             text = "Lịch Sử",
                             fontSize = 11.sp,
-                            fontWeight = if (currentTab == 2) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (currentTab == 3) FontWeight.Bold else FontWeight.Normal
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
@@ -152,8 +181,9 @@ fun MainAppContainer(viewModel: MainViewModel) {
         ) {
             when (currentTab) {
                 0 -> SimulatorScreen(viewModel)
-                1 -> ChatScreen(viewModel)
-                2 -> HistoryScreen(viewModel)
+                1 -> NetworkTestScreen(viewModel)
+                2 -> ChatScreen(viewModel)
+                3 -> HistoryScreen(viewModel)
             }
         }
     }
