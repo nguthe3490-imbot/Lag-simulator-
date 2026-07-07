@@ -843,6 +843,10 @@ fun SimulatorScreen(viewModel: MainViewModel) {
             val fpsDifficultyLevelName by viewModel.fpsDifficultyLevelName.collectAsState()
             val fpsIsZoomed by viewModel.fpsIsZoomed.collectAsState()
             val fpsGameMode by viewModel.fpsGameMode.collectAsState()
+            val fpsBossHp by viewModel.fpsBossHp.collectAsState()
+            val fpsUserHp by viewModel.fpsUserHp.collectAsState()
+            val fpsBossState by viewModel.fpsBossState.collectAsState()
+            val fpsWeapon by viewModel.fpsWeapon.collectAsState()
 
             if (fpsIsZoomed) {
                 Dialog(
@@ -1141,6 +1145,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                         )
 
                                         val targetSize = when (fpsGameMode) {
+                                            "boss" -> 84.dp
                                             "sniper" -> 28.dp
                                             "bottle" -> 64.dp
                                             else -> 56.dp
@@ -1156,6 +1161,166 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                             contentAlignment = Alignment.Center
                                         ) {
                                             when (fpsGameMode) {
+                                                "boss" -> {
+                                                    val bossState = fpsBossState
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        val w = size.width
+                                                        val h = size.height
+                                                        val center = Offset(w / 2f, h / 2f)
+                                                        val radius = size.minDimension / 2f
+                                                        
+                                                        // 1. Draw glowing aura based on boss state
+                                                        val auraColor = when (bossState) {
+                                                            "preparing" -> Color(0xFFFFB300) // Amber / Warning
+                                                            "shooting" -> NeonPink
+                                                            "hit" -> Color.Red
+                                                            else -> Color(0xFF39FF14) // Alien Neon Green
+                                                        }
+                                                        
+                                                        drawCircle(
+                                                            color = auraColor.copy(alpha = 0.22f),
+                                                            radius = radius * (if (bossState == "preparing") 1.25f else 1.0f)
+                                                        )
+                                                        
+                                                        // Charging ring
+                                                        if (bossState == "preparing") {
+                                                            drawCircle(
+                                                                color = auraColor,
+                                                                radius = radius * 1.12f,
+                                                                style = Stroke(width = 3.dp.toPx())
+                                                            )
+                                                        }
+                                                        
+                                                        // 2. Head & Antenna Outline and Base Colors
+                                                        val headColor = if (bossState == "hit") Color(0xFFFF5722) else Color(0xFF2ECC71) // Hit: Orange/Red, Normal: Alien Green
+                                                        val outlineColor = if (bossState == "hit") Color.White else Color(0xFF27AE60)
+                                                        
+                                                        // Draw Alien Antennae
+                                                        // Left Antenna
+                                                        drawLine(
+                                                            color = outlineColor,
+                                                            start = Offset(w * 0.4f, h * 0.35f),
+                                                            end = Offset(w * 0.28f, h * 0.15f),
+                                                            strokeWidth = 3.dp.toPx()
+                                                        )
+                                                        // Right Antenna
+                                                        drawLine(
+                                                            color = outlineColor,
+                                                            start = Offset(w * 0.6f, h * 0.35f),
+                                                            end = Offset(w * 0.72f, h * 0.15f),
+                                                            strokeWidth = 3.dp.toPx()
+                                                        )
+                                                        
+                                                        // Antenna Balls (glowing bulb)
+                                                        val bulbColor = when (bossState) {
+                                                            "preparing" -> Color(0xFFFFD700)
+                                                            "shooting" -> NeonPink
+                                                            "hit" -> Color.Red
+                                                            else -> Color(0xFFF1C40F)
+                                                        }
+                                                        drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f))
+                                                        drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
+                                                        drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f))
+                                                        drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
+                                                        
+                                                        // Main Head Oval (Alien shape: wider on top)
+                                                        drawOval(
+                                                            color = headColor,
+                                                            topLeft = Offset(w * 0.15f, h * 0.28f),
+                                                            size = Size(w * 0.7f, h * 0.58f)
+                                                        )
+                                                        drawOval(
+                                                            color = outlineColor,
+                                                            topLeft = Offset(w * 0.15f, h * 0.28f),
+                                                            size = Size(w * 0.7f, h * 0.58f),
+                                                            style = Stroke(width = 3.dp.toPx())
+                                                        )
+                                                        
+                                                        // 3. Draw Eyes (Alien style, large, cute, slightly tilted)
+                                                        if (bossState == "hit") {
+                                                            // Dizzied cross eyes "X X"
+                                                            val sizeEye = 8.dp.toPx()
+                                                            // Left cross eye
+                                                            val lx = w * 0.36f
+                                                            val ly = h * 0.48f
+                                                            drawLine(color = Color.White, start = Offset(lx - sizeEye, ly - sizeEye), end = Offset(lx + sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                            drawLine(color = Color.White, start = Offset(lx + sizeEye, ly - sizeEye), end = Offset(lx - sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                            
+                                                            // Right cross eye
+                                                            val rx = w * 0.64f
+                                                            val ry = h * 0.48f
+                                                            drawLine(color = Color.White, start = Offset(rx - sizeEye, ry - sizeEye), end = Offset(rx + sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                            drawLine(color = Color.White, start = Offset(rx + sizeEye, ry - sizeEye), end = Offset(rx - sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                        } else {
+                                                            // Huge cute alien black eyes
+                                                            // Left eye
+                                                            drawOval(
+                                                                color = Color.Black,
+                                                                topLeft = Offset(w * 0.26f, h * 0.42f),
+                                                                size = Size(w * 0.18f, h * 0.16f)
+                                                            )
+                                                            // Right eye
+                                                            drawOval(
+                                                                color = Color.Black,
+                                                                topLeft = Offset(w * 0.56f, h * 0.42f),
+                                                                size = Size(w * 0.18f, h * 0.16f)
+                                                            )
+                                                            
+                                                            // White sparkle reflections
+                                                            drawCircle(
+                                                                color = Color.White,
+                                                                radius = radius * 0.045f,
+                                                                center = Offset(w * 0.32f, h * 0.47f)
+                                                            )
+                                                            drawCircle(
+                                                                color = Color.White,
+                                                                radius = radius * 0.045f,
+                                                                center = Offset(w * 0.62f, h * 0.47f)
+                                                            )
+                                                        }
+                                                        
+                                                        // 4. Smile & Tongue (Goofy alien)
+                                                        val mouthCenterY = h * 0.68f
+                                                        if (bossState == "hit") {
+                                                            // Funny wave / confused mouth
+                                                            val wavePath = Path().apply {
+                                                                moveTo(w * 0.4f, mouthCenterY)
+                                                                quadraticBezierTo(w * 0.45f, mouthCenterY - 4.dp.toPx(), w * 0.5f, mouthCenterY)
+                                                                quadraticBezierTo(w * 0.55f, mouthCenterY + 4.dp.toPx(), w * 0.6f, mouthCenterY)
+                                                            }
+                                                            drawPath(
+                                                                path = wavePath,
+                                                                color = Color.White,
+                                                                style = Stroke(width = 2.5.dp.toPx())
+                                                            )
+                                                        } else {
+                                                            // Big happy smile!
+                                                            val smilePath = Path().apply {
+                                                                moveTo(w * 0.36f, mouthCenterY)
+                                                                quadraticBezierTo(w * 0.5f, mouthCenterY + 12.dp.toPx(), w * 0.64f, mouthCenterY)
+                                                            }
+                                                            drawPath(
+                                                                path = smilePath,
+                                                                color = Color.Black,
+                                                                style = Stroke(width = 3.dp.toPx())
+                                                            )
+                                                            
+                                                            // Tongue sticking out!
+                                                            val tongueRect = androidx.compose.ui.geometry.Rect(
+                                                                left = w * 0.46f,
+                                                                top = mouthCenterY + 3.dp.toPx(),
+                                                                right = w * 0.54f,
+                                                                bottom = mouthCenterY + 11.dp.toPx()
+                                                            )
+                                                            drawRoundRect(
+                                                                color = Color(0xFFFF5E7E), // Cheeky Pink Tongue
+                                                                topLeft = Offset(tongueRect.left, tongueRect.top),
+                                                                size = Size(tongueRect.width, tongueRect.height),
+                                                                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                                 "bottle" -> {
                                                     Canvas(modifier = Modifier.fillMaxSize()) {
                                                         val w = size.width
@@ -1479,19 +1644,19 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         color = Color.White
                     )
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf(
                             "classic" to "Cổ Điển 🎯",
                             "bottle" to "Bắn Chai 🍾",
                             "fast" to "Siêu Tốc ⚡",
-                            "sniper" to "Bắn Tỉa 🔭"
+                            "sniper" to "Bắn Tỉa 🔭",
+                            "boss" to "Đấu Boss Alien 👾"
                         ).forEach { (modeKey, modeLabel) ->
                             val isSelected = fpsGameMode == modeKey
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(if (isSelected) NeonCyan.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f))
                                     .border(
@@ -1502,7 +1667,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     .clickable(enabled = reflexState == "idle") {
                                         viewModel.setFpsGameMode(modeKey)
                                     }
-                                    .padding(vertical = 10.dp),
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -1510,6 +1675,55 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     fontSize = 11.sp,
                                     fontWeight = if (isSelected) FontWeight.Black else FontWeight.Normal,
                                     color = if (isSelected) NeonCyan else Color.LightGray,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Weapon Selector
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Chọn Vũ Khí (Weapon SFX):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "pistol" to "Súng Lục 🔫",
+                            "ak47" to "Súng AK47 ⚔️",
+                            "shotgun" to "Shotgun 💥",
+                            "sniper" to "Sniper AWM 🔭"
+                        ).forEach { (weaponKey, weaponLabel) ->
+                            val isSelected = fpsWeapon == weaponKey
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) NeonPink.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isSelected) NeonPink else Color.White.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        viewModel.setFpsWeapon(weaponKey)
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = weaponLabel,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Normal,
+                                    color = if (isSelected) NeonPink else Color.LightGray,
                                     maxLines = 1
                                 )
                             }
@@ -1662,6 +1876,70 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().alpha(0.5f)
                     )
+
+                    // Boss Battle Health HUD
+                    if (fpsGameMode == "boss" && (reflexState == "spawned" || reflexState == "delaying")) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                                .align(Alignment.TopCenter),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            // Boss HP bar
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.92f)
+                                    .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
+                                    .border(0.5.dp, Color.Red.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("👾 ALIEN HP", color = Color.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        for (i in 1..5) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = 12.dp, height = 6.dp)
+                                                    .background(if (i <= fpsBossHp) Color.Red else Color.DarkGray, RoundedCornerShape(1.dp))
+                                            )
+                                        }
+                                    }
+                                }
+                                Text("${fpsBossHp}/5", color = Color.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            // User HP bar
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.92f)
+                                    .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
+                                    .border(0.5.dp, NeonCyan.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("🛡️ YOUR HP", color = NeonCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        for (i in 1..3) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = 16.dp, height = 6.dp)
+                                                    .background(if (i <= fpsUserHp) NeonCyan else Color.DarkGray, RoundedCornerShape(1.dp))
+                                            )
+                                        }
+                                    }
+                                }
+                                Text("${fpsUserHp}/3", color = NeonCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
 
                     // 1. Draw decorative futuristic grid inside range
                     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1905,6 +2183,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                             )
 
                             val targetSize = when (fpsGameMode) {
+                                "boss" -> 76.dp
                                 "sniper" -> 24.dp
                                 "bottle" -> 56.dp
                                 else -> 48.dp
@@ -1920,6 +2199,166 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 contentAlignment = Alignment.Center
                             ) {
                                 when (fpsGameMode) {
+                                    "boss" -> {
+                                        val bossState = fpsBossState
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            val w = size.width
+                                            val h = size.height
+                                            val center = Offset(w / 2f, h / 2f)
+                                            val radius = size.minDimension / 2f
+                                            
+                                            // 1. Draw glowing aura based on boss state
+                                            val auraColor = when (bossState) {
+                                                "preparing" -> Color(0xFFFFB300) // Amber / Warning
+                                                "shooting" -> NeonPink
+                                                "hit" -> Color.Red
+                                                else -> Color(0xFF39FF14) // Alien Neon Green
+                                            }
+                                            
+                                            drawCircle(
+                                                color = auraColor.copy(alpha = 0.22f),
+                                                radius = radius * (if (bossState == "preparing") 1.25f else 1.0f)
+                                            )
+                                            
+                                            // Charging ring
+                                            if (bossState == "preparing") {
+                                                drawCircle(
+                                                    color = auraColor,
+                                                    radius = radius * 1.12f,
+                                                    style = Stroke(width = 3.dp.toPx())
+                                                )
+                                            }
+                                            
+                                            // 2. Head & Antenna Outline and Base Colors
+                                            val headColor = if (bossState == "hit") Color(0xFFFF5722) else Color(0xFF2ECC71) // Hit: Orange/Red, Normal: Alien Green
+                                            val outlineColor = if (bossState == "hit") Color.White else Color(0xFF27AE60)
+                                            
+                                            // Draw Alien Antennae
+                                            // Left Antenna
+                                            drawLine(
+                                                color = outlineColor,
+                                                start = Offset(w * 0.4f, h * 0.35f),
+                                                end = Offset(w * 0.28f, h * 0.15f),
+                                                strokeWidth = 3.dp.toPx()
+                                            )
+                                            // Right Antenna
+                                            drawLine(
+                                                color = outlineColor,
+                                                start = Offset(w * 0.6f, h * 0.35f),
+                                                end = Offset(w * 0.72f, h * 0.15f),
+                                                strokeWidth = 3.dp.toPx()
+                                            )
+                                            
+                                            // Antenna Balls (glowing bulb)
+                                            val bulbColor = when (bossState) {
+                                                "preparing" -> Color(0xFFFFD700)
+                                                "shooting" -> NeonPink
+                                                "hit" -> Color.Red
+                                                else -> Color(0xFFF1C40F)
+                                            }
+                                            drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f))
+                                            drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
+                                            drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f))
+                                            drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
+                                            
+                                            // Main Head Oval (Alien shape: wider on top)
+                                            drawOval(
+                                                color = headColor,
+                                                topLeft = Offset(w * 0.15f, h * 0.28f),
+                                                size = Size(w * 0.7f, h * 0.58f)
+                                            )
+                                            drawOval(
+                                                color = outlineColor,
+                                                topLeft = Offset(w * 0.15f, h * 0.28f),
+                                                size = Size(w * 0.7f, h * 0.58f),
+                                                style = Stroke(width = 3.dp.toPx())
+                                            )
+                                            
+                                            // 3. Draw Eyes (Alien style, large, cute, slightly tilted)
+                                            if (bossState == "hit") {
+                                                // Dizzied cross eyes "X X"
+                                                val sizeEye = 8.dp.toPx()
+                                                // Left cross eye
+                                                val lx = w * 0.36f
+                                                val ly = h * 0.48f
+                                                drawLine(color = Color.White, start = Offset(lx - sizeEye, ly - sizeEye), end = Offset(lx + sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                drawLine(color = Color.White, start = Offset(lx + sizeEye, ly - sizeEye), end = Offset(lx - sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                
+                                                // Right cross eye
+                                                val rx = w * 0.64f
+                                                val ry = h * 0.48f
+                                                drawLine(color = Color.White, start = Offset(rx - sizeEye, ry - sizeEye), end = Offset(rx + sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                drawLine(color = Color.White, start = Offset(rx + sizeEye, ry - sizeEye), end = Offset(rx - sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                            } else {
+                                                // Huge cute alien black eyes
+                                                // Left eye
+                                                drawOval(
+                                                    color = Color.Black,
+                                                    topLeft = Offset(w * 0.26f, h * 0.42f),
+                                                    size = Size(w * 0.18f, h * 0.16f)
+                                                )
+                                                // Right eye
+                                                drawOval(
+                                                    color = Color.Black,
+                                                    topLeft = Offset(w * 0.56f, h * 0.42f),
+                                                    size = Size(w * 0.18f, h * 0.16f)
+                                                )
+                                                
+                                                // White sparkle reflections
+                                                drawCircle(
+                                                    color = Color.White,
+                                                    radius = radius * 0.045f,
+                                                    center = Offset(w * 0.32f, h * 0.47f)
+                                                )
+                                                drawCircle(
+                                                    color = Color.White,
+                                                    radius = radius * 0.045f,
+                                                    center = Offset(w * 0.62f, h * 0.47f)
+                                                )
+                                            }
+                                            
+                                            // 4. Smile & Tongue (Goofy alien)
+                                            val mouthCenterY = h * 0.68f
+                                            if (bossState == "hit") {
+                                                // Funny wave / confused mouth
+                                                val wavePath = Path().apply {
+                                                    moveTo(w * 0.4f, mouthCenterY)
+                                                    quadraticBezierTo(w * 0.45f, mouthCenterY - 4.dp.toPx(), w * 0.5f, mouthCenterY)
+                                                    quadraticBezierTo(w * 0.55f, mouthCenterY + 4.dp.toPx(), w * 0.6f, mouthCenterY)
+                                                }
+                                                drawPath(
+                                                    path = wavePath,
+                                                    color = Color.White,
+                                                    style = Stroke(width = 2.5.dp.toPx())
+                                                )
+                                            } else {
+                                                // Big happy smile!
+                                                val smilePath = Path().apply {
+                                                    moveTo(w * 0.36f, mouthCenterY)
+                                                    quadraticBezierTo(w * 0.5f, mouthCenterY + 12.dp.toPx(), w * 0.64f, mouthCenterY)
+                                                }
+                                                drawPath(
+                                                    path = smilePath,
+                                                    color = Color.Black,
+                                                    style = Stroke(width = 3.dp.toPx())
+                                                )
+                                                
+                                                // Tongue sticking out!
+                                                val tongueRect = androidx.compose.ui.geometry.Rect(
+                                                    left = w * 0.46f,
+                                                    top = mouthCenterY + 3.dp.toPx(),
+                                                    right = w * 0.54f,
+                                                    bottom = mouthCenterY + 11.dp.toPx()
+                                                )
+                                                drawRoundRect(
+                                                    color = Color(0xFFFF5E7E), // Cheeky Pink Tongue
+                                                    topLeft = Offset(tongueRect.left, tongueRect.top),
+                                                    size = Size(tongueRect.width, tongueRect.height),
+                                                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                                                )
+                                            }
+                                        }
+                                    }
                                     "bottle" -> {
                                         Canvas(modifier = Modifier.fillMaxSize()) {
                                             val w = size.width

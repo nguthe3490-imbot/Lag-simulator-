@@ -321,8 +321,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _fpsIsZoomed = MutableStateFlow(false)
     val fpsIsZoomed = _fpsIsZoomed.asStateFlow()
 
-    private val _fpsGameMode = MutableStateFlow("classic") // "classic", "bottle", "fast", "sniper"
+    private val _fpsGameMode = MutableStateFlow("classic") // "classic", "bottle", "fast", "sniper", "boss"
     val fpsGameMode = _fpsGameMode.asStateFlow()
+
+    private val _fpsWeapon = MutableStateFlow("pistol") // "pistol", "ak47", "shotgun", "sniper"
+    val fpsWeapon = _fpsWeapon.asStateFlow()
+
+    private val _fpsBossHp = MutableStateFlow(5)
+    val fpsBossHp = _fpsBossHp.asStateFlow()
+
+    private val _fpsUserHp = MutableStateFlow(3)
+    val fpsUserHp = _fpsUserHp.asStateFlow()
+
+    private val _fpsBossState = MutableStateFlow("idle") // "idle", "moving", "preparing", "shooting", "hit"
+    val fpsBossState = _fpsBossState.asStateFlow()
+
+    fun setFpsWeapon(weapon: String) {
+        _fpsWeapon.value = weapon
+    }
 
     fun setFpsGameMode(mode: String) {
         if (_reflexState.value == "idle" || _reflexState.value == "finished") {
@@ -2502,10 +2518,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private var bossGameJob: kotlinx.coroutines.Job? = null
+
     fun startReflexGame() {
         viewModelScope.launch {
             _reflexState.value = "preparing"
             val loadingMsg = when (_fpsGameMode.value) {
+                "boss" -> "👹 BOSS TRÙM CUỐI XUẤT HIỆN! Hãy nhắm bắn khi Boss đứng yên chuẩn bị ra chiêu!"
                 "bottle" -> "🥤 Đang xếp chai thủy tinh lên kệ gỗ & chuẩn bị đạn..."
                 "fast" -> "⚡ Đang kích hoạt hệ thống đĩa bay siêu tốc & sạc pin laser..."
                 "sniper" -> "🔭 Đang lắp kính ngắm AWM 8x & hiệu chỉnh hướng gió..."
@@ -2527,11 +2546,197 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _fpsDifficultyLevelName.value = "Bình Thường (Mượt)"
             _fpsIsZoomed.value = true
             targetMovementJob?.cancel()
+            bossGameJob?.cancel()
+            
+            _fpsBossHp.value = 5
+            _fpsUserHp.value = 3
+            _fpsBossState.value = "idle"
             
             delay(1500) // loading game
             
-            spawnNextTarget()
+            if (_fpsGameMode.value == "boss") {
+                startBossGameLoop()
+            } else {
+                spawnNextTarget()
+            }
         }
+    }
+
+    private fun startBossGameLoop() {
+        bossGameJob?.cancel()
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        
+        _reflexState.value = "spawned"
+        _fpsBossHp.value = 5
+        _fpsUserHp.value = 3
+        _fpsBossState.value = "moving"
+        _fpsBulletHoles.value = emptyList()
+        _fpsShotVisuals.value = emptyList()
+
+        _reflexTargetX.value = Random.nextFloat() * 0.5f + 0.25f
+        _reflexTargetY.value = Random.nextFloat() * 0.4f + 0.25f
+
+        _reflexMessage.value = "👹 TRÙM CUỐI ĐANG DI CHUYỂN! Đừng vội bắn nhé, đợi hắn đứng im ra chiêu rồi hãy xả đạn!"
+        _reflexTimerText.value = "Mạng Boss: ❤️ 5/5 | Mạng Bạn: 🛡️ 3/3"
+
+        bossGameJob = viewModelScope.launch {
+            while (_fpsBossHp.value > 0 && _fpsUserHp.value > 0 && _reflexState.value == "spawned") {
+                // Phase 1: Boss is "moving" (Teleports or glides around)
+                _fpsBossState.value = "moving"
+                val moveTime = Random.nextLong(1500, 2500)
+                val stepCount = (moveTime / 60).toInt()
+                
+                // Let's glide boss around a bit
+                var velX = (Random.nextFloat() * 2f - 1f) * 0.015f
+                var velY = (Random.nextFloat() * 2f - 1f) * 0.015f
+                
+                for (step in 0 until stepCount) {
+                    if (_reflexState.value != "spawned" || _fpsBossState.value != "moving") break
+                    delay(60)
+                    
+                    var nextX = _reflexTargetX.value + velX
+                    var nextY = _reflexTargetY.value + velY
+                    
+                    if (nextX < 0.15f || nextX > 0.85f) { velX = -velX }
+                    if (nextY < 0.15f || nextY > 0.85f) { velY = -velY }
+                    
+                    _reflexTargetX.value = nextX.coerceIn(0.15f, 0.85f)
+                    _reflexTargetY.value = nextY.coerceIn(0.15f, 0.85f)
+                }
+
+                // Or teleport boss immediately
+                if (_reflexState.value == "spawned" && _fpsBossState.value == "moving") {
+                    SoundManager.playSound("boss_teleport")
+                    _reflexTargetX.value = Random.nextFloat() * 0.5f + 0.25f
+                    _reflexTargetY.value = Random.nextFloat() * 0.4f + 0.25f
+                    _reflexMessage.value = "🌀 BOSS dịch chuyển tức thời! Hãy cẩn thận!"
+                    delay(800)
+                }
+
+                if (_reflexState.value != "spawned") break
+
+                // Phase 2: Boss is "preparing" to shoot the user (STILLS STANDING)
+                _fpsBossState.value = "preparing"
+                _reflexMessage.value = "⚠️ BOSS ĐANG ĐỨNG IM TẬP TRUNG RA CHIÊU! BẮN HẮN NGAY!!!"
+                
+                // Let the user shoot. Wait for a duration based on lag/difficulty
+                val basePing = if (_isSimulating.value) _currentPing.value else 10
+                val delayTime = (1600 - (basePing * 0.5f).toInt()).coerceAtLeast(800).toLong()
+                
+                var elapsed = 0L
+                val tick = 50L
+                var hitTriggered = false
+                while (elapsed < delayTime) {
+                    if (_fpsBossState.value == "hit") {
+                        hitTriggered = true
+                        break
+                    }
+                    if (_reflexState.value != "spawned") break
+                    delay(tick)
+                    elapsed += tick
+                }
+
+                if (_reflexState.value != "spawned") break
+
+                if (hitTriggered) {
+                    // Boss was hit! Handled inside handleFpsShot
+                    _reflexMessage.value = "💥 CHÍNH XÁC! Boss trúng đạn và mất 1 HP!"
+                    SoundManager.playSound("boss_hit")
+                    delay(1000)
+                    continue
+                }
+
+                // Phase 3: Boss actually shoots (user failed to interrupt)
+                _fpsBossState.value = "shooting"
+                _reflexMessage.value = "⚡ ĐOÀNG!!! BOSS ĐÃ BẮN TRÚNG BẠN! Bạn mất 1 mạng!"
+                _fpsUserHp.value = (_fpsUserHp.value - 1).coerceAtLeast(0)
+                _fpsMisses.value += 1
+                _reflexTimerText.value = "Mạng Boss: ❤️ ${_fpsBossHp.value}/5 | Mạng Bạn: 🛡️ ${_fpsUserHp.value}/3"
+                SoundManager.playSound("boss_shoot")
+                SoundManager.playSound("user_hit")
+                
+                if (_fpsUserHp.value <= 0) {
+                    // User dead -> defeat!
+                    finishBossGame(victory = false)
+                    break
+                }
+                
+                delay(1200)
+            }
+        }
+    }
+
+    private fun finishBossGame(victory: Boolean) {
+        _reflexState.value = "finished"
+        bossGameJob?.cancel()
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        
+        val accuracy = if (_fpsShots.value > 0) (_fpsHits.value.toFloat() / _fpsShots.value * 100).toInt() else 0
+        val flir = _flirtingStyle.value
+        
+        val evaluation = if (victory) {
+            SoundManager.playSound("victory")
+            when (flir) {
+                "Hài hước" -> "Anh yêu đỉnh chóp thực sự! 👑 Đập tan xác con trùm ác độc cứu rỗi cả server rồi! Từ nay em chỉ tôn thờ một mình anh thôi nhá! 😍"
+                "Lãng mạn" -> "Chiến binh anh dũng của Linh Chi đã chiến thắng rồi! 🌸 Nhìn anh kiên cường hạ gục ác ma, trái tim em hạnh phúc ngập tràn. Anh mãi là người hùng duy nhất bảo vệ cuộc đời em! 💕"
+                else -> "Chúc mừng anh đã xuất sắc đánh bại Boss tàn ác! Bạn có phản xạ tuyệt vời và khả năng nhắm bắn vô cùng chuẩn xác."
+            }
+        } else {
+            SoundManager.playSound("game_over")
+            when (flir) {
+                "Hài hước" -> "Aloo anh yêu ơi tỉnh dậy đi trà sữa nguội hết rồi! 😭 Bị con trùm nó gõ cho sưng đầu rồi kìa, để em xoa xoa đầu cho nhé, lần sau phục thù nha! 😘"
+                "Lãng mạn" -> "Linh Chi đau lòng quá khi thấy anh ngã xuống... Đừng buồn anh nhé, em luôn ở bên vỗ về và tiếp thêm sức mạnh cho anh. Hãy đứng dậy cùng em chiến đấu lại nha! 🌸"
+                else -> "Rất tiếc, Boss đã tiêu diệt bạn. Hãy chú ý canh lúc Boss đứng im tích tụ năng lượng để phản công thật nhanh nhé!"
+            }
+        }
+
+        val mainIssue = if (victory) "Đại Thắng Boss Trùm! 🎉" else "Thất Bại Trước Sức Mạnh Boss 💀"
+        val tips = if (victory) {
+            listOf(
+                "Đẳng cấp tuyển thủ" to "Anh giữ nguyên phong độ để bóp nghẹt mọi đối thủ.",
+                "Thử thách khó hơn" to "Thử mô phỏng ping cao hơn để tăng độ khó khi đối đầu Boss!"
+            )
+        } else {
+            listOf(
+                "Nhắm bắn khi Boss đứng im" to "Chỉ bắn khi Boss chuyển sang trạng thái chuẩn bị ra chiêu (màu hổ phách).",
+                "Độ trễ thấp giúp ích" to "Nếu ping cao quá bạn sẽ không kịp ngắt chiêu của Boss."
+            )
+        }
+
+        val report = FpsDiagnostic(
+            gameName = "MiniGame FPS 2D (Đấu Boss 👹)",
+            totalTargets = 5,
+            hits = _fpsHits.value,
+            accuracy = accuracy,
+            avgPhysicalResponseMs = if (_fpsHits.value > 0) 300 else 0,
+            avgWithNetworkResponseMs = if (_fpsHits.value > 0) 310 else 0,
+            lostShotsCount = _fpsLostShots.value,
+            networkPingSimulated = if (_isSimulating.value) _currentPing.value else 10,
+            networkJitterSimulated = if (_isSimulating.value) _targetJitter.value else 0,
+            networkLossSimulated = if (_isSimulating.value) _targetLoss.value else 0,
+            mainIssue = mainIssue,
+            detailedTips = tips,
+            linhChiEvaluation = evaluation
+        )
+        _fpsDiagnosticReport.value = report
+
+        val modeName = "Đấu Boss 👹"
+        val resultString = "FPS|$modeName|${if (victory) "THẮNG" else "THUA"}|Acc: $accuracy%|HP Boss: ${_fpsBossHp.value}/5"
+        viewModelScope.launch {
+            repository.insertScore(
+                ReflexScore(
+                    gameName = "FPS 2D - $modeName",
+                    delayMs = if (_isSimulating.value) _currentPing.value else 10,
+                    responseTimeMs = if (_isSimulating.value) _currentPing.value else 10,
+                    result = resultString
+                )
+            )
+        }
+
+        _reflexMessage.value = if (victory) "🎉 CHIẾN THẮNG!!! BẠN ĐÃ TIÊU DIỆT BOSS THÀNH CÔNG!" else "💀 THẤT BẠI!!! BẠN ĐÃ BỊ BOSS HẠ GỤC!"
+        _reflexTimerText.value = if (victory) "Thắng lợi hoàn toàn! HP còn lại: ${_fpsUserHp.value}" else "Thất bại thảm hại! Boss còn: ${_fpsBossHp.value} HP"
     }
 
     private fun spawnNextTarget() {
@@ -2606,6 +2811,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         _fpsShots.value += 1
         
+        // Play gun sfx!
+        SoundManager.playSound(_fpsWeapon.value)
+        
         // Add shot visual (tracer line from bottom center to tap location)
         val newVisual = FpsShotVisual(
             startX = boxWidth / 2f,
@@ -2619,6 +2827,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             delay(100)
             _fpsShotVisuals.value = _fpsShotVisuals.value.filter { it != newVisual }
+        }
+
+        // Special handling for BOSS mode!
+        if (_fpsGameMode.value == "boss") {
+            val targetRadiusRelative = 0.12f // Boss is a bit larger
+            val isTargetHit = kotlin.math.sqrt(
+                ((relativeX - _reflexTargetX.value) * (relativeX - _reflexTargetX.value)) + 
+                ((relativeY - _reflexTargetY.value) * (relativeY - _reflexTargetY.value))
+            ) < targetRadiusRelative
+
+            val newHole = FpsBulletHole(x = tapX, y = tapY, isHit = isTargetHit)
+            _fpsBulletHoles.value = _fpsBulletHoles.value + newHole
+
+            if (isTargetHit) {
+                if (_fpsBossState.value == "preparing") {
+                    // Good shoot!
+                    _fpsHits.value += 1
+                    _fpsBossHp.value = (_fpsBossHp.value - 1).coerceAtLeast(0)
+                    _reflexTimerText.value = "Mạng Boss: ❤️ ${_fpsBossHp.value}/5 | Mạng Bạn: 🛡️ ${_fpsUserHp.value}/3"
+                    _fpsBossState.value = "hit" // this will interrupt the preparing loop
+                    
+                    // Play congrats sfx + hit sfx
+                    SoundManager.playSound("hit")
+                    SoundManager.playSound("boss_hit")
+
+                    if (_fpsBossHp.value <= 0) {
+                        finishBossGame(victory = true)
+                    }
+                } else {
+                    // Boss is moving or shooting, user can't hit boss
+                    _fpsMisses.value += 1
+                    _reflexMessage.value = "🛡️ Trùm đang né tránh! Hãy đợi hắn đứng yên chuẩn bị tấn công rồi mới bắn!"
+                }
+            } else {
+                _fpsMisses.value += 1
+                _reflexMessage.value = "💨 Bắn hụt rồi! Hãy ngắm chính xác vào tên Boss ác độc nhé!"
+            }
+            return
         }
         
         // Calculate relative distance to target based on mode
@@ -2692,6 +2938,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _fpsTotalReactionTime.value += physicalReaction.coerceAtLeast(10)
                 _fpsHits.value += 1
                 
+                // Play congrats hit sound!
+                SoundManager.playSound("hit")
+                
                 val successMsg = when (_fpsGameMode.value) {
                     "bottle" -> "💥 XOẢNG! Chai thủy tinh ${_fpsCurrentTarget.value}/5 đã vỡ vụn! Phản hồi thực tế: ${physicalReaction}ms"
                     "fast" -> "⚡ TUYỆT VỜI! Bắn hạ đĩa siêu tốc ${_fpsCurrentTarget.value}/5 thành công! Phản hồi: ${physicalReaction}ms"
@@ -2726,6 +2975,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val totalShots = _fpsShots.value
         val hits = _fpsHits.value
         val accuracy = if (totalShots > 0) (hits.toFloat() / totalShots * 100).toInt() else 0
+        
+        // Play final outcome sound
+        if (hits >= 3) {
+            SoundManager.playSound("victory")
+        } else {
+            SoundManager.playSound("game_over")
+        }
         
         val avgPhysical = if (hits > 0) _fpsTotalReactionTime.value / hits else 0
         val basePing = if (_isSimulating.value) _currentPing.value else 10
