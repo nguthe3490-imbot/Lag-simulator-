@@ -79,6 +79,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun HistoryScreen(viewModel: MainViewModel) {
+    val appLanguage by viewModel.appLanguage.collectAsState() // Observe language changes instantly
     val historyList by viewModel.history.collectAsState()
     val scoresList by viewModel.scores.collectAsState()
 
@@ -107,13 +108,13 @@ fun HistoryScreen(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Thống Kê & Lịch Sử",
+                        text = t("history_title"),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Text(
-                        text = "Theo dõi sự chênh lệch phản xạ khi mạng lag",
+                        text = t("history_subtitle"),
                         fontSize = 11.sp,
                         color = Color.Gray
                     )
@@ -151,17 +152,17 @@ fun HistoryScreen(viewModel: MainViewModel) {
             Tab(
                 selected = selectedSubTab == 0,
                 onClick = { selectedSubTab = 0 },
-                text = { Text("Phản Xạ Lag", fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
+                text = { Text(t("history_tab_reflex"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
             )
             Tab(
                 selected = selectedSubTab == 1,
                 onClick = { selectedSubTab = 1 },
-                text = { Text("Biểu Đồ Xu Hướng", fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
+                text = { Text(t("history_tab_trends"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
             )
             Tab(
                 selected = selectedSubTab == 2,
                 onClick = { selectedSubTab = 2 },
-                text = { Text("Lịch Sử Giả Lập", fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
+                text = { Text(t("history_tab_sim"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
             )
         }
 
@@ -171,7 +172,7 @@ fun HistoryScreen(viewModel: MainViewModel) {
                 // Part A: Reflex Scores List
                 if (scoresList.isEmpty()) {
                     EmptyStateView(
-                        message = "Chưa có thành tích kiểm tra phản xạ nào.\nAnh yêu hãy chuyển qua tab Trình Giả Lập chơi thử thách game để kiểm tra phản xạ nha! Linh Chi chờ nè 💕"
+                        message = t("history_empty_reflex")
                     )
                 } else {
                     LazyColumn(
@@ -194,7 +195,7 @@ fun HistoryScreen(viewModel: MainViewModel) {
                 // Part C: Simulation History List
                 if (historyList.isEmpty()) {
                     EmptyStateView(
-                        message = "Chưa ghi nhận phiên giả lập lag nào.\nAnh hãy bắt đầu bật giả lập để lưu lại cấu hình đường truyền nhé!"
+                        message = t("history_empty_sim")
                     )
                 } else {
                     LazyColumn(
@@ -339,7 +340,7 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(text = "Độ Ổn Định", fontSize = 10.sp, color = Color.Gray)
+                        Text(text = t("analyzer_stability"), fontSize = 10.sp, color = Color.Gray)
                         Text(
                             text = "$stabilityScore%",
                             fontSize = 18.sp,
@@ -364,7 +365,7 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(text = "Ping TB", fontSize = 10.sp, color = Color.Gray)
+                        Text(text = t("analyzer_avg_ping"), fontSize = 10.sp, color = Color.Gray)
                         Text(
                             text = "${avgPing}ms",
                             fontSize = 18.sp,
@@ -390,7 +391,7 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(text = "Jitter Cực Đại", fontSize = 10.sp, color = Color.Gray)
+                        Text(text = t("analyzer_max_jitter"), fontSize = 10.sp, color = Color.Gray)
                         Text(
                             text = "±${maxJitter}ms",
                             fontSize = 18.sp,
@@ -411,7 +412,7 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(text = "Mất Gói TB", fontSize = 10.sp, color = Color.Gray)
+                        Text(text = t("analyzer_avg_loss"), fontSize = 10.sp, color = Color.Gray)
                         Text(
                             text = String.format("%.1f%%", avgLoss),
                             fontSize = 18.sp,

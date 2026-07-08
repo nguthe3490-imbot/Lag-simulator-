@@ -33,7 +33,10 @@ import com.example.ui.HistoryScreen
 import com.example.ui.MainViewModel
 import com.example.ui.NetworkTestScreen
 import com.example.ui.SimulatorScreen
+import com.example.ui.SettingsScreen
+import com.example.ui.t
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Settings
 import com.example.ui.theme.CardSpaceBackground
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonPink
@@ -56,6 +59,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppContainer(viewModel: MainViewModel) {
     val currentTab by viewModel.currentTab.collectAsState()
+    val appLanguage by viewModel.appLanguage.collectAsState() // Observe language changes instantly
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -76,8 +80,8 @@ fun MainAppContainer(viewModel: MainViewModel) {
                     },
                     label = {
                         Text(
-                            text = "Giả Lập",
-                            fontSize = 11.sp,
+                            text = t("nav_tab_simulator"),
+                            fontSize = 10.sp,
                             fontWeight = if (currentTab == 0) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -103,8 +107,8 @@ fun MainAppContainer(viewModel: MainViewModel) {
                     },
                     label = {
                         Text(
-                            text = "Phân Tích",
-                            fontSize = 11.sp,
+                            text = t("nav_tab_analyzer"),
+                            fontSize = 10.sp,
                             fontWeight = if (currentTab == 1) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -130,8 +134,8 @@ fun MainAppContainer(viewModel: MainViewModel) {
                     },
                     label = {
                         Text(
-                            text = "Linh Chi",
-                            fontSize = 11.sp,
+                            text = t("nav_tab_assistant"),
+                            fontSize = 10.sp,
                             fontWeight = if (currentTab == 2) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -157,8 +161,8 @@ fun MainAppContainer(viewModel: MainViewModel) {
                     },
                     label = {
                         Text(
-                            text = "Lịch Sử",
-                            fontSize = 11.sp,
+                            text = t("nav_tab_history"),
+                            fontSize = 10.sp,
                             fontWeight = if (currentTab == 3) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -170,6 +174,33 @@ fun MainAppContainer(viewModel: MainViewModel) {
                         unselectedTextColor = Color.Gray
                     ),
                     modifier = Modifier.testTag("nav_tab_history")
+                )
+
+                NavigationBarItem(
+                    selected = currentTab == 4,
+                    onClick = { viewModel.setTab(4) },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = t("nav_tab_settings"),
+                            fontSize = 10.sp,
+                            fontWeight = if (currentTab == 4) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = NeonPink,
+                        selectedTextColor = NeonPink,
+                        indicatorColor = NeonPink.copy(alpha = 0.15f),
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray
+                    ),
+                    modifier = Modifier.testTag("nav_tab_settings")
                 )
             }
         }
@@ -184,6 +215,7 @@ fun MainAppContainer(viewModel: MainViewModel) {
                 1 -> NetworkTestScreen(viewModel)
                 2 -> ChatScreen(viewModel)
                 3 -> HistoryScreen(viewModel)
+                4 -> SettingsScreen(viewModel)
             }
         }
     }

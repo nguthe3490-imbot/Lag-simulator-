@@ -117,6 +117,7 @@ import com.example.ui.theme.ElegantTextSecondary
 
 @Composable
 fun SimulatorScreen(viewModel: MainViewModel) {
+    val appLanguage by viewModel.appLanguage.collectAsState() // Observe language changes instantly
     val selectedGame by viewModel.selectedGame.collectAsState()
     val targetPing by viewModel.targetPing.collectAsState()
     val targetJitter by viewModel.targetJitter.collectAsState()
@@ -151,9 +152,9 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 val tabs = listOf(
-                    Triple(0, "Mạng & Graph", Icons.Default.Speed),
-                    Triple(1, "Bắn Súng FPS", Icons.Default.Bolt),
-                    Triple(2, "Đấu Trường MOBA", Icons.Default.CellTower)
+                    Triple(0, t("subtab_network"), Icons.Default.Speed),
+                    Triple(1, t("subtab_fps"), Icons.Default.Bolt),
+                    Triple(2, t("subtab_moba"), Icons.Default.CellTower)
                 )
                 tabs.forEach { (index, title, icon) ->
                     val isTabSelected = selectedSubTab == index
@@ -220,13 +221,13 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Lưu ý: Bạn chưa bật giả lập trễ mạng!",
+                            text = t("not_simulating_warning"),
                             color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Bật giả lập mạng để trải nghiệm lag giật thực tế hoặc chơi mượt ngay bây giờ.",
+                            text = t("not_simulating_desc"),
                             color = Color.LightGray,
                             fontSize = 11.sp
                         )
@@ -266,13 +267,13 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = "Trình Giả Lập Lag Game",
+                            text = t("app_name"),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = NeonPink
                         )
                         Text(
-                            text = "Mô phỏng độ trễ mạng thực tế trong game và trải nghiệm sự khó chịu của game thủ khi ping cao!",
+                            text = t("app_description"),
                             fontSize = 12.sp,
                             color = Color.LightGray
                         )
@@ -426,7 +427,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isSimulating) "Dừng Giả Lập Mạng" else "Bắt Đầu Giả Lập",
+                        text = if (isSimulating) t("sim_stop") else t("sim_start"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
@@ -447,7 +448,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Trạng Thái Đường Truyền Live",
+                        text = t("sim_live_status"),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = ElegantGold
@@ -576,7 +577,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     }
 
                     Text(
-                        text = "💡 Mẹo: Nhấn sang Tab 'Trợ lý Linh Chi' để nghe em khuyên cách sửa mạng nhé!",
+                        text = t("sim_tip_chat_assistant"),
                         fontSize = 11.sp,
                         color = NeonCyan,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -606,7 +607,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Báo Cáo Mạng Lag Cho Linh Chi",
+                            text = t("sim_report_lag_button"),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -653,7 +654,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 }
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Lời Khuyên Từ Linh Chi",
+                                    text = t("sim_assistant_tips"),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = ElegantGold
@@ -1460,6 +1461,168 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                         tint = NeonPink,
                                         modifier = Modifier.size(16.dp)
                                     )
+                                }
+
+                                val fpsIsPaused by viewModel.fpsIsPaused.collectAsState()
+
+                                // Floating Pause button for Zoomed FPS
+                                if (reflexState == "spawned" || reflexState == "delaying") {
+                                    IconButton(
+                                        onClick = { viewModel.setFpsPaused(true) },
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart) // Since small close 'x' is at TopEnd, TopStart is perfect!
+                                            .padding(8.dp)
+                                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                            .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                                            .size(36.dp)
+                                            .testTag("fps_pause_button_zoomed")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Pause,
+                                            contentDescription = "Tạm Dừng FPS",
+                                            tint = NeonPink,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                // Zoomed FPS Pause Overlay
+                                if (fpsIsPaused) {
+                                    val targetPing by viewModel.targetPing.collectAsState()
+                                    val targetJitter by viewModel.targetJitter.collectAsState()
+                                    val targetLoss by viewModel.targetLoss.collectAsState()
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.9f))
+                                            .pointerInput(Unit) { detectTapGestures { } },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                            modifier = Modifier.padding(24.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Pause,
+                                                    contentDescription = "Game Paused",
+                                                    tint = NeonPink,
+                                                    modifier = Modifier.size(28.dp)
+                                                )
+                                                Text(
+                                                    text = "BẮN SÚNG TẠM DỪNG",
+                                                    color = NeonPink,
+                                                    fontSize = 18.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    letterSpacing = 1.sp
+                                                )
+                                            }
+                                            
+                                            Text(
+                                                text = "Cấu hình mạng hiện tại:",
+                                                color = Color.LightGray,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(Color(0xFF151324), RoundedCornerShape(8.dp))
+                                                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                                    .padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text("Độ trễ (Ping):", color = Color.Gray, fontSize = 11.sp)
+                                                    Text("${targetPing} ms", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text("Biến động (Jitter):", color = Color.Gray, fontSize = 11.sp)
+                                                    Text("${targetJitter} ms", color = ElegantGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text("Mất gói (Loss):", color = Color.Gray, fontSize = 11.sp)
+                                                    Text("${targetLoss} %", color = NeonPink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+
+                                            // Button to Reset delay/latency
+                                            Button(
+                                                onClick = { 
+                                                    viewModel.resetNetworkDelay()
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Refresh,
+                                                    contentDescription = "Reset Network",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text("Cài Lại Mạng Mượt (10ms Ping)", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                            }
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                // Resume Button
+                                                Button(
+                                                    onClick = { viewModel.setFpsPaused(false) },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.PlayArrow,
+                                                        contentDescription = "Resume",
+                                                        tint = Color.Black,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Tiếp Tục", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                }
+
+                                                // Exit Button
+                                                Button(
+                                                    onClick = { 
+                                                        viewModel.resetReflexGame()
+                                                        viewModel.setFpsPaused(false)
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.8f)),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Stop,
+                                                        contentDescription = "Exit",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Thoát", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -2483,6 +2646,171 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                             }
                         }
                     }
+
+                    val fpsIsPaused by viewModel.fpsIsPaused.collectAsState()
+
+                    // Floating Pause button for inline FPS
+                    if (reflexState == "spawned" || reflexState == "delaying") {
+                        IconButton(
+                            onClick = { viewModel.setFpsPaused(true) },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                                .size(36.dp)
+                                .testTag("fps_pause_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Pause,
+                                contentDescription = "Tạm Dừng FPS",
+                                tint = NeonPink,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    // Inline FPS Pause Overlay
+                    if (fpsIsPaused) {
+                        val targetPing by viewModel.targetPing.collectAsState()
+                        val targetJitter by viewModel.targetJitter.collectAsState()
+                        val targetLoss by viewModel.targetLoss.collectAsState()
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.9f))
+                                .pointerInput(Unit) { detectTapGestures { } },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Pause,
+                                        contentDescription = "Game Paused",
+                                        tint = NeonPink,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Text(
+                                        text = "BẮN SÚNG TẠM DỪNG",
+                                        color = NeonPink,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+                                
+                                Text(
+                                    text = "Cấu hình mạng hiện tại:",
+                                    color = Color.LightGray,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.9f)
+                                        .background(Color(0xFF151324), RoundedCornerShape(8.dp))
+                                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                        .padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Độ trễ (Ping):", color = Color.Gray, fontSize = 10.sp)
+                                        Text("${targetPing} ms", color = NeonCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Biến động (Jitter):", color = Color.Gray, fontSize = 10.sp)
+                                        Text("${targetJitter} ms", color = ElegantGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Mất gói (Loss):", color = Color.Gray, fontSize = 10.sp)
+                                        Text("${targetLoss} %", color = NeonPink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                // Button to Reset delay/latency
+                                Button(
+                                    onClick = { 
+                                        viewModel.resetNetworkDelay()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                    contentPadding = PaddingValues(vertical = 4.dp, horizontal = 12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Reset Network",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Cài Lại Mạng Mượt (10ms Ping)", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    // Resume Button
+                                    Button(
+                                        onClick = { viewModel.setFpsPaused(false) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(vertical = 4.dp, horizontal = 8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = "Resume",
+                                            tint = Color.Black,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Tiếp Tục", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    // Exit Button
+                                    Button(
+                                        onClick = { 
+                                            viewModel.resetReflexGame()
+                                            viewModel.setFpsPaused(false)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.8f)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(vertical = 4.dp, horizontal = 8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Stop,
+                                            contentDescription = "Exit",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Thoát", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Comprehensive Evaluation Diagnostic Report
@@ -2904,13 +3232,14 @@ fun MobaGameAreaContent(
     val mobaAllyTurretBotHP by viewModel.mobaAllyTurretBotHP.collectAsState()
     val mobaEnemyTurretTopHP by viewModel.mobaEnemyTurretTopHP.collectAsState()
     val mobaEnemyTurretBotHP by viewModel.mobaEnemyTurretBotHP.collectAsState()
+    val mobaDashTrails by viewModel.mobaDashTrails.collectAsState()
 
     val mobaScrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .padding(16.dp)
             .then(
-                if (isZoomed) Modifier.verticalScroll(mobaScrollState) else Modifier
+                if (isZoomed) Modifier.fillMaxHeight() else Modifier
             ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -2951,9 +3280,10 @@ fun MobaGameAreaContent(
 
             // Stats top right
             if (mobaState == "playing") {
+                val mobaIsPaused by viewModel.mobaIsPaused.collectAsState()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = "⚔️ $mobaKills / $mobaDeaths",
@@ -2962,12 +3292,25 @@ fun MobaGameAreaContent(
                         color = ElegantGold
                     )
                     IconButton(
-                        onClick = { viewModel.setMobaZoomed(!isZoomed) }
+                        onClick = { viewModel.setMobaPaused(!mobaIsPaused) },
+                        modifier = Modifier.size(36.dp).testTag("moba_pause_button")
+                    ) {
+                        Icon(
+                            imageVector = if (mobaIsPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            contentDescription = "Tạm dừng",
+                            tint = NeonPink,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.setMobaZoomed(!isZoomed) },
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = if (isZoomed) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                             contentDescription = "Zoom Game",
-                            tint = NeonCyan
+                            tint = NeonCyan,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -3552,6 +3895,77 @@ fun MobaGameAreaContent(
                         }
                     }
 
+                    // 5b. Moba Dash Trails (such as Tulen's lightning strikes!)
+                    mobaDashTrails.forEach { trail ->
+                        if (trail.isTulen) {
+                            // "hiệu ứng sấm sét" - columns of lightning striking down
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val tX = size.width * (trail.x / 100f)
+                                    val tY = size.height * (trail.y / 100f)
+                                    
+                                    val random = java.util.Random(trail.id.hashCode().toLong())
+                                    val segments = 4
+                                    val segHeight = tY / segments
+                                    
+                                    val lightningPath = Path().apply {
+                                        moveTo(tX + (random.nextFloat() * 12f - 6f), 0f)
+                                        for (step in 1 until segments) {
+                                            val currY = step * segHeight
+                                            val currX = tX + (random.nextFloat() * 24f - 12f)
+                                            lineTo(currX, currY)
+                                        }
+                                        lineTo(tX, tY)
+                                    }
+                                    
+                                    // Outer electric cyan glow
+                                    drawPath(
+                                        path = lightningPath,
+                                        color = Color(0xFF00FFFF).copy(alpha = 0.4f * trail.alpha),
+                                        style = Stroke(width = 6f, cap = StrokeCap.Round)
+                                    )
+                                    // Inner pure white-hot core
+                                    drawPath(
+                                        path = lightningPath,
+                                        color = Color.White.copy(alpha = trail.alpha),
+                                        style = Stroke(width = 2f, cap = StrokeCap.Round)
+                                    )
+                                    
+                                    // Flash light burst at the strike impact point!
+                                    drawCircle(
+                                        color = Color(0xFF22D3EE).copy(alpha = 0.5f * trail.alpha),
+                                        radius = 20f,
+                                        center = Offset(tX, tY)
+                                    )
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.8f * trail.alpha),
+                                        radius = 8f,
+                                        center = Offset(tX, tY)
+                                    )
+                                }
+                                Text(
+                                    text = "⚡",
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.offset(
+                                        x = boardWidth * (trail.x / 100f) - 8.dp,
+                                        y = boardHeight * (trail.y / 100f) - 16.dp
+                                    )
+                                )
+                            }
+                        } else {
+                            // Draw standard ghost trails for Murad or other heroes
+                            val trailX = boardWidth * (trail.x / 100f) - 10.dp
+                            val trailY = boardHeight * (trail.y / 100f) - 10.dp
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = trailX, y = trailY)
+                                    .size(20.dp)
+                                    .background(Color(trail.color).copy(alpha = 0.35f * trail.alpha), CircleShape)
+                                    .border(1.dp, Color(trail.color).copy(alpha = 0.5f * trail.alpha), CircleShape)
+                            )
+                        }
+                    }
+
                     // 6. Player Hero (Tulen / Valhein / Murad / Yasuo)
                     if (mobaHeroHP > 0f) {
                         val glow = (mobaHero == "Tulen" && mobaPassiveStacks >= 5) || 
@@ -3576,7 +3990,7 @@ fun MobaGameAreaContent(
 
                     // 7. Projectiles (Đạn bay)
                     mobaProjectiles.forEach { proj ->
-                        if (proj.type == "yasuo_slash_visual") {
+                        if (proj.type == "yasuo_slash_visual" || proj.type == "yasuo_basic") {
                             // "vết chém katana đầy hoa mĩ" for Yasuo
                             val sXDp = boardWidth * (proj.x / 100f)
                             val sYDp = boardHeight * (proj.y / 100f)
@@ -3878,42 +4292,65 @@ fun MobaGameAreaContent(
                                     style = Stroke(width = 2.5f, cap = StrokeCap.Round)
                                 )
                             }
-                        } else if (proj.type == "alpha_s2_sweep") {
-                            // Force swing: expanding cyber energy circle
-                            val infiniteTransition = rememberInfiniteTransition(label = "sweep_pulse")
-                            val sweepRadiusMultiplier by infiniteTransition.animateFloat(
-                                initialValue = 0.5f,
-                                targetValue = 1.0f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(400, easing = LinearEasing),
-                                    repeatMode = RepeatMode.Restart
-                                ),
-                                label = "sweep_r"
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size((proj.radius * 2.5f).dp)
-                                    .offset(
-                                        x = boardWidth * (proj.x / 100f) - (proj.radius * 1.25f).dp,
-                                        y = boardHeight * (proj.y / 100f) - (proj.radius * 1.25f).dp
-                                    )
-                            ) {
+                        } else if (proj.type == "alpha_basic" || proj.type == "alpha_s2_sweep") {
+                            // "vết chém công nghệ tương lai" (future tech slash) for Alpha
+                            val sXDp = boardWidth * (proj.x / 100f)
+                            val sYDp = boardHeight * (proj.y / 100f)
+                            val eXDp = boardWidth * (proj.targetX / 100f)
+                            val eYDp = boardHeight * (proj.targetY / 100f)
+                            
+                            Box(modifier = Modifier.fillMaxSize()) {
                                 Canvas(modifier = Modifier.fillMaxSize()) {
-                                    drawCircle(
-                                        color = Color(0xFF00FFFF).copy(alpha = 0.15f * (1.1f - sweepRadiusMultiplier)),
-                                        radius = (size.width / 2f) * sweepRadiusMultiplier
+                                    val sX = size.width * (proj.x / 100f)
+                                    val sY = size.height * (proj.y / 100f)
+                                    val eX = size.width * (proj.targetX / 100f)
+                                    val eY = size.height * (proj.targetY / 100f)
+                                    
+                                    val slashPath = Path().apply {
+                                        moveTo(sX, sY)
+                                        quadraticTo(
+                                            (sX + eX) / 2f + 15f,
+                                            (sY + eY) / 2f - 15f,
+                                            eX,
+                                            eY
+                                        )
+                                    }
+                                    // Outer neon-cyber glow
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFF22D3EE).copy(alpha = 0.4f),
+                                        style = Stroke(width = 12f, cap = StrokeCap.Round)
                                     )
-                                    drawCircle(
-                                        color = Color(0xFF22D3EE).copy(alpha = 0.8f * (1.1f - sweepRadiusMultiplier)),
-                                        radius = (size.width / 2f) * sweepRadiusMultiplier,
-                                        style = Stroke(width = 3.5f)
+                                    // Mid purple-tech line
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFFD946EF).copy(alpha = 0.7f),
+                                        style = Stroke(width = 6f, cap = StrokeCap.Round)
                                     )
-                                    drawCircle(
-                                        color = Color.White.copy(alpha = 0.9f * (1.1f - sweepRadiusMultiplier)),
-                                        radius = (size.width / 2f) * sweepRadiusMultiplier - 4f,
-                                        style = Stroke(width = 1.8f)
+                                    // Inner white-hot laser core
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFFFFFFFF),
+                                        style = Stroke(width = 2.5f, cap = StrokeCap.Round)
                                     )
                                 }
+                                // Cyber symbols floating off the slash
+                                Text(
+                                    text = "⚡",
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.offset(
+                                        x = (sXDp + eXDp) / 2f - 10.dp,
+                                        y = (sYDp + eYDp) / 2f - 18.dp
+                                    )
+                                )
+                                Text(
+                                    text = "🤖",
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.offset(
+                                        x = eXDp - 6.dp,
+                                        y = eYDp - 10.dp
+                                    )
+                                )
                             }
                         } else if (proj.type == "alpha_ult_laser") {
                             // Orbital Laser: Gigantic high-tech vertical cyber pillar
@@ -4007,6 +4444,128 @@ fun MobaGameAreaContent(
                                     cap = StrokeCap.Round
                                 )
                             }
+                        } else if (proj.type == "tulen_s1") {
+                            // "hiệu ứng sấm sét" - Chiêu 1 Lôi Quang (zigzag lightning bolts)
+                            val headX = boardWidth * (proj.x / 100f)
+                            val headY = boardHeight * (proj.y / 100f)
+                            
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val hX = size.width * (proj.x / 100f)
+                                    val hY = size.height * (proj.y / 100f)
+                                    
+                                    // Glow electric halo
+                                    drawCircle(
+                                        color = Color(0xFF22D3EE).copy(alpha = 0.35f),
+                                        radius = proj.radius * 6.5f,
+                                        center = Offset(hX, hY)
+                                    )
+                                    drawCircle(
+                                        color = Color.White,
+                                        radius = proj.radius * 2.8f,
+                                        center = Offset(hX, hY)
+                                    )
+                                    
+                                    // Generate zigzag lightning bolts around the orb
+                                    val random = java.util.Random(proj.hashCode().toLong() + System.currentTimeMillis() / 150)
+                                    for (j in 0..3) {
+                                        val angle = (j * Math.PI / 2) + (random.nextDouble() * 0.4 - 0.2)
+                                        val length = proj.radius * 13f
+                                        val midX = hX + Math.cos(angle).toFloat() * length * 0.5f + (random.nextFloat() * 12f - 6f)
+                                        val midY = hY + Math.sin(angle).toFloat() * length * 0.5f + (random.nextFloat() * 12f - 6f)
+                                        val endX = hX + Math.cos(angle).toFloat() * length
+                                        val endY = hY + Math.sin(angle).toFloat() * length
+                                        
+                                        val boltPath = Path().apply {
+                                            moveTo(hX, hY)
+                                            lineTo(midX, midY)
+                                            lineTo(endX, endY)
+                                        }
+                                        drawPath(
+                                            path = boltPath,
+                                            color = Color(0xFF00FFFF),
+                                            style = Stroke(width = 3.5f, cap = StrokeCap.Round)
+                                        )
+                                        drawPath(
+                                            path = boltPath,
+                                            color = Color.White,
+                                            style = Stroke(width = 1.2f, cap = StrokeCap.Round)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "⚡",
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.offset(
+                                        x = headX - 6.dp,
+                                        y = headY - 14.dp
+                                    )
+                                )
+                            }
+                        } else if (proj.type == "tulen_ult") {
+                            // "hiệu ứng sấm sét" - Chiêu 3 Lôi Điểu (Thunderbird)
+                            val headX = boardWidth * (proj.x / 100f)
+                            val headY = boardHeight * (proj.y / 100f)
+                            
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val hX = size.width * (proj.x / 100f)
+                                    val hY = size.height * (proj.y / 100f)
+                                    
+                                    // Glowing purple/violet electric aura
+                                    drawCircle(
+                                        color = Color(0xFFE020FF).copy(alpha = 0.4f),
+                                        radius = proj.radius * 5.5f,
+                                        center = Offset(hX, hY)
+                                    )
+                                    drawCircle(
+                                        color = Color.White,
+                                        radius = proj.radius * 2.2f,
+                                        center = Offset(hX, hY)
+                                    )
+                                    
+                                    // Outer crackling violent storm bolts
+                                    val random = java.util.Random(proj.hashCode().toLong() + System.currentTimeMillis() / 100)
+                                    for (j in 0..4) {
+                                        val angle = (j * 2 * Math.PI / 5) + (random.nextDouble() * 0.3 - 0.15)
+                                        val length = proj.radius * 11f
+                                        val midX = hX + Math.cos(angle).toFloat() * length * 0.6f + (random.nextFloat() * 10f - 5f)
+                                        val midY = hY + Math.sin(angle).toFloat() * length * 0.6f + (random.nextFloat() * 10f - 5f)
+                                        val endX = hX + Math.cos(angle).toFloat() * length
+                                        val endY = hY + Math.sin(angle).toFloat() * length
+                                        
+                                        val boltPath = Path().apply {
+                                            moveTo(hX, hY)
+                                            lineTo(midX, midY)
+                                            lineTo(endX, endY)
+                                        }
+                                        drawPath(
+                                            path = boltPath,
+                                            color = Color(0xFFC084FC),
+                                            style = Stroke(width = 4.5f, cap = StrokeCap.Round)
+                                        )
+                                        drawPath(
+                                            path = boltPath,
+                                            color = Color.White,
+                                            style = Stroke(width = 1.5f, cap = StrokeCap.Round)
+                                        )
+                                    }
+                                }
+                                // Center magical thunderbird / lightning bird emoji with extra purple electricity
+                                Row(
+                                    modifier = Modifier.offset(
+                                        x = headX - 14.dp,
+                                        y = headY - 14.dp
+                                    ),
+                                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                                ) {
+                                    Text(
+                                        text = "⚡🦅",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
                         } else {
                             Box(
                                 modifier = Modifier
@@ -4075,7 +4634,14 @@ fun MobaGameAreaContent(
                     }
                 }
 
-                // 10. Tactical Status HUD (Premium status & objective hub outside the canvas)
+                Column(
+                    modifier = Modifier
+                        .then(
+                            if (isZoomed) Modifier.weight(1f).verticalScroll(mobaScrollState) else Modifier
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // 10. Tactical Status HUD (Premium status & objective hub outside the canvas)
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -4238,21 +4804,168 @@ fun MobaGameAreaContent(
                             }
                         }
                     }
+
+                    // MOBA Pause Overlay
+                    val mobaIsPaused by viewModel.mobaIsPaused.collectAsState()
+                    if (mobaIsPaused) {
+                        val targetPing by viewModel.targetPing.collectAsState()
+                        val targetJitter by viewModel.targetJitter.collectAsState()
+                        val targetLoss by viewModel.targetLoss.collectAsState()
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.9f))
+                                .pointerInput(Unit) { detectTapGestures { } },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Pause,
+                                        contentDescription = "Game Paused",
+                                        tint = NeonPink,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = "ĐẤU TRƯỜNG TẠM DỪNG",
+                                        color = NeonPink,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                                
+                                Text(
+                                    text = "Cấu hình mạng hiện tại:",
+                                    color = Color.LightGray,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.9f)
+                                        .background(Color(0xFF151324), RoundedCornerShape(8.dp))
+                                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Độ trễ (Ping):", color = Color.Gray, fontSize = 10.sp)
+                                        Text("${targetPing} ms", color = NeonCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Biến động (Jitter):", color = Color.Gray, fontSize = 10.sp)
+                                        Text("${targetJitter} ms", color = ElegantGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Mất gói (Loss):", color = Color.Gray, fontSize = 10.sp)
+                                        Text("${targetLoss} %", color = NeonPink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                // Button to Reset delay/latency
+                                Button(
+                                    onClick = { 
+                                        viewModel.resetNetworkDelay()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                    contentPadding = PaddingValues(vertical = 4.dp, horizontal = 12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Reset Network",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Cài Lại Mạng Mượt (10ms Ping)", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    // Resume Button
+                                    Button(
+                                        onClick = { viewModel.setMobaPaused(false) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(vertical = 4.dp, horizontal = 8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = "Resume",
+                                            tint = Color.Black,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Tiếp Tục", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    // Exit Button
+                                    Button(
+                                        onClick = { 
+                                            viewModel.stopMobaGame()
+                                            viewModel.setMobaPaused(false)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.8f)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(vertical = 4.dp, horizontal = 8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Stop,
+                                            contentDescription = "Exit",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Thoát", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
-                // Log display bubble
+                // Log display bubble (with fixed height to prevent vertical shifting during notifications)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(38.dp)
                         .background(Color(0xFF1E293B).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                         .border(1.dp, CardSpaceBorder, RoundedCornerShape(8.dp))
-                        .padding(10.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = mobaLog,
                         fontSize = 11.sp,
                         color = if (mobaLog.contains("CẢNH BÁO") || mobaLog.contains("RỤNG") || mobaLog.contains("MẤT")) Color(0xFFF43F5E) else Color.LightGray,
                         textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -4673,6 +5386,7 @@ fun MobaGameAreaContent(
                         }
                     }
                 }
+                } // End of inner Column
             }
             "victory", "defeat" -> {
                 if (mobaDiagnosticReport != null) {

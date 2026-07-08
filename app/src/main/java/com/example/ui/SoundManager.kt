@@ -7,6 +7,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 object SoundManager {
+    var volume: Float = 1.0f
+
     fun playSound(type: String) {
         Thread {
             try {
@@ -245,6 +247,14 @@ object SoundManager {
     }
 
     private fun playBuffer(buffer: ShortArray, sampleRate: Int) {
+        if (volume <= 0f) return
+        val scaledBuffer = if (volume < 1f) {
+            ShortArray(buffer.size) { i ->
+                (buffer[i] * volume).toInt().coerceIn(-32768, 32767).toShort()
+            }
+        } else {
+            buffer
+        }
         try {
             val track = AudioTrack.Builder()
                 .setAudioAttributes(
@@ -260,16 +270,16 @@ object SoundManager {
                         .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                         .build()
                 )
-                .setBufferSizeInBytes(buffer.size * 2)
+                .setBufferSizeInBytes(scaledBuffer.size * 2)
                 .setTransferMode(AudioTrack.MODE_STATIC)
                 .build()
 
-            track.write(buffer, 0, buffer.size)
+            track.write(scaledBuffer, 0, scaledBuffer.size)
             track.play()
             
             Thread {
                 try {
-                    Thread.sleep((buffer.size * 1000L / sampleRate) + 150)
+                    Thread.sleep((scaledBuffer.size * 1000L / sampleRate) + 150)
                     track.stop()
                     track.release()
                 } catch (e: Exception) {

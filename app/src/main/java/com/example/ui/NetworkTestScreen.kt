@@ -36,6 +36,7 @@ import kotlin.math.sin
 
 @Composable
 fun NetworkTestScreen(viewModel: MainViewModel) {
+    val appLanguage by viewModel.appLanguage.collectAsState() // Observe language changes instantly
     val testState by viewModel.networkTestState.collectAsState()
     val progress by viewModel.currentTestProgress.collectAsState()
     val currentSpeed by viewModel.currentTestSpeed.collectAsState()
@@ -81,13 +82,13 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Phân Tích Đường Truyền",
+                        text = t("analyzer_title"),
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Đo lường độ trễ ping, jitter, tốc độ tải và phân tích tối ưu liên hệ mạng.",
+                        text = t("analyzer_subtitle"),
                         color = ElegantTextSecondary,
                         fontSize = 12.sp
                     )
@@ -111,7 +112,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
             ) {
                 if (testState == "IDLE") {
                     Text(
-                        text = "Hệ thống đã sẵn sàng",
+                        text = t("analyzer_ready"),
                         color = ElegantTextSecondary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -143,7 +144,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "BẮT ĐẦU ĐO",
+                                    text = t("analyzer_btn_start"),
                                     color = Color.White,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
@@ -155,7 +156,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Nhấp để đo thông số mạng thực tế",
+                        text = t("analyzer_click_to_test"),
                         color = ElegantTextSecondary,
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center
@@ -164,7 +165,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                 } else if (testState == "COMPLETED") {
                     // Completed status presentation
                     Text(
-                        text = "Phân tích hoàn tất!",
+                        text = t("analyzer_completed"),
                         color = NeonCyan,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
@@ -197,13 +198,13 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         MetricCard(
-                            title = "Tải xuống",
+                            title = t("analyzer_download"),
                             value = "${finalDownloadSpeed ?: 0.0} Mbps",
                             icon = Icons.Default.ArrowDownward,
                             color = if ((finalDownloadSpeed ?: 0.0) >= 35.0) Color(0xFF10B981) else if ((finalDownloadSpeed ?: 0.0) >= 15.0) Color(0xFF3B82F6) else Color(0xFFF59E0B)
                         )
                         MetricCard(
-                            title = "Tải lên",
+                            title = t("analyzer_upload"),
                             value = "${finalUploadSpeed ?: 0.0} Mbps",
                             icon = Icons.Default.ArrowUpward,
                             color = if ((finalUploadSpeed ?: 0.0) >= 15.0) Color(0xFF10B981) else if ((finalUploadSpeed ?: 0.0) >= 8.0) Color(0xFF3B82F6) else Color(0xFFF59E0B)
@@ -219,16 +220,16 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.Refresh, contentDescription = "Test Again")
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Đo lại kết nối", fontWeight = FontWeight.Bold)
+                        Text(text = t("analyzer_retest"), fontWeight = FontWeight.Bold)
                     }
 
                 } else {
                     // Active testing mode: testing ping, download or upload
                     val activeLabel = when (testState) {
-                        "TESTING_PING" -> "Đang đo độ trễ & độ ổn định..."
-                        "TESTING_DOWNLOAD" -> "Đang kiểm tra tốc độ tải xuống..."
-                        "TESTING_UPLOAD" -> "Đang kiểm tra tốc độ tải lên..."
-                        else -> "Đang tiến hành phân tích..."
+                        "TESTING_PING" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "Measuring latency & stability..." else "Đang đo độ trễ & độ ổn định..."
+                        "TESTING_DOWNLOAD" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "Testing download speed..." else "Đang kiểm tra tốc độ tải xuống..."
+                        "TESTING_UPLOAD" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "Testing upload speed..." else "Đang kiểm tra tốc độ tải lên..."
+                        else -> if (LocaleManager.currentLanguage == AppLanguage.EN) "Running network diagnostics..." else "Đang tiến hành phân tích..."
                     }
 
                     Text(
@@ -480,7 +481,11 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                     // Ask Linh Chi Integration Button
                     Button(
                         onClick = {
-                            val textToSend = "Linh Chi ơi, anh vừa đo kết nối mạng được Ping ${report.ping}ms, Jitter ${report.jitter}ms, Tải xuống ${report.downloadSpeed}Mbps, Tải lên ${report.uploadSpeed}Mbps. Đánh giá mạng của anh thuộc mức '${report.statusText}'. Hãy tư vấn dỗ dành anh và khuyên anh cách chơi game hay hơn đi!"
+                            val textToSend = if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                                "Hi Linh Chi, I just measured my network connection: Ping ${report.ping}ms, Jitter ${report.jitter}ms, Download ${report.downloadSpeed}Mbps, Upload ${report.uploadSpeed}Mbps. My connection status is '${report.statusText}'. Please give me romantic/funny optimization advice and tips to play better!"
+                            } else {
+                                "Linh Chi ơi, anh vừa đo kết nối mạng được Ping ${report.ping}ms, Jitter ${report.jitter}ms, Tải xuống ${report.downloadSpeed}Mbps, Tải lên ${report.uploadSpeed}Mbps. Đánh giá mạng của anh thuộc mức '${report.statusText}'. Hãy tư vấn dỗ dành anh và khuyên anh cách chơi game hay hơn đi!"
+                            }
                             viewModel.setTab(2) // Switch to Linh Chi chat tab
                             viewModel.sendMessage(textToSend)
                         },
@@ -489,7 +494,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.Forum, contentDescription = "Consult Assistant")
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Tư vấn mạng với trợ lý Linh Chi", fontWeight = FontWeight.Bold)
+                        Text(text = t("analyzer_btn_consult"), fontWeight = FontWeight.Bold)
                     }
                 }
             }

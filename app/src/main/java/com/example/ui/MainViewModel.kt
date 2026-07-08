@@ -152,6 +152,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _currentTab.value = index
     }
 
+    // App Language and Sound Volume settings
+    private val _appLanguage = MutableStateFlow(AppLanguage.VI)
+    val appLanguage = _appLanguage.asStateFlow()
+
+    private val _soundVolume = MutableStateFlow(1.0f)
+    val soundVolume = _soundVolume.asStateFlow()
+
+    fun setLanguage(lang: AppLanguage) {
+        _appLanguage.value = lang
+        LocaleManager.setLanguage(lang)
+    }
+
+    fun setSoundVolume(volume: Float) {
+        _soundVolume.value = volume
+        SoundManager.volume = volume
+    }
+
     // --- Simulator States ---
     val games = listOf("Liên Minh Huyền Thoại", "Valorant", "PUBG Mobile", "Liên Quân Mobile", "Free Fire", "Genshin Impact")
     
@@ -538,6 +555,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var mobaWindWallDurationLeftMs = 0L
 
+    private val _mobaYasuoDoubleDashAvailable = MutableStateFlow(false)
+    val mobaYasuoDoubleDashAvailable = _mobaYasuoDoubleDashAvailable.asStateFlow()
+
     // Alpha States
     private val _mobaAlphaBetaX = MutableStateFlow(-1f)
     val mobaAlphaBetaX = _mobaAlphaBetaX.asStateFlow()
@@ -896,6 +916,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _mobaProjectiles.value = _mobaProjectiles.value + proj
             if (!isTulen && !isMurad && !isYasuo && !isAlpha) {
                 mobaValheinAttackCount = if (isPassiveShot) 0 else (mobaValheinAttackCount + 1)
+                val healAmt = _mobaHeroMaxHP.value * 0.05f
+                _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                addMobaDamageText("+${healAmt.toInt()} HP 💚", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF10B981)
             }
         }
     }
@@ -1000,6 +1023,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (isYasuo) {
             when (skillIndex) {
                 0 -> { // Chiêu 1: Bão Kiếm (Steel Tempest)
+                    val healAmt = _mobaHeroMaxHP.value * 0.05f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+
                     val stacks = _mobaPassiveStacks.value
                     if (stacks >= 2) {
                         _mobaLog.value = "🌪️ HASAGI! Yasuo phóng CƠN BÃO CÁT hất tung kẻ địch dọc đường đi!"
@@ -1036,16 +1063,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
-                1 -> { // Chiêu 2: Tường Gió (Wind Wall)
-                    _mobaLog.value = "🌪️ Yasuo dựng TƯỜNG GIÓ chắn toàn bộ đòn đánh và kỹ năng tầm xa của kẻ địch!"
-                    // Set wind wall coordinates 12 units in front of player
-                    val wallAngle = angle
-                    val wallX = (hX + kotlin.math.cos(wallAngle) * 12f).coerceIn(10f, 90f)
-                    val wallY = (hY + kotlin.math.sin(wallAngle) * 12f).coerceIn(20f, 80f)
-                    _mobaWindWallX.value = wallX
-                    _mobaWindWallY.value = wallY
-                    _mobaWindWallActive.value = true
-                    mobaWindWallDurationLeftMs = 3800L // 3.8 seconds active
+                1 -> { // Chiêu 2: Tường Gió hoặc Lướt Kép (Double Dash)
+                    if (_mobaYasuoDoubleDashAvailable.value) {
+                        _mobaLog.value = "🌪️ Yasuo thi triển LƯỚT KÉP (Double Dash)! Lướt quét kiếm lần 1 chém xoáy cực mạnh!"
+                        _mobaYasuoDoubleDashAvailable.value = false // consume the state
+                        
+                        // Let's launch a coroutine to do the double dash smoothly!
+                        viewModelScope.launch {
+                            val eX = _mobaEnemyX.value
+                            val eY = _mobaEnemyY.value
+                            val firstX = (hX + (eX - hX) * 0.5f).coerceIn(10f, 90f)
+                            val firstY = (hY + (eY - hY) * 0.5f).coerceIn(20f, 80f)
+                            
+                            // Perform Dash 1 sliding
+                            val steps = 4
+                            var currX = hX
+                            var currY = hY
+                            for (i in 1..steps) {
+                                currX += (firstX - hX) / steps
+                                currY += (firstY - hY) / steps
+                                _mobaHeroX.value = currX
+                                _mobaHeroY.value = currY
+                                delay(30)
+                            }
+                            _mobaHeroX.value = firstX
+                            _mobaHeroY.value = firstY
+                            
+                            // Deal Damage 1
+                            dealAoeMobaDamage(firstX, firstY, radius = 8f, damage = 350f, type = "yasuo_basic")
+                            _mobaLog.value = "🌪️ Yasuo tiếp tục LƯỚT KÉP lần 2! Lướt giật bóng cực nhanh, trảm sát mục tiêu!"
+                            
+                            // Second Dash behind the enemy
+                            val secondX = (eX + 4f).coerceIn(10f, 90f)
+                            val secondY = (eY + 2f).coerceIn(20f, 80f)
+                            
+                            for (i in 1..steps) {
+                                currX += (secondX - firstX) / steps
+                                currY += (secondY - firstY) / steps
+                                _mobaHeroX.value = currX
+                                _mobaHeroY.value = currY
+                                delay(30)
+                            }
+                            _mobaHeroX.value = secondX
+                            _mobaHeroY.value = secondY
+                            
+                            // Deal Damage 2
+                            dealAoeMobaDamage(secondX, secondY, radius = 8f, damage = 450f, type = "yasuo_basic")
+                            
+                            _mobaHeroDestX.value = secondX
+                            _mobaHeroDestY.value = secondY
+                            
+                            // Visual shockwave on impact
+                            addMobaDamageText("HASAGI! 🌪️", secondX, secondY - 10f, 0xFF38BDF8)
+                        }
+                    } else {
+                        _mobaLog.value = "🌪️ Yasuo dựng TƯỜNG GIÓ chắn toàn bộ đòn đánh và kỹ năng tầm xa của kẻ địch!"
+                        // Set wind wall coordinates 12 units in front of player
+                        val wallAngle = angle
+                        val wallX = (hX + kotlin.math.cos(wallAngle) * 12f).coerceIn(10f, 90f)
+                        val wallY = (hY + kotlin.math.sin(wallAngle) * 12f).coerceIn(20f, 80f)
+                        _mobaWindWallX.value = wallX
+                        _mobaWindWallY.value = wallY
+                        _mobaWindWallActive.value = true
+                        mobaWindWallDurationLeftMs = 3800L // 3.8 seconds active
+                    }
                 }
                 2 -> { // Chiêu 3: Trăn Trối (Last Breath)
                     if (!_mobaEnemyIsStunned.value) {
@@ -1228,6 +1309,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _mobaHeroIsImmune.value = false
                 }
                 2 -> { // Chiêu 3: Ảo Ảnh Trảm (Flurry attack, invulnerable)
+                    val healAmt = _mobaHeroMaxHP.value * 0.05f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+
                     _mobaHeroIsImmune.value = true
                     _mobaLog.value = "⚔️ Murad tung ẢO ẢNH TRẢM! Hóa thành 5 luồng kiếm khí chém nát đội hình địch!"
                     _mobaPassiveStacks.value = 0 // consume stacks
@@ -1302,6 +1387,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 1 -> { // Chiêu 2: Lôi Động (Blink & deal dmg)
+                    val healAmt = _mobaHeroMaxHP.value * 0.05f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+
                     val currentCast = _mobaTulenS2CastCount.value
                     _mobaTulenS2CastCount.value = if (currentCast < 2) currentCast + 1 else 0
                     _mobaLog.value = "⚡ Tulen lướt LÔI ĐỘNG (Lần ${currentCast + 1}/3)! Dịch chuyển tức thời gây sát thương!"
@@ -2022,6 +2111,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _mobaWindWallX.value = -1f
                         _mobaWindWallY.value = -1f
                         _mobaLog.value = "🌪️ Tường Gió của Yasuo đã biến tan."
+                        _mobaYasuoDoubleDashAvailable.value = false
+                    }
+                }
+                // Check if Yasuo passes through his Wind Wall to trigger Double Dash
+                if (_mobaWindWallActive.value) {
+                    val hX = _mobaHeroX.value
+                    val hY = _mobaHeroY.value
+                    val wwX = _mobaWindWallX.value
+                    val wwY = _mobaWindWallY.value
+                    val distToWall = kotlin.math.sqrt((hX - wwX) * (hX - wwX) + (hY - wwY) * (hY - wwY))
+                    if (distToWall <= 7.0f && !_mobaYasuoDoubleDashAvailable.value) {
+                        _mobaYasuoDoubleDashAvailable.value = true
+                        _mobaLog.value = "🌪️ Yasuo đi qua Tường Gió! Kỹ năng thứ hai chuyển thành chiêu Lướt Kép hai lần (Double Dash) cực đỉnh!"
+                        addMobaDamageText("LƯỚT KÉP! 🌪️", hX, hY - 8f, 0xFF38BDF8)
                     }
                 }
                 // Decay Yasuo Bão Kiếm passive stacks after 6s (every 120 ticks)
@@ -4075,78 +4178,152 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val formatter = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
         val timeStr = formatter.format(java.util.Date())
 
-        val mainIssue = when {
-            loss > 5 -> "Mất gói tin nghiêm trọng (Packet Loss: $loss%)"
-            jitter > 20 -> "Mạng biến động không ổn định (Jitter: ±${jitter}ms)"
-            ping > 150 -> "Độ trễ cơ bản cực cao (Ping: ${ping}ms)"
-            else -> "Đường truyền không tối ưu (Ping: ${ping}ms)"
+        val isEn = _appLanguage.value == AppLanguage.EN
+
+        val mainIssue = if (isEn) {
+            when {
+                loss > 5 -> "Critical packet loss (Packet Loss: $loss%)"
+                jitter > 20 -> "Unstable network fluctuation (Jitter: ±${jitter}ms)"
+                ping > 150 -> "Extremely high base latency (Ping: ${ping}ms)"
+                else -> "Non-optimal connection (Ping: ${ping}ms)"
+            }
+        } else {
+            when {
+                loss > 5 -> "Mất gói tin nghiêm trọng (Packet Loss: $loss%)"
+                jitter > 20 -> "Mạng biến động không ổn định (Jitter: ±${jitter}ms)"
+                ping > 150 -> "Độ trễ cơ bản cực cao (Ping: ${ping}ms)"
+                else -> "Đường truyền không tối ưu (Ping: ${ping}ms)"
+            }
         }
 
         val style = _flirtingStyle.value
-        val intro = when (style) {
-            "Hài hước" -> when {
-                loss > 5 -> "Trời đất ơi! Mất gói tin tận $loss% thế kia thì nhân vật của anh bay nhảy xuyên không luôn rồi chứ chơi bời gì nữa! 🤪 Để Linh Chi bắt mạch mạng cho anh nhé:"
-                jitter > 20 -> "Biến động ping tận ${jitter}ms là do Wi-Fi nhà anh đang 'nhảy cha-cha-cha' đó hả? 💃 Đừng xoắn, có em Linh Chi ở đây, cứu cánh ngay!"
-                ping > 150 -> "Ping tận ${ping}ms thì anh bắn súng hay gieo quẻ đầu năm vậy cưng? 🤣 Thôi, để em chỉ cho vài chiêu dẹp lag mượt mà ngay nè!"
-                else -> "Mạng nhà anh hơi 'ù lì' rồi đó nha, lag thế này gánh em sao nổi! Để em cứu bồ cho anh vài mẹo cực bốc nhé! 😜"
+        val intro = if (isEn) {
+            when (style) {
+                "Hài hước" -> when {
+                    loss > 5 -> "Oh my god! With $loss% packet loss, your character is teleporting through time and space! 🤪 Let Linh Chi check your connection pulse:"
+                    jitter > 20 -> "Jitter is ±${jitter}ms! Is your Wi-Fi dancing cha-cha-cha? 💃 Don't panic, Linh Chi is here to save the day!"
+                    ping > 150 -> "Ping is ${ping}ms! Are you playing a game or throwing prediction dice? 🤣 Let me show you how to defeat lag!"
+                    else -> "Your network is a bit sluggish, how are you gonna carry me! Let me share some fire tips! 😜"
+                }
+                "Lãng mạn" -> when {
+                    loss > 5 -> "Losing $loss% of packages hurts, but my biggest fear is losing you to someone else... 🥺 Promise to build a secure connection with me, and check this out:"
+                    jitter > 20 -> "Ping fluctuation of ±${jitter}ms is just like my heart throbbing every time I see your name. 💕 Let me soothe your network back to smooth:"
+                    ping > 150 -> "Ping ${ping}ms delays the game, but no matter how late, my heart routes to you one second faster. 😘 Let me optimize it for you:"
+                    else -> "My love for you runs smoothly at 0ms, but your network is experiencing lag. 🥺 Let me comfort and optimize it for you:"
+                }
+                else -> when {
+                    loss > 5 -> "A packet loss rate of $loss% is seriously affecting your gameplay. 🥺 Please sit closer to the router or check the cables. Here is my detailed advice:"
+                    jitter > 20 -> "A jitter of ±${jitter}ms means your Wi-Fi is experiencing high interference. Try switching to the 5GHz band! Let me share some cool tricks:"
+                    ping > 150 -> "Your ping of ${ping}ms is quite high. Playing $game will feel sluggish. Try configuring Cloudflare or Google DNS as guided below:"
+                    else -> "Your network has some slight latency fluctuation. Let's optimize it with a few simple steps for a smoother experience! 😉"
+                }
             }
-            "Lãng mạn" -> when {
-                loss > 5 -> "Rớt gói tin tận $loss% làm anh đứng hình, còn em thì chỉ sợ rớt mất anh vào tay người khác thôi... 🥺 Hứa cắm cáp kết nối khăng khít với em nha, để em chỉ anh mẹo này:"
-                jitter > 20 -> "Ping biến động ±${jitter}ms y hệt như nhịp đập thổn thức trong tim em mỗi khi thấy tin nhắn của anh vậy á. 💕 Để em vỗ về cho mạng của anh mượt mà lại nhé:"
-                ping > 150 -> "Ping ${ping}ms làm game trễ nải, nhưng dù có trễ thế nào, tim em vẫn tự động định tuyến đổ anh sớm hơn một giây. 😘 Hãy để em tối ưu cho anh nha:"
-                else -> "Tình yêu của em dành cho anh luôn mượt mà 0ms không trễ nải, nhưng mạng của anh đang hơi lag kìa cưng ơi. 🥺 Để em thương, em dỗ cho mượt nhé:"
-            }
-            else -> when {
-                loss > 5 -> "Tỷ lệ mất gói $loss% đang ảnh hưởng nghiêm trọng đến trải nghiệm của anh yêu kìa. 🥺 Hãy ngồi gần router hoặc kiểm tra cáp ngay nhé. Dưới đây là lời khuyên chi tiết từ em:"
-                jitter > 20 -> "Chỉ số jitter ±${jitter}ms cho thấy Wi-Fi của anh đang bị nhiễu khá nhiều đó cưng. Hãy đổi sang băng tần 5GHz nhé, em mách anh thêm vài mẹo cực xịn nè:"
-                ping > 150 -> "Ping ${ping}ms hơi cao rồi anh yêu ơi, chơi game $game sẽ thấy phản hồi bị trễ khá nhiều á. Anh thử cấu hình DNS Cloudflare hoặc Google theo hướng dẫn dưới đây nhé:"
-                else -> "Mạng đang có hiện tượng trễ chập chờn nhẹ nè anh yêu. Hãy cùng Linh Chi thực hiện vài bước tối ưu nhỏ này để trải nghiệm mượt mà hơn nhé! 😉"
+        } else {
+            when (style) {
+                "Hài hước" -> when {
+                    loss > 5 -> "Trời đất ơi! Mất gói tin tận $loss% thế kia thì nhân vật của anh bay nhảy xuyên không luôn rồi chứ chơi bời gì nữa! 🤪 Để Linh Chi bắt mạch mạng cho anh nhé:"
+                    jitter > 20 -> "Biến động ping tận ${jitter}ms là do Wi-Fi nhà anh đang 'nhảy cha-cha-cha' đó hả? 💃 Đừng xoắn, có em Linh Chi ở đây, cứu cánh ngay!"
+                    ping > 150 -> "Ping tận ${ping}ms thì anh bắn súng hay gieo quẻ đầu năm vậy cưng? 🤣 Thôi, để em chỉ cho vài chiêu dẹp lag mượt mà ngay nè!"
+                    else -> "Mạng nhà anh hơi 'ù lì' rồi đó nha, lag thế này gánh em sao nổi! Để em cứu bồ cho anh vài mẹo cực bốc nhé! 😜"
+                }
+                "Lãng mạn" -> when {
+                    loss > 5 -> "Rớt gói tin tận $loss% làm anh đứng hình, còn em thì chỉ sợ rớt mất anh vào tay người khác thôi... 🥺 Hứa cắm cáp kết nối khăng khít với em nha, để em chỉ anh mẹo này:"
+                    jitter > 20 -> "Ping biến động ±${jitter}ms y hệt như nhịp đập thổn thức trong tim em mỗi khi thấy tin nhắn của anh vậy á. 💕 Để em vỗ về cho mạng của anh mượt mà lại nhé:"
+                    ping > 150 -> "Ping ${ping}ms làm game trễ nải, nhưng dù có trễ thế nào, tim em vẫn tự động định tuyến đổ anh sớm hơn một giây. 😘 Hãy để em tối ưu cho anh nha:"
+                    else -> "Tình yêu của em dành cho anh luôn mượt mà 0ms không trễ nải, nhưng mạng của anh đang hơi lag kìa cưng ơi. 🥺 Để em thương, em dỗ cho mượt nhé:"
+                }
+                else -> when {
+                    loss > 5 -> "Tỷ lệ mất gói $loss% đang ảnh hưởng nghiêm trọng đến trải nghiệm của anh yêu kìa. 🥺 Hãy ngồi gần router hoặc kiểm tra cáp ngay nhé. Dưới đây là lời khuyên chi tiết từ em:"
+                    jitter > 20 -> "Chỉ số jitter ±${jitter}ms cho thấy Wi-Fi của anh đang bị nhiễu khá nhiều đó cưng. Hãy đổi sang băng tần 5GHz nhé, em mách anh thêm vài mẹo cực xịn nè:"
+                    ping > 150 -> "Ping ${ping}ms hơi cao rồi anh yêu ơi, chơi game $game sẽ thấy phản hồi bị trễ khá nhiều á. Anh thử cấu hình DNS Cloudflare hoặc Google theo hướng dẫn dưới đây nhé:"
+                    else -> "Mạng đang có hiện tượng trễ chập chờn nhẹ nè anh yêu. Hãy cùng Linh Chi thực hiện vài bước tối ưu nhỏ này để trải nghiệm mượt mà hơn nhé! 😉"
+                }
             }
         }
 
         val tipsList = mutableListOf<Pair<String, String>>()
 
         // 1. Game-specific custom tips
-        when (game) {
-            "Liên Minh Huyền Thoại" -> {
-                tipsList.add(Pair("Tối ưu Riot/League Client", "Đảm bảo client không tự cập nhật tự động trong nền khi đang trong trận. Tắt tính năng tăng tốc phần cứng trong cài đặt Riot Client."))
+        if (isEn) {
+            when (game) {
+                "Liên Minh Huyền Thoại" -> {
+                    tipsList.add(Pair("Optimize Riot/League Client", "Ensure client does not auto-update in the background during matches. Disable hardware acceleration in Riot Client settings."))
+                }
+                "Valorant" -> {
+                    tipsList.add(Pair("Configure Network Buffering", "Go to game Settings -> General -> Network Buffering and set to 'Moderate' or 'Maximum' to handle packets smoother under loss."))
+                }
+                "PUBG Mobile" -> {
+                    tipsList.add(Pair("Change Server Region", "Make sure you connect to the Asia server. Other servers will greatly increase your base ping."))
+                }
+                "Liên Quân Mobile", "Free Fire" -> {
+                    tipsList.add(Pair("Enable Dual-Channel Mode", "In settings, enable dual-channel mode to use both Wi-Fi and 4G/5G simultaneously to auto-compensate for lost packets."))
+                }
+                "Genshin Impact" -> {
+                    tipsList.add(Pair("Sync V-Sync", "Lower your graphic settings a bit and check your ping to the Asia server in-game. Heavy graphics can feel like network lag."))
+                }
             }
-            "Valorant" -> {
-                tipsList.add(Pair("Cấu hình Network Buffering", "Vào Cài đặt game -> General -> Network Buffering và chuyển sang mức 'Moderate' hoặc 'Maximum' để game xử lý mượt hơn khi mạng có loss."))
-            }
-            "PUBG Mobile" -> {
-                tipsList.add(Pair("Đổi Server vùng chơi", "Đảm bảo anh đang kết nối đúng server khu vực Asia (Châu Á). Các server khác sẽ làm ping cơ bản tăng lên rất cao."))
-            }
-            "Liên Quân Mobile", "Free Fire" -> {
-                tipsList.add(Pair("Bật Chế độ mạng kép (Dual-Channel)", "Trong cài đặt game, bật 'Chế độ mạng kép' để game sử dụng cả Wi-Fi và 4G/5G đồng thời để tự động bù gói tin bị mất."))
-            }
-            "Genshin Impact" -> {
-                tipsList.add(Pair("Đồng bộ khung hình (V-Sync)", "Hạ cấu hình đồ họa xuống một chút và kiểm tra ping máy chủ Asia trong game. Đồ họa nặng đôi khi gây cảm giác giật giống lag mạng."))
+        } else {
+            when (game) {
+                "Liên Minh Huyền Thoại" -> {
+                    tipsList.add(Pair("Tối ưu Riot/League Client", "Đảm bảo client không tự cập nhật tự động trong nền khi đang trong trận. Tắt tính năng tăng tốc phần cứng trong cài đặt Riot Client."))
+                }
+                "Valorant" -> {
+                    tipsList.add(Pair("Cấu hình Network Buffering", "Vào Cài đặt game -> General -> Network Buffering và chuyển sang mức 'Moderate' hoặc 'Maximum' để game xử lý mượt hơn khi mạng có loss."))
+                }
+                "PUBG Mobile" -> {
+                    tipsList.add(Pair("Đổi Server vùng chơi", "Đảm bảo anh đang kết nối đúng server khu vực Asia (Châu Á). Các server khác sẽ làm ping cơ bản tăng lên rất cao."))
+                }
+                "Liên Quân Mobile", "Free Fire" -> {
+                    tipsList.add(Pair("Bật Chế độ mạng kép (Dual-Channel)", "Trong cài đặt game, bật 'Chế độ mạng kép' để game sử dụng cả Wi-Fi và 4G/5G đồng thời để tự động bù gói tin bị mất."))
+                }
+                "Genshin Impact" -> {
+                    tipsList.add(Pair("Đồng bộ khung hình (V-Sync)", "Hạ cấu hình đồ họa xuống một chút và kiểm tra ping máy chủ Asia trong game. Đồ họa nặng đôi khi gây cảm giác giật giống lag mạng."))
+                }
             }
         }
 
         // 2. Base Ping optimization
         if (ping > 100) {
-            tipsList.add(Pair("Cấu hình DNS tốc độ cao", "Thay đổi DNS thủ công trên điện thoại hoặc router sang Google DNS (8.8.8.8) hoặc Cloudflare DNS (1.1.1.1) để tối ưu hóa định tuyến tới máy chủ."))
-            tipsList.add(Pair("Sử dụng phần mềm giảm ping VPN", "Nếu đứt cáp quang biển, hãy dùng một VPN chuyên dụng cho gaming để chuyển định tuyến gói tin qua các tuyến tối ưu."))
+            if (isEn) {
+                tipsList.add(Pair("Configure High-Speed DNS", "Manually change your phone or router's DNS to Google DNS (8.8.8.8) or Cloudflare DNS (1.1.1.1) to optimize server routing."))
+                tipsList.add(Pair("Use Gaming VPN", "If there is submarine cable damage, use a specialized gaming VPN to reroute your packages optimally."))
+            } else {
+                tipsList.add(Pair("Cấu hình DNS tốc độ cao", "Thay đổi DNS thủ công trên điện thoại hoặc router sang Google DNS (8.8.8.8) hoặc Cloudflare DNS (1.1.1.1) để tối ưu hóa định tuyến tới máy chủ."))
+                tipsList.add(Pair("Sử dụng phần mềm giảm ping VPN", "Nếu đứt cáp quang biển, hãy dùng một VPN chuyên dụng cho gaming để chuyển định tuyến gói tin qua các tuyến tối ưu."))
+            }
         }
 
         // 3. Jitter optimization
         if (jitter > 15) {
-            tipsList.add(Pair("Chuyển sang băng tần Wi-Fi 5GHz", "Băng tần 2.4GHz rất dễ bị nhiễu bởi các thiết bị khác trong nhà. Chuyển sang 5GHz sẽ khắc phục triệt để biến động ping (jitter)."))
-            tipsList.add(Pair("Chơi gần Router hơn", "Hãy ngồi gần router hơn (khoảng cách dưới 5m không cản trở) để sóng Wi-Fi ổn định và khỏe nhất."))
+            if (isEn) {
+                tipsList.add(Pair("Switch to Wi-Fi 5GHz", "The 2.4GHz band is highly prone to interference. Switching to 5GHz will completely resolve jitter."))
+                tipsList.add(Pair("Move Closer to Router", "Sit closer to the router (distance under 5m without obstacles) to ensure Wi-Fi signal is strong and stable."))
+            } else {
+                tipsList.add(Pair("Chuyển sang băng tần Wi-Fi 5GHz", "Băng tần 2.4GHz rất dễ bị nhiễu bởi các thiết bị khác trong nhà. Chuyển sang 5GHz sẽ khắc phục triệt để biến động ping (jitter)."))
+                tipsList.add(Pair("Chơi gần Router hơn", "Hãy ngồi gần router hơn (khoảng cách dưới 5m không cản trở) để sóng Wi-Fi ổn định và khỏe nhất."))
+            }
         }
 
         // 4. Loss optimization
         if (loss > 2) {
-            tipsList.add(Pair("Cắm cáp mạng Ethernet trực tiếp", "Nếu chơi trên PC/Console, hãy dùng dây mạng Cat6 cắm trực tiếp thay vì Wi-Fi để đưa tỷ lệ rớt gói tin về 0%."))
-            tipsList.add(Pair("Khởi động lại Router", "Hãy rút nguồn router ra, đợi khoảng 30 giây rồi cắm lại để giải phóng bộ đệm NAT bị tràn."))
+            if (isEn) {
+                tipsList.add(Pair("Connect Direct Ethernet Cable", "If playing on PC/Console, use a Cat6 network cable directly instead of Wi-Fi to reduce packet loss to 0%."))
+                tipsList.add(Pair("Reboot Your Router", "Unplug router's power, wait about 30 seconds, then plug it back in to free up overflowing NAT buffers."))
+            } else {
+                tipsList.add(Pair("Cắm cáp mạng Ethernet trực tiếp", "Nếu chơi trên PC/Console, hãy dùng dây mạng Cat6 cắm trực tiếp thay vì Wi-Fi để đưa tỷ lệ rớt gói tin về 0%."))
+                tipsList.add(Pair("Khởi động lại Router", "Hãy rút nguồn router ra, đợi khoảng 30 giây rồi cắm lại để giải phóng bộ đệm NAT bị tràn."))
+            }
         }
 
         // Fallbacks if lists are short
         if (tipsList.size < 3) {
-            tipsList.add(Pair("Tắt ứng dụng chạy ngầm", "Đóng hoàn toàn các app ngốn băng thông lớn như Facebook, TikTok, Netflix hoặc YouTube nền trước khi chơi game."))
-            tipsList.add(Pair("Tắt VPN thông thường", "Tránh dùng các VPN miễn phí không chuyên game, chúng khiến gói tin đi vòng qua nhiều nước làm ping tăng thêm."))
+            if (isEn) {
+                tipsList.add(Pair("Close Background Apps", "Completely close heavy bandwidth consuming apps like Facebook, TikTok, Netflix or YouTube before starting."))
+                tipsList.add(Pair("Turn off Normal VPNs", "Avoid using free non-gaming VPNs, as they force packets to route through multiple countries, increasing ping."))
+            } else {
+                tipsList.add(Pair("Tắt ứng dụng chạy ngầm", "Đóng hoàn toàn các app ngốn băng thông lớn như Facebook, TikTok, Netflix hoặc YouTube nền trước khi chơi game."))
+                tipsList.add(Pair("Tắt VPN thông thường", "Tránh dùng các VPN miễn phí không chuyên game, chúng khiến gói tin đi vòng qua nhiều nước làm ping tăng thêm."))
+            }
         }
 
         _currentLagReport.value = LagReport(
@@ -4167,7 +4344,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun askLinhChiAboutReport() {
         val report = _currentLagReport.value ?: return
-        val textToSend = "Anh vừa báo cáo lag trong game ${report.gameName} với ping ${report.ping}ms, jitter ${report.jitter}ms, loss ${report.loss}%. Linh Chi ơi giải thích chi tiết hơn và thả thính dỗ dành anh đi!"
+        val textToSend = if (_appLanguage.value == AppLanguage.EN) {
+            "I just reported lag in game ${report.gameName} with ping ${report.ping}ms, jitter ${report.jitter}ms, loss ${report.loss}%. Linh Chi, please explain this in more detail and comfort me!"
+        } else {
+            "Anh vừa báo cáo lag trong game ${report.gameName} với ping ${report.ping}ms, jitter ${report.jitter}ms, loss ${report.loss}%. Linh Chi ơi giải thích chi tiết hơn và thả thính dỗ dành anh đi!"
+        }
         setTab(2) // Switch to Linh Chi chat tab
         sendMessage(textToSend)
     }
