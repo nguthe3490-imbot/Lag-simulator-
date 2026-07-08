@@ -105,7 +105,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import com.example.ui.theme.CardSpaceBackground
 import com.example.ui.theme.CardSpaceBorder
@@ -3237,6 +3241,31 @@ fun MobaGameAreaContent(
     val mobaEnemyTurretBotHP by viewModel.mobaEnemyTurretBotHP.collectAsState()
     val mobaDashTrails by viewModel.mobaDashTrails.collectAsState()
 
+    val comboScale = remember { Animatable(1.0f) }
+    val comboFlash = remember { Animatable(0.0f) }
+
+    LaunchedEffect(mobaComboCount) {
+        if (mobaComboCount > 0) {
+            launch {
+                comboScale.snapTo(1.35f)
+                comboScale.animateTo(
+                    targetValue = 1.0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+            launch {
+                comboFlash.snapTo(1.0f)
+                comboFlash.animateTo(
+                    targetValue = 0.0f,
+                    animationSpec = tween(350)
+                )
+            }
+        }
+    }
+
     val mobaScrollState = rememberScrollState()
     Column(
         modifier = Modifier
@@ -4655,13 +4684,34 @@ fun MobaGameAreaContent(
                             Color.Gray
                         }
 
+                        // Flash effect blending to pure white
+                        val flashVal = comboFlash.value
+                        val blendedColor = if (mobaComboActive && mobaComboCount > 0) {
+                            if (flashVal > 0f) {
+                                Color(
+                                    red = comboColor.red + (1f - comboColor.red) * flashVal,
+                                    green = comboColor.green + (1f - comboColor.green) * flashVal,
+                                    blue = comboColor.blue + (1f - comboColor.blue) * flashVal,
+                                    alpha = comboColor.alpha
+                                )
+                            } else {
+                                comboColor
+                            }
+                        } else {
+                            Color.Gray
+                        }
+
                         Box(
                             modifier = Modifier
                                 .width(90.dp)
+                                .graphicsLayer(
+                                    scaleX = comboScale.value,
+                                    scaleY = comboScale.value
+                                )
                                 .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
                                 .border(
                                     1.dp,
-                                    if (mobaComboActive && mobaComboCount > 0) comboColor.copy(alpha = 0.8f) else Color.DarkGray.copy(alpha = 0.5f),
+                                    if (mobaComboActive && mobaComboCount > 0) blendedColor.copy(alpha = 0.8f) else Color.DarkGray.copy(alpha = 0.5f),
                                     RoundedCornerShape(6.dp)
                                 )
                                 .padding(horizontal = 8.dp, vertical = 5.dp)
@@ -4687,7 +4737,7 @@ fun MobaGameAreaContent(
                                         modifier = Modifier
                                             .size(5.dp)
                                             .background(
-                                                if (mobaComboActive && mobaComboCount > 0) comboColor else Color.DarkGray,
+                                                if (mobaComboActive && mobaComboCount > 0) blendedColor else Color.DarkGray,
                                                 CircleShape
                                             )
                                     )
@@ -4698,7 +4748,7 @@ fun MobaGameAreaContent(
                                     text = if (mobaComboActive && mobaComboCount > 0) "x$mobaComboCount" else "x0",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = comboColor
+                                    color = blendedColor
                                 )
 
                                 // Progress Timer Bar
@@ -4712,7 +4762,7 @@ fun MobaGameAreaContent(
                                         modifier = Modifier
                                             .fillMaxWidth(mobaComboTimeProgress)
                                             .fillMaxHeight()
-                                            .background(comboColor, RoundedCornerShape(1.5.dp))
+                                            .background(blendedColor, RoundedCornerShape(1.5.dp))
                                     )
                                 }
                             }
