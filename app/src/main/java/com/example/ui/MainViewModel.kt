@@ -543,6 +543,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaHeroIsImmune = MutableStateFlow(false)
     val mobaHeroIsImmune = _mobaHeroIsImmune.asStateFlow()
 
+    // Moba Skill Combo HUD States
+    private val _mobaComboCount = MutableStateFlow(0)
+    val mobaComboCount = _mobaComboCount.asStateFlow()
+
+    private val _mobaComboActive = MutableStateFlow(false)
+    val mobaComboActive = _mobaComboActive.asStateFlow()
+
+    private val _mobaComboTimeProgress = MutableStateFlow(1f) // 1.0 down to 0.0 for visual timer bar
+    val mobaComboTimeProgress = _mobaComboTimeProgress.asStateFlow()
+
+    private var lastMobaSkillCastTimeMs = 0L
+    private val COMBO_WINDOW_MS = 4000L
+
     // Yasuo States
     private val _mobaWindWallX = MutableStateFlow(-1f)
     val mobaWindWallX = _mobaWindWallX.asStateFlow()
@@ -725,6 +738,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         mobaSkillCastsCount = 0
         mobaSkillsInterruptedCount = 0
         mobaSkillHitsCount = 0
+        _mobaComboCount.value = 0
+        _mobaComboActive.value = false
+        _mobaComboTimeProgress.value = 1f
+        lastMobaSkillCastTimeMs = 0L
         mobaGameStartTime = System.currentTimeMillis()
 
         viewModelScope.launch {
@@ -1006,6 +1023,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun performMobaSkillActual(skillIndex: Int) {
+        val now = System.currentTimeMillis()
+        if (_mobaComboActive.value && now - lastMobaSkillCastTimeMs <= COMBO_WINDOW_MS) {
+            _mobaComboCount.value += 1
+        } else {
+            _mobaComboCount.value = 1
+        }
+        _mobaComboActive.value = true
+        _mobaComboTimeProgress.value = 1f
+        lastMobaSkillCastTimeMs = now
+
         val hX = _mobaHeroX.value
         val hY = _mobaHeroY.value
         val isTulen = _mobaHero.value == "Tulen"
@@ -2042,6 +2069,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (_mobaIsPaused.value) continue
             tickCounter++
             val currentTime = System.currentTimeMillis()
+
+            // Update combo progress & decay
+            if (_mobaComboActive.value) {
+                val elapsed = currentTime - lastMobaSkillCastTimeMs
+                if (elapsed >= COMBO_WINDOW_MS) {
+                    _mobaComboActive.value = false
+                    _mobaComboCount.value = 0
+                    _mobaComboTimeProgress.value = 0f
+                } else {
+                    _mobaComboTimeProgress.value = (1f - (elapsed.toFloat() / COMBO_WINDOW_MS)).coerceIn(0f, 1f)
+                }
+            }
 
             // Update Beta orbit position if Alpha is playing
             if (_mobaHero.value == "Alpha") {

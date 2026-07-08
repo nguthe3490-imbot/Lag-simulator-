@@ -3206,6 +3206,9 @@ fun MobaGameAreaContent(
 ) {
     val isSimulating by viewModel.isSimulating.collectAsState()
     val currentPing by viewModel.currentPing.collectAsState()
+    val mobaComboCount by viewModel.mobaComboCount.collectAsState()
+    val mobaComboActive by viewModel.mobaComboActive.collectAsState()
+    val mobaComboTimeProgress by viewModel.mobaComboTimeProgress.collectAsState()
     val mobaMuradCloneX by viewModel.mobaMuradCloneX.collectAsState()
     val mobaMuradCloneY by viewModel.mobaMuradCloneY.collectAsState()
     val mobaMuradS2Active by viewModel.mobaMuradS2Active.collectAsState()
@@ -4611,24 +4614,107 @@ fun MobaGameAreaContent(
                         )
                     }
 
-                    // 9. High-Ping warning overlay on the game screen
-                    if (isSimulating && currentPing > 120) {
+                    // Top-Right Status Stack (Ping + Combo Counter HUD)
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // 9. High-Ping warning overlay on the game screen
+                        if (isSimulating && currentPing > 120) {
+                            Box(
+                                modifier = Modifier
+                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                    .border(1.dp, Color.Red.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.size(6.dp).background(Color.Red, CircleShape))
+                                    Text(
+                                        text = "PING: ${currentPing}ms",
+                                        color = Color.Red,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        // Persistent Combo Counter HUD
+                        val comboColor = if (mobaComboActive && mobaComboCount > 0) {
+                            when (mobaHero) {
+                                "Tulen" -> Color(0xFF00FFFF) // Electric Cyan
+                                "Murad" -> Color(0xFFFBBF24) // Gold
+                                "Yasuo" -> Color(0xFFFFCC33) // Elegant Yellow
+                                "Alpha" -> Color(0xFF22D3EE) // Bright Cyan
+                                else -> Color(0xFFE11D48) // Red
+                            }
+                        } else {
+                            Color.Gray
+                        }
+
                         Box(
                             modifier = Modifier
-                                .padding(8.dp)
-                                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                                .border(1.dp, Color.Red.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                .align(Alignment.TopEnd)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Box(modifier = Modifier.size(6.dp).background(Color.Red, CircleShape))
-                                Text(
-                                    text = "PING: ${currentPing}ms",
-                                    color = Color.Red,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
+                                .width(90.dp)
+                                .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(6.dp))
+                                .border(
+                                    1.dp,
+                                    if (mobaComboActive && mobaComboCount > 0) comboColor.copy(alpha = 0.8f) else Color.DarkGray.copy(alpha = 0.5f),
+                                    RoundedCornerShape(6.dp)
                                 )
+                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                // Title & Status text
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "COMBO",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (mobaComboActive && mobaComboCount > 0) Color.White else Color.Gray
+                                    )
+                                    // Bullet glow indicator
+                                    Box(
+                                        modifier = Modifier
+                                            .size(5.dp)
+                                            .background(
+                                                if (mobaComboActive && mobaComboCount > 0) comboColor else Color.DarkGray,
+                                                CircleShape
+                                            )
+                                    )
+                                }
+
+                                // Combo Number count
+                                Text(
+                                    text = if (mobaComboActive && mobaComboCount > 0) "x$mobaComboCount" else "x0",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = comboColor
+                                )
+
+                                // Progress Timer Bar
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp)
+                                        .background(Color(0xFF1E293B), RoundedCornerShape(1.5.dp))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(mobaComboTimeProgress)
+                                            .fillMaxHeight()
+                                            .background(comboColor, RoundedCornerShape(1.5.dp))
+                                    )
+                                }
                             }
                         }
                     }
