@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -2739,17 +2740,18 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     onDismissRequest = { viewModel.setMobaZoomed(false) },
                     properties = DialogProperties(usePlatformDefaultWidth = false)
                 ) {
-                    Box(
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.95f))
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
+                        val maxDialogHeight = maxHeight
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .wrapContentHeight()
+                                .heightIn(max = maxDialogHeight * 0.9f)
                                 .align(Alignment.Center),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = CardSpaceBackground),
@@ -2878,22 +2880,38 @@ fun MobaGameAreaContent(
     val currentPing by viewModel.currentPing.collectAsState()
     val mobaMuradCloneX by viewModel.mobaMuradCloneX.collectAsState()
     val mobaMuradCloneY by viewModel.mobaMuradCloneY.collectAsState()
+    val mobaMuradS2Active by viewModel.mobaMuradS2Active.collectAsState()
+    val mobaMuradS2X by viewModel.mobaMuradS2X.collectAsState()
+    val mobaMuradS2Y by viewModel.mobaMuradS2Y.collectAsState()
     val mobaWindWallX by viewModel.mobaWindWallX.collectAsState()
     val mobaWindWallY by viewModel.mobaWindWallY.collectAsState()
     val mobaWindWallActive by viewModel.mobaWindWallActive.collectAsState()
+    val mobaAlphaBetaX by viewModel.mobaAlphaBetaX.collectAsState()
+    val mobaAlphaBetaY by viewModel.mobaAlphaBetaY.collectAsState()
+    val mobaAlphaBetaActive by viewModel.mobaAlphaBetaActive.collectAsState()
     val mobaIsZoomed by viewModel.mobaIsZoomed.collectAsState()
 
     val mobaEnemyIsKnockedUp by viewModel.mobaEnemyIsKnockedUp.collectAsState()
     val mobaEnemyKnockupHeight by viewModel.mobaEnemyKnockupHeight.collectAsState()
     val mobaHeroKnockupHeight by viewModel.mobaHeroKnockupHeight.collectAsState()
 
+    val mobaEnemyShield by viewModel.mobaEnemyShield.collectAsState()
+    val mobaEnemyEnchanted by viewModel.mobaEnemyEnchanted.collectAsState()
+    val mobaEnemyS3TargetX by viewModel.mobaEnemyS3TargetX.collectAsState()
+    val mobaEnemyS3TargetY by viewModel.mobaEnemyS3TargetY.collectAsState()
+
     val mobaAllyTurretTopHP by viewModel.mobaAllyTurretTopHP.collectAsState()
     val mobaAllyTurretBotHP by viewModel.mobaAllyTurretBotHP.collectAsState()
     val mobaEnemyTurretTopHP by viewModel.mobaEnemyTurretTopHP.collectAsState()
     val mobaEnemyTurretBotHP by viewModel.mobaEnemyTurretBotHP.collectAsState()
 
+    val mobaScrollState = rememberScrollState()
     Column(
-        modifier = Modifier.padding(16.dp),
+        modifier = Modifier
+            .padding(16.dp)
+            .then(
+                if (isZoomed) Modifier.verticalScroll(mobaScrollState) else Modifier
+            ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Header
@@ -3082,6 +3100,25 @@ fun MobaGameAreaContent(
                             style = Stroke(width = 1.5f)
                         )
 
+                        // LUYỆN NGỤC Warning Indicator
+                        if (mobaEnemyS3TargetX > 0f) {
+                            val ringX = size.width * (mobaEnemyS3TargetX / 100f)
+                            val ringY = size.height * (mobaEnemyS3TargetY / 100f)
+                            val ringRadius = size.width * 0.14f
+                            
+                            drawCircle(
+                                color = Color(0xFFEF4444).copy(alpha = 0.45f),
+                                radius = ringRadius,
+                                center = Offset(ringX, ringY),
+                                style = Stroke(width = 3.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 10f), 0f))
+                            )
+                            drawCircle(
+                                color = Color(0xFFEF4444).copy(alpha = 0.15f),
+                                radius = ringRadius,
+                                center = Offset(ringX, ringY)
+                            )
+                        }
+
                         // 1.1 Draw Movement Direction Arrow
                         val dx = mobaHeroDestX - mobaHeroX
                         val dy = mobaHeroDestY - mobaHeroY
@@ -3243,7 +3280,9 @@ fun MobaGameAreaContent(
                                 x = boardWidth * (mobaEnemyX / 100f) - 18.dp,
                                 y = boardHeight * (mobaEnemyY / 100f) - 18.dp - mobaEnemyKnockupHeight.dp
                             ),
-                            color = Color(0xFFA21CAF)
+                            color = Color(0xFFA21CAF),
+                            shield = mobaEnemyShield,
+                            isEnchanted = mobaEnemyEnchanted
                         )
                     }
 
@@ -3339,11 +3378,186 @@ fun MobaGameAreaContent(
                         }
                     }
 
+                    // 5d. Murad's S2: Vô Ảnh Trận (Orange Sandstorm Circle)
+                    if (mobaMuradS2Active && mobaMuradS2X > 0f) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "muradS2")
+                        val rotateAngle by infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(3000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "rotateAngle"
+                        )
+                        val pulseScale by infiniteTransition.animateFloat(
+                            initialValue = 0.96f,
+                            targetValue = 1.04f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1200, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "pulseScale"
+                        )
+                        val sandAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.15f,
+                            targetValue = 0.35f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "sandAlpha"
+                        )
+
+                        // Vô Ảnh Trận boundary size is roughly 10% radius -> 20% diameter
+                        val s2CenterX = boardWidth * (mobaMuradS2X / 100f)
+                        val s2CenterY = boardHeight * (mobaMuradS2Y / 100f)
+                        val s2Diameter = boardWidth * 0.20f * pulseScale
+
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = s2CenterX - (s2Diameter / 2),
+                                    y = s2CenterY - (s2Diameter / 2)
+                                )
+                                .size(s2Diameter)
+                        ) {
+                            // 1. Spinning Sandstorm/Runic Canvas
+                            Canvas(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(rotationZ = rotateAngle)
+                            ) {
+                                val radius = size.width / 2f
+                                
+                                // Outer glowing circle
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFFF9800).copy(alpha = 0.8f),
+                                            Color(0xFFFF5722).copy(alpha = 0.4f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    radius = radius,
+                                    center = center
+                                )
+
+                                // Sandstorm ring boundary
+                                drawCircle(
+                                    color = Color(0xFFF59E0B),
+                                    radius = radius - 4f,
+                                    center = center,
+                                    style = Stroke(
+                                        width = 4.5f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 15f), 0f)
+                                    )
+                                )
+
+                                // Secondary thin orange ring
+                                drawCircle(
+                                    color = Color(0xFFFF5722).copy(alpha = 0.6f),
+                                    radius = radius - 15f,
+                                    center = center,
+                                    style = Stroke(
+                                        width = 1.5f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(30f, 20f), 0f)
+                                    )
+                                )
+                            }
+
+                            // 2. Translucent golden center sand area
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp)
+                                    .background(
+                                        Brush.radialGradient(
+                                            colors = listOf(
+                                                Color(0xFFFEF3C7).copy(alpha = sandAlpha),
+                                                Color(0xFFFBBF24).copy(alpha = sandAlpha * 0.5f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    )
+                                    .border(1.dp, Color(0xFFFFB74D).copy(alpha = 0.3f), CircleShape)
+                            )
+
+                            // 3. Falling gold particles/glyphs at cardinal directions on boundary
+                            Text("🏜️", modifier = Modifier.align(Alignment.Center), fontSize = 14.sp)
+                            Text("✨", modifier = Modifier.align(Alignment.TopCenter).offset(y = (-4).dp), fontSize = 10.sp)
+                            Text("✨", modifier = Modifier.align(Alignment.BottomCenter).offset(y = 4.dp), fontSize = 10.sp)
+                            Text("✨", modifier = Modifier.align(Alignment.CenterStart).offset(x = (-4).dp), fontSize = 10.sp)
+                            Text("✨", modifier = Modifier.align(Alignment.CenterEnd).offset(x = 4.dp), fontSize = 10.sp)
+                        }
+                    }
+
+                    // 5e. Alpha's Beta Drone (Robot Companion)
+                    if (mobaAlphaBetaActive && mobaAlphaBetaX > 0f) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "betaDrone")
+                        val betaPulse by infiniteTransition.animateFloat(
+                            initialValue = 0.9f,
+                            targetValue = 1.1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(600, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "betaPulse"
+                        )
+                        val betaAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.8f,
+                            targetValue = 1.0f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(800, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "betaAlpha"
+                        )
+
+                        val betaCenterX = boardWidth * (mobaAlphaBetaX / 100f)
+                        val betaCenterY = boardHeight * (mobaAlphaBetaY / 100f)
+
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = betaCenterX - 10.dp,
+                                    y = betaCenterY - 10.dp
+                                )
+                                .size(20.dp * betaPulse)
+                                .alpha(betaAlpha),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // High-tech circular energy ring under Beta
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawCircle(
+                                    color = Color(0xFF00FFFF).copy(alpha = 0.3f),
+                                    radius = size.width / 2f,
+                                    style = Stroke(width = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f))
+                                )
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFF22D3EE).copy(alpha = 0.5f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    radius = size.width / 3f
+                                )
+                            }
+                            Text(
+                                text = "🛸", // futuristic hovering drone emoji
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
                     // 6. Player Hero (Tulen / Valhein / Murad / Yasuo)
                     if (mobaHeroHP > 0f) {
                         val glow = (mobaHero == "Tulen" && mobaPassiveStacks >= 5) || 
                                    (mobaHero == "Murad" && mobaPassiveStacks >= 4) || 
-                                   (mobaHero == "Yasuo" && mobaHeroKnockupHeight > 0f)
+                                   (mobaHero == "Yasuo" && mobaHeroKnockupHeight > 0f) ||
+                                   (mobaHero == "Alpha" && mobaPassiveStacks >= 2)
                         MobaChampionView(
                             name = mobaHero,
                             isEnemy = false,
@@ -3355,38 +3569,245 @@ fun MobaGameAreaContent(
                                 x = boardWidth * (mobaHeroX / 100f) - 18.dp,
                                 y = boardHeight * (mobaHeroY / 100f) - 18.dp - mobaHeroKnockupHeight.dp
                             ),
-                            color = if (mobaHero == "Tulen") Color(0xFF06B6D4) else if (mobaHero == "Murad") Color(0xFFF59E0B) else if (mobaHero == "Yasuo") Color(0xFF64748B) else Color(0xFFFFCC33),
+                            color = if (mobaHero == "Tulen") Color(0xFF06B6D4) else if (mobaHero == "Murad") Color(0xFFF59E0B) else if (mobaHero == "Yasuo") Color(0xFF64748B) else if (mobaHero == "Alpha") Color(0xFF22D3EE) else Color(0xFFFFCC33),
                             hasGlow = glow
                         )
                     }
 
                     // 7. Projectiles (Đạn bay)
                     mobaProjectiles.forEach { proj ->
-                        if (proj.type == "murad_slash_visual") {
-                            // Draw a beautiful golden slash line from its position to targetX/Y
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                val sX = size.width * (proj.x / 100f)
-                                val sY = size.height * (proj.y / 100f)
-                                val eX = size.width * (proj.targetX / 100f)
-                                val eY = size.height * (proj.targetY / 100f)
-                                
-                                // Glowing outer golden line
-                                drawLine(
-                                    color = Color(0xFFF59E0B).copy(alpha = 0.8f),
-                                    start = Offset(sX, sY),
-                                    end = Offset(eX, eY),
-                                    strokeWidth = 6f
+                        if (proj.type == "yasuo_slash_visual") {
+                            // "vết chém katana đầy hoa mĩ" for Yasuo
+                            val sXDp = boardWidth * (proj.x / 100f)
+                            val sYDp = boardHeight * (proj.y / 100f)
+                            val eXDp = boardWidth * (proj.targetX / 100f)
+                            val eYDp = boardHeight * (proj.targetY / 100f)
+                            
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val sX = size.width * (proj.x / 100f)
+                                    val sY = size.height * (proj.y / 100f)
+                                    val eX = size.width * (proj.targetX / 100f)
+                                    val eY = size.height * (proj.targetY / 100f)
+                                    
+                                    val slashPath = Path().apply {
+                                        moveTo(sX, sY)
+                                        quadraticTo(
+                                            (sX + eX) / 2f - 25f,
+                                            (sY + eY) / 2f - 25f,
+                                            eX,
+                                            eY
+                                        )
+                                    }
+                                    // Soft pink outer shadow
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFFF472B6).copy(alpha = 0.5f),
+                                        style = Stroke(width = 8f, cap = StrokeCap.Round)
+                                    )
+                                    // Bright cyan-white core
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFFE0F2FE),
+                                        style = Stroke(width = 3.5f, cap = StrokeCap.Round)
+                                    )
+                                }
+                                // Sakura petals falling off the slash
+                                Text(
+                                    text = "🌸",
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.offset(
+                                        x = (sXDp + eXDp) / 2f - 18.dp,
+                                        y = (sYDp + eYDp) / 2f - 24.dp
+                                    )
                                 )
-                                // Bright white core line
-                                drawLine(
-                                    color = Color.White,
-                                    start = Offset(sX, sY),
-                                    end = Offset(eX, eY),
-                                    strokeWidth = 2.5f
+                                Text(
+                                    text = "✨",
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.offset(
+                                        x = eXDp - 8.dp,
+                                        y = eYDp - 8.dp
+                                    )
                                 )
-                                // Little cross/star sparkle at start and end
-                                drawCircle(Color(0xFFFFF7ED), radius = 4f, center = Offset(sX, sY))
-                                drawCircle(Color(0xFFFFF7ED), radius = 4f, center = Offset(eX, eY))
+                            }
+                        } else if (proj.type == "murad_slash_visual" || proj.type == "murad_desert_slash") {
+                            // "vết chém dao găm sa mạc" for Murad with stunning golden dash shadow trails
+                            val sXDp = boardWidth * (proj.x / 100f)
+                            val sYDp = boardHeight * (proj.y / 100f)
+                            val eXDp = boardWidth * (proj.targetX / 100f)
+                            val eYDp = boardHeight * (proj.targetY / 100f)
+                            
+                            val dx = proj.targetX - proj.x
+                            val dy = proj.targetY - proj.y
+                            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                            val ux = if (dist > 0.1f) dx / dist else 1f
+                            val uy = if (dist > 0.1f) dy / dist else 0f
+
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                // 1. Draw the beautiful neon slash wind arc
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val sX = size.width * (proj.x / 100f)
+                                    val sY = size.height * (proj.y / 100f)
+                                    val eX = size.width * (proj.targetX / 100f)
+                                    val eY = size.height * (proj.targetY / 100f)
+                                    
+                                    val slashPath = Path().apply {
+                                        moveTo(sX, sY)
+                                        quadraticTo(
+                                            (sX + eX) / 2f + 20f,
+                                            (sY + eY) / 2f - 20f,
+                                            eX,
+                                            eY
+                                        )
+                                    }
+                                    // Sandy-orange outer sandstorm wind
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFFD97706).copy(alpha = 0.6f),
+                                        style = Stroke(width = 10f, cap = StrokeCap.Round)
+                                    )
+                                    // Golden core dagger line
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFFFBBF24),
+                                        style = Stroke(width = 4f, cap = StrokeCap.Round)
+                                    )
+                                }
+
+                                // 2. Trailing Shadow Clones (Bóng lướt ảo ảnh) behind the current position
+                                // Far tail trail (smaller, faint)
+                                val x3Percent = (proj.x - ux * 6.5f).coerceIn(0f, 100f)
+                                val y3Percent = (proj.y - uy * 6.5f).coerceIn(0f, 100f)
+                                val t3X = boardWidth * (x3Percent / 100f) - 7.dp
+                                val t3Y = boardHeight * (y3Percent / 100f) - 7.dp
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = t3X, y = t3Y)
+                                        .size(14.dp)
+                                        .background(Color(0xFFFBBF24).copy(alpha = 0.15f), CircleShape)
+                                        .border(0.8.dp, Color(0xFFFF9800).copy(alpha = 0.25f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🗡️", fontSize = 6.sp, modifier = Modifier.alpha(0.2f))
+                                }
+
+                                // Medium trail
+                                val x2Percent = (proj.x - ux * 4.0f).coerceIn(0f, 100f)
+                                val y2Percent = (proj.y - uy * 4.0f).coerceIn(0f, 100f)
+                                val t2X = boardWidth * (x2Percent / 100f) - 9.dp
+                                val t2Y = boardHeight * (y2Percent / 100f) - 9.dp
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = t2X, y = t2Y)
+                                        .size(18.dp)
+                                        .background(Color(0xFFFBBF24).copy(alpha = 0.35f), CircleShape)
+                                        .border(1.dp, Color(0xFFFF9800).copy(alpha = 0.45f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🗡️", fontSize = 8.sp, modifier = Modifier.alpha(0.4f))
+                                }
+
+                                // Close tail trail
+                                val x1Percent = (proj.x - ux * 1.8f).coerceIn(0f, 100f)
+                                val y1Percent = (proj.y - uy * 1.8f).coerceIn(0f, 100f)
+                                val t1X = boardWidth * (x1Percent / 100f) - 11.dp
+                                val t1Y = boardHeight * (y1Percent / 100f) - 11.dp
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = t1X, y = t1Y)
+                                        .size(22.dp)
+                                        .background(Color(0xFFF59E0B).copy(alpha = 0.55f), CircleShape)
+                                        .border(1.2.dp, Color(0xFFFEF08A).copy(alpha = 0.7f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🗡️", fontSize = 10.sp, modifier = Modifier.alpha(0.6f))
+                                }
+
+                                // Head Shadow Clone (Vị trí hiện tại của Murad đang chém lướt)
+                                val headX = boardWidth * (proj.x / 100f) - 13.dp
+                                val headY = boardHeight * (proj.y / 100f) - 13.dp
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = headX, y = headY)
+                                        .size(26.dp)
+                                        .background(Color(0xFFFF9800).copy(alpha = 0.85f), CircleShape)
+                                        .border(1.8.dp, Color.White, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🗡️", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                // Desert sand wind sparkles
+                                Text(
+                                    text = "🏜️",
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.offset(
+                                        x = (sXDp + eXDp) / 2f - 10.dp,
+                                        y = (sYDp + eYDp) / 2f - 16.dp
+                                    )
+                                )
+                                Text(
+                                    text = "✨",
+                                    fontSize = 9.sp,
+                                    modifier = Modifier.offset(
+                                        x = sXDp - 5.dp,
+                                        y = sYDp - 5.dp
+                                    )
+                                )
+                            }
+                        } else if (proj.type == "maloch_cleave" || proj.type == "basic_cleave") {
+                            // "vết chém đao địa ngục" for enemy Maloch
+                            val sXDp = boardWidth * (proj.x / 100f)
+                            val sYDp = boardHeight * (proj.y / 100f)
+                            val eXDp = boardWidth * (proj.targetX / 100f)
+                            val eYDp = boardHeight * (proj.targetY / 100f)
+                            
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val sX = size.width * (proj.x / 100f)
+                                    val sY = size.height * (proj.y / 100f)
+                                    val eX = size.width * (proj.targetX / 100f)
+                                    val eY = size.height * (proj.targetY / 100f)
+                                    
+                                    val sweepPath = Path().apply {
+                                        moveTo(sX, sY)
+                                        quadraticTo(
+                                            (sX + eX) / 2f - 30f,
+                                            (sY + eY) / 2f + 30f,
+                                            eX,
+                                            eY
+                                        )
+                                    }
+                                    // Dark purple-black underworld shadow
+                                    drawPath(
+                                        path = sweepPath,
+                                        color = Color(0xFF581C87).copy(alpha = 0.7f),
+                                        style = Stroke(width = 12f, cap = StrokeCap.Round)
+                                    )
+                                    // Hot lava-red core cleave
+                                    drawPath(
+                                        path = sweepPath,
+                                        color = Color(0xFFEF4444),
+                                        style = Stroke(width = 5f, cap = StrokeCap.Round)
+                                    )
+                                }
+                                // Underworld fire skulls
+                                Text(
+                                    text = "🔥",
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.offset(
+                                        x = (sXDp + eXDp) / 2f - 10.dp,
+                                        y = (sYDp + eYDp) / 2f - 20.dp
+                                    )
+                                )
+                                Text(
+                                    text = "👿",
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.offset(
+                                        x = eXDp - 10.dp,
+                                        y = eYDp - 10.dp
+                                    )
+                                )
                             }
                         } else if (proj.type == "yasuo_q") {
                             // Swift sword thrust visual line
@@ -3431,6 +3852,160 @@ fun MobaGameAreaContent(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text("🌪️", fontSize = 24.sp)
+                            }
+                        } else if (proj.type == "alpha_s1_wave") {
+                            // Tech shockwave slash
+                            Canvas(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .offset(
+                                        x = boardWidth * (proj.x / 100f) - 24.dp,
+                                        y = boardHeight * (proj.y / 100f) - 24.dp
+                                    )
+                            ) {
+                                drawArc(
+                                    color = Color(0xFF22D3EE),
+                                    startAngle = -60f,
+                                    sweepAngle = 120f,
+                                    useCenter = false,
+                                    style = Stroke(width = 6f, cap = StrokeCap.Round)
+                                )
+                                drawArc(
+                                    color = Color.White,
+                                    startAngle = -45f,
+                                    sweepAngle = 90f,
+                                    useCenter = false,
+                                    style = Stroke(width = 2.5f, cap = StrokeCap.Round)
+                                )
+                            }
+                        } else if (proj.type == "alpha_s2_sweep") {
+                            // Force swing: expanding cyber energy circle
+                            val infiniteTransition = rememberInfiniteTransition(label = "sweep_pulse")
+                            val sweepRadiusMultiplier by infiniteTransition.animateFloat(
+                                initialValue = 0.5f,
+                                targetValue = 1.0f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(400, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Restart
+                                ),
+                                label = "sweep_r"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size((proj.radius * 2.5f).dp)
+                                    .offset(
+                                        x = boardWidth * (proj.x / 100f) - (proj.radius * 1.25f).dp,
+                                        y = boardHeight * (proj.y / 100f) - (proj.radius * 1.25f).dp
+                                    )
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawCircle(
+                                        color = Color(0xFF00FFFF).copy(alpha = 0.15f * (1.1f - sweepRadiusMultiplier)),
+                                        radius = (size.width / 2f) * sweepRadiusMultiplier
+                                    )
+                                    drawCircle(
+                                        color = Color(0xFF22D3EE).copy(alpha = 0.8f * (1.1f - sweepRadiusMultiplier)),
+                                        radius = (size.width / 2f) * sweepRadiusMultiplier,
+                                        style = Stroke(width = 3.5f)
+                                    )
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.9f * (1.1f - sweepRadiusMultiplier)),
+                                        radius = (size.width / 2f) * sweepRadiusMultiplier - 4f,
+                                        style = Stroke(width = 1.8f)
+                                    )
+                                }
+                            }
+                        } else if (proj.type == "alpha_ult_laser") {
+                            // Orbital Laser: Gigantic high-tech vertical cyber pillar
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(36.dp)
+                                    .offset(
+                                        x = boardWidth * (proj.x / 100f) - 18.dp,
+                                        y = 0.dp
+                                    )
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    // Massive glowing background column
+                                    drawRect(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                Color(0xFF00FFFF).copy(alpha = 0.1f),
+                                                Color(0xFF22D3EE).copy(alpha = 0.4f),
+                                                Color(0xFFE0F2FE).copy(alpha = 0.8f),
+                                                Color(0xFF22D3EE).copy(alpha = 0.4f),
+                                                Color(0xFF00FFFF).copy(alpha = 0.1f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                                    // Bright white laser core
+                                    drawLine(
+                                        color = Color.White,
+                                        start = Offset(size.width / 2f, 0f),
+                                        end = Offset(size.width / 2f, size.height),
+                                        strokeWidth = 6f,
+                                        cap = StrokeCap.Square
+                                    )
+                                    // Tech horizontal particles pulsing along the line
+                                    val count = 8
+                                    for (i in 0..count) {
+                                        val yPos = (size.height / count) * i
+                                        drawCircle(
+                                            color = Color(0xFF22D3EE),
+                                            radius = 8f,
+                                            center = Offset(size.width / 2f, yPos)
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (proj.type == "alpha_beta_laser") {
+                            // Cybernetic Laser (Passive Attack)
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val sX = size.width * (proj.x / 100f)
+                                val sY = size.height * (proj.y / 100f)
+                                val eX = size.width * (proj.targetX / 100f)
+                                val eY = size.height * (proj.targetY / 100f)
+                                // Thick cyan beam
+                                drawLine(
+                                    color = Color(0xFF00FFFF).copy(alpha = 0.8f),
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 6f,
+                                    cap = StrokeCap.Round
+                                )
+                                // Intensely bright core
+                                drawLine(
+                                    color = Color.White,
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 2.5f,
+                                    cap = StrokeCap.Round
+                                )
+                            }
+                        } else if (proj.type == "alpha_s1_laser") {
+                            // Beta precision auxiliary laser
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val sX = size.width * (proj.x / 100f)
+                                val sY = size.height * (proj.y / 100f)
+                                val eX = size.width * (proj.targetX / 100f)
+                                val eY = size.height * (proj.targetY / 100f)
+                                drawLine(
+                                    color = Color(0xFF00FFFF),
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 4.5f,
+                                    cap = StrokeCap.Round
+                                )
+                                drawLine(
+                                    color = Color.White,
+                                    start = Offset(sX, sY),
+                                    end = Offset(eX, eY),
+                                    strokeWidth = 1.5f,
+                                    cap = StrokeCap.Round
+                                )
                             }
                         } else {
                             Box(
@@ -3530,6 +4105,7 @@ fun MobaGameAreaContent(
                                             if (mobaHero == "Tulen") Color(0xFF06B6D4).copy(alpha = 0.2f)
                                             else if (mobaHero == "Murad") Color(0xFFF59E0B).copy(alpha = 0.2f)
                                             else if (mobaHero == "Yasuo") Color(0xFF38BDF8).copy(alpha = 0.2f)
+                                            else if (mobaHero == "Alpha") Color(0xFF22D3EE).copy(alpha = 0.2f)
                                             else Color(0xFFE11D48).copy(alpha = 0.2f),
                                             RoundedCornerShape(4.dp)
                                         )
@@ -3538,6 +4114,7 @@ fun MobaGameAreaContent(
                                             if (mobaHero == "Tulen") Color(0xFF06B6D4)
                                             else if (mobaHero == "Murad") Color(0xFFF59E0B)
                                             else if (mobaHero == "Yasuo") Color(0xFF38BDF8)
+                                            else if (mobaHero == "Alpha") Color(0xFF22D3EE)
                                             else Color(0xFFE11D48),
                                             RoundedCornerShape(4.dp)
                                         )
@@ -3552,18 +4129,20 @@ fun MobaGameAreaContent(
                                 }
 
                                 // Passive Stacks details with dynamic color indication
-                                val passiveText = when (mobaHero) {
-                                    "Yasuo" -> if (mobaPassiveStacks == 2) "🌪️ HASAGI!" else "Tụ bão: $mobaPassiveStacks/2"
-                                    "Murad" -> if (mobaPassiveStacks >= 4) "🔓 KHAI ẤN!" else "Tích ấn: $mobaPassiveStacks/4"
-                                    "Tulen" -> if (mobaPassiveStacks >= 5) "⚡ LÔI ẤN SẴN SÀNG" else "Lôi ấn: $mobaPassiveStacks/5"
-                                    else -> "Tốc đánh: +${mobaPassiveStacks * 6}%"
-                                }
-                                val passiveColor = when (mobaHero) {
-                                    "Yasuo" -> if (mobaPassiveStacks == 2) Color(0xFF38BDF8) else Color.LightGray
-                                    "Murad" -> if (mobaPassiveStacks >= 4) Color(0xFFF59E0B) else Color.LightGray
-                                    "Tulen" -> if (mobaPassiveStacks >= 5) Color(0xFF22D3EE) else Color.LightGray
-                                    else -> Color(0xFFFCD34D)
-                                }
+                                        val passiveText = when (mobaHero) {
+                                            "Yasuo" -> if (mobaPassiveStacks == 2) "🌪️ HASAGI!" else "Tụ bão: $mobaPassiveStacks/2"
+                                            "Murad" -> if (mobaPassiveStacks >= 4) "🔓 KHAI ẤN!" else "Tích ấn: $mobaPassiveStacks/4"
+                                            "Tulen" -> if (mobaPassiveStacks >= 5) "⚡ LÔI ẤN SẴN SÀNG" else "Lôi ấn: $mobaPassiveStacks/5"
+                                            "Alpha" -> if (mobaPassiveStacks >= 2) "🛸 BETA LASER!" else "Cyber Mark: $mobaPassiveStacks/2"
+                                            else -> "Tốc đánh: +${mobaPassiveStacks * 6}%"
+                                        }
+                                        val passiveColor = when (mobaHero) {
+                                            "Yasuo" -> if (mobaPassiveStacks == 2) Color(0xFF38BDF8) else Color.LightGray
+                                            "Murad" -> if (mobaPassiveStacks >= 4) Color(0xFFF59E0B) else Color.LightGray
+                                            "Tulen" -> if (mobaPassiveStacks >= 5) Color(0xFF22D3EE) else Color.LightGray
+                                            "Alpha" -> if (mobaPassiveStacks >= 2) Color(0xFF00FFFF) else Color.LightGray
+                                            else -> Color(0xFFFCD34D)
+                                        }
                                 Text(
                                     text = passiveText,
                                     fontSize = 11.sp,
@@ -3744,6 +4323,7 @@ fun MobaGameAreaContent(
                             val isTulen = mobaHero == "Tulen"
                             val isMurad = mobaHero == "Murad"
                             val isYasuo = mobaHero == "Yasuo"
+                            val isAlpha = mobaHero == "Alpha"
                             val skills = if (isTulen) {
                                 listOf(
                                     Triple("Chiêu 1: Lôi Quang", "⚡ Sát thương fan-shape", 55f),
@@ -3761,6 +4341,12 @@ fun MobaGameAreaContent(
                                     Triple("Chiêu 1: Bão Kiếm", "⚔️ Đâm kiếm tích lũy tụ bão phóng lốc xoáy", 0f),
                                     Triple("Chiêu 2: Tường Gió", "🌪️ Dựng tường chắn mọi chiêu thức địch", 0f),
                                     Triple("Ult: Trăn Trối", "⚡ Bay chém địch bị hất tung (Cần khống chế)", 0f)
+                                )
+                            } else if (isAlpha) {
+                                listOf(
+                                    Triple("Chiêu 1: Đao Quét Thăng Hoa", "🤖 Quét đao thăng hoa & Beta phụ kích", 50f),
+                                    Triple("Chiêu 2: Đao Quét Năng Lượng", "🛡️ Vung thương quét tròn & Hồi HP", 60f),
+                                    Triple("Ult: Mũi Giáo Alpha", "🔥 Lao thẳng hất tung & Beta xả siêu Orbital Laser", 100f)
                                 )
                             } else {
                                 listOf(
@@ -4301,6 +4887,50 @@ fun MobaHeroSelection(
                     }
                 }
             }
+
+            // Alpha Card
+            Card(
+                modifier = Modifier
+                    .width(142.dp)
+                    .clickable { onSelectHero("Alpha") }
+                    .border(
+                        width = if (mobaHero == "Alpha") 2.dp else 1.dp,
+                        color = if (mobaHero == "Alpha") Color(0xFF22D3EE) else Color.DarkGray,
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (mobaHero == "Alpha") Color(0xFF0F2D37) else Color(0xFF0F172A)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .background(Color(0xFF22D3EE).copy(alpha = 0.2f), CircleShape)
+                            .border(2.dp, Color(0xFF22D3EE), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🤖", fontSize = 28.sp)
+                    }
+                    Text("Alpha", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Kẻ Đi Săn Tương Lai", fontSize = 10.sp, color = Color(0xFF22D3EE))
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Column(
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("• Sát thương công nghệ cybernetic chân thật từ drone Beta", fontSize = 9.sp, color = Color.LightGray)
+                        Text("• Phóng Mũi Giáo Alpha cực đại quét laser hủy diệt", fontSize = 9.sp, color = Color.LightGray)
+                    }
+                }
+            }
         }
 
         // Play Button
@@ -4428,20 +5058,23 @@ fun MobaChampionView(
     maxMp: Float = 0f,
     modifier: Modifier = Modifier,
     color: Color,
-    hasGlow: Boolean = false
+    hasGlow: Boolean = false,
+    shield: Float = 0f,
+    isEnchanted: Boolean = false
 ) {
     Column(
-        modifier = modifier.width(36.dp),
+        modifier = modifier.width(42.dp), // slightly wider for better accessibility and text layout
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        // HP Bar
+        // HP / Shield Bar
         val hpProgress = (hp / maxHp).coerceIn(0f, 1f)
+        val shieldProgress = (shield / maxHp).coerceIn(0f, 1f)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(3.dp)
-                .background(Color.DarkGray)
+                .height(4.dp)
+                .background(Color.DarkGray, RoundedCornerShape(1.dp))
         ) {
             Box(
                 modifier = Modifier
@@ -4449,6 +5082,14 @@ fun MobaChampionView(
                     .fillMaxWidth(hpProgress)
                     .background(if (isEnemy) Color.Red else Color(0xFF10B981))
             )
+            if (shield > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth((hpProgress + shieldProgress).coerceAtMost(1f))
+                        .background(Color(0xFF38BDF8).copy(alpha = 0.85f))
+                )
+            }
         }
 
         // Optional MP Bar
@@ -4457,41 +5098,62 @@ fun MobaChampionView(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
-                    .background(Color.DarkGray)
+                    .height(2.5.dp)
+                    .background(Color.DarkGray, RoundedCornerShape(1.dp))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(mpProgress)
-                    .background(Color(0xFF3B82F6))
+                        .background(Color(0xFF3B82F6))
                 )
             }
         }
 
         // Avatar
+        val borderColor = if (isEnchanted) {
+            Color(0xFFEF4444) // Enchanted sword red aura
+        } else if (hasGlow) {
+            Color(0xFF38BDF8) // Lightning/passive cyan aura
+        } else {
+            if (isEnemy) Color(0xFF991B1B) else Color(0xFF166534)
+        }
+        val borderWidth = if (isEnchanted || hasGlow) 2.5.dp else 1.5.dp
+
         Box(
             modifier = Modifier
-                .size(28.dp)
+                .size(30.dp)
                 .background(color, CircleShape)
                 .border(
-                    width = if (hasGlow) 2.dp else 1.5.dp,
-                    color = if (hasGlow) Color(0xFF38BDF8) else (if (isEnemy) Color.Red else Color.Green),
+                    width = borderWidth,
+                    color = borderColor,
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
+            val avatarEmoji = if (isEnemy) {
+                "👿"
+            } else {
+                when (name) {
+                    "Tulen" -> "⚡"
+                    "Yasuo" -> "⚔️"
+                    "Murad" -> "🗡️"
+                    "Alpha" -> "🤖"
+                    else -> "🏹"
+                }
+            }
             Text(
-                text = if (isEnemy) "👿" else (if (name == "Tulen") "⚡" else "🏹"),
-                fontSize = 13.sp,
+                text = avatarEmoji,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
         }
 
+        val displayName = if (isEnchanted) "🔥 $name 🔥" else name
         Text(
-            text = name,
+            text = displayName,
             fontSize = 7.sp,
-            color = Color.White,
+            color = if (isEnchanted) Color(0xFFFCA5A5) else Color.White,
             fontWeight = FontWeight.Bold,
             maxLines = 1
         )

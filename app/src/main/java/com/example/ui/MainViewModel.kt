@@ -269,6 +269,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _reflexState = MutableStateFlow("idle") // "idle", "preparing", "spawned", "delaying", "finished"
     val reflexState = _reflexState.asStateFlow()
 
+    private val _fpsIsPaused = MutableStateFlow(false)
+    val fpsIsPaused = _fpsIsPaused.asStateFlow()
+
+    private val _mobaIsPaused = MutableStateFlow(false)
+    val mobaIsPaused = _mobaIsPaused.asStateFlow()
+
+    fun setFpsPaused(paused: Boolean) {
+        _fpsIsPaused.value = paused
+    }
+
+    fun setMobaPaused(paused: Boolean) {
+        _mobaIsPaused.value = paused
+    }
+
+    fun resetNetworkDelay() {
+        _targetPing.value = 10
+        _targetJitter.value = 0
+        _targetLoss.value = 0
+    }
+
     private val _reflexTargetX = MutableStateFlow(0.5f)
     val reflexTargetX = _reflexTargetX.asStateFlow()
 
@@ -436,6 +456,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var mobaEnemyStunUntil = 0L
 
+    // Maloch Skill Stats
+    private val _mobaEnemyShield = MutableStateFlow(0f)
+    val mobaEnemyShield = _mobaEnemyShield.asStateFlow()
+
+    private val _mobaEnemyEnchanted = MutableStateFlow(false)
+    val mobaEnemyEnchanted = _mobaEnemyEnchanted.asStateFlow()
+
+    private val _mobaEnemyIsLeaping = MutableStateFlow(false)
+    val mobaEnemyIsLeaping = _mobaEnemyIsLeaping.asStateFlow()
+
+    private val _mobaEnemyS3TargetX = MutableStateFlow(-1f)
+    val mobaEnemyS3TargetX = _mobaEnemyS3TargetX.asStateFlow()
+
+    private val _mobaEnemyS3TargetY = MutableStateFlow(-1f)
+    val mobaEnemyS3TargetY = _mobaEnemyS3TargetY.asStateFlow()
+
+    var malochS1Cooldown = 0f
+    var malochS2Cooldown = 0f
+    var malochS3Cooldown = 0f
+    var malochShieldDurationLeft = 0L
+    var malochEnchantedDurationLeft = 0L
+
+    // Player Status
+    private val _mobaHeroIsStunned = MutableStateFlow(false)
+    val mobaHeroIsStunned = _mobaHeroIsStunned.asStateFlow()
+
+    private val _mobaHeroIsKnockedUp = MutableStateFlow(false)
+    val mobaHeroIsKnockedUp = _mobaHeroIsKnockedUp.asStateFlow()
+
     // Creeps and projectiles list
     private val _mobaCreeps = MutableStateFlow<List<MobaCreep>>(emptyList())
     val mobaCreeps = _mobaCreeps.asStateFlow()
@@ -463,6 +512,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaMuradCastCount = MutableStateFlow(0)
     val mobaMuradCastCount = _mobaMuradCastCount.asStateFlow()
 
+    private val _mobaMuradS2X = MutableStateFlow(-1f)
+    val mobaMuradS2X = _mobaMuradS2X.asStateFlow()
+
+    private val _mobaMuradS2Y = MutableStateFlow(-1f)
+    val mobaMuradS2Y = _mobaMuradS2Y.asStateFlow()
+
+    private val _mobaMuradS2Active = MutableStateFlow(false)
+    val mobaMuradS2Active = _mobaMuradS2Active.asStateFlow()
+
+    private var mobaMuradS2DurationLeftMs = 0L
+
     private val _mobaHeroIsImmune = MutableStateFlow(false)
     val mobaHeroIsImmune = _mobaHeroIsImmune.asStateFlow()
 
@@ -477,6 +537,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val mobaWindWallActive = _mobaWindWallActive.asStateFlow()
 
     private var mobaWindWallDurationLeftMs = 0L
+
+    // Alpha States
+    private val _mobaAlphaBetaX = MutableStateFlow(-1f)
+    val mobaAlphaBetaX = _mobaAlphaBetaX.asStateFlow()
+
+    private val _mobaAlphaBetaY = MutableStateFlow(-1f)
+    val mobaAlphaBetaY = _mobaAlphaBetaY.asStateFlow()
+
+    private val _mobaAlphaBetaActive = MutableStateFlow(false)
+    val mobaAlphaBetaActive = _mobaAlphaBetaActive.asStateFlow()
 
     // Score
     private val _mobaKills = MutableStateFlow(0)
@@ -538,11 +608,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _mobaMuradCloneX.value = -1f
         _mobaMuradCloneY.value = -1f
         _mobaMuradCastCount.value = 0
+        _mobaMuradS2X.value = -1f
+        _mobaMuradS2Y.value = -1f
+        _mobaMuradS2Active.value = false
+        mobaMuradS2DurationLeftMs = 0L
         _mobaHeroIsImmune.value = false
         _mobaWindWallX.value = -1f
         _mobaWindWallY.value = -1f
         _mobaWindWallActive.value = false
         mobaWindWallDurationLeftMs = 0L
+        _mobaAlphaBetaX.value = -1f
+        _mobaAlphaBetaY.value = -1f
+        _mobaAlphaBetaActive.value = false
     }
 
     fun startMobaGame() {
@@ -560,13 +637,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             "Tulen" -> 3000f
             "Murad" -> 2900f
             "Yasuo" -> 3500f
+            "Alpha" -> 3600f
             else -> 3200f
         }
         _mobaHeroHP.value = maxHp
         _mobaHeroMaxHP.value = maxHp
-        val maxMp = if (_mobaHero.value == "Yasuo") 0f else 500f
+        val maxMp = if (_mobaHero.value == "Yasuo") 0f else if (_mobaHero.value == "Alpha") 450f else 500f
         _mobaHeroMP.value = maxMp
         _mobaHeroMaxMP.value = maxMp
+
+        _mobaAlphaBetaX.value = _mobaHeroX.value
+        _mobaAlphaBetaY.value = _mobaHeroY.value - 4f
+        _mobaAlphaBetaActive.value = (_mobaHero.value == "Alpha")
 
         _mobaEnemyX.value = 65f
         _mobaEnemyY.value = 50f
@@ -577,6 +659,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _mobaEnemyKnockupHeight.value = 0f
         _mobaHeroKnockupHeight.value = 0f
         mobaEnemyStunUntil = 0L
+        _mobaEnemyShield.value = 0f
+        _mobaEnemyEnchanted.value = false
+        _mobaEnemyIsLeaping.value = false
+        _mobaEnemyS3TargetX.value = -1f
+        _mobaEnemyS3TargetY.value = -1f
+        malochS1Cooldown = 0f
+        malochS2Cooldown = 0f
+        malochS3Cooldown = 0f
+        malochShieldDurationLeft = 0L
+        malochEnchantedDurationLeft = 0L
+        _mobaHeroIsStunned.value = false
+        _mobaHeroIsKnockedUp.value = false
 
         _mobaCreeps.value = emptyList()
         _mobaProjectiles.value = emptyList()
@@ -596,6 +690,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _mobaMuradCloneX.value = -1f
         _mobaMuradCloneY.value = -1f
         _mobaMuradCastCount.value = 0
+        _mobaMuradS2X.value = -1f
+        _mobaMuradS2Y.value = -1f
+        _mobaMuradS2Active.value = false
+        mobaMuradS2DurationLeftMs = 0L
         _mobaHeroIsImmune.value = false
         _mobaWindWallX.value = -1f
         _mobaWindWallY.value = -1f
@@ -628,6 +726,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun moveHeroTo(targetX: Float, targetY: Float) {
         if (_mobaState.value != "playing") return
+        if (_mobaIsPaused.value) return
         if (_mobaHeroHP.value <= 0f) return // dead hero can't move
         _mobaMoveDirection.value = MobaMoveDirection.NONE
 
@@ -654,6 +753,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun moveHeroInDirection(dir: MobaMoveDirection) {
         if (_mobaState.value != "playing") return
+        if (_mobaIsPaused.value) return
         if (_mobaHeroHP.value <= 0f) return
 
         val currentX = _mobaHeroX.value
@@ -688,6 +788,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun triggerMobaBasicAttack() {
         if (_mobaState.value != "playing") return
+        if (_mobaIsPaused.value) return
         if (_mobaHeroHP.value <= 0f) return
 
         val actualPing = if (_isSimulating.value) _currentPing.value else 10
@@ -707,7 +808,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Find nearest enemy to attack
             val isMurad = _mobaHero.value == "Murad"
             val isYasuo = _mobaHero.value == "Yasuo"
-            val target = findNearestMobaEnemy(range = if (isMurad) 16f else if (isYasuo) 18f else 25f)
+            val isAlpha = _mobaHero.value == "Alpha"
+            val target = findNearestMobaEnemy(range = if (isMurad) 16f else if (isYasuo || isAlpha) 18f else 25f)
             if (target == null) {
                 _mobaLog.value = "⚠️ Không có kẻ địch nào trong tầm đánh!"
                 return@launch
@@ -762,11 +864,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             // Spawn basic projectile
             val isTulen = _mobaHero.value == "Tulen"
-            val projColor = if (isTulen) 0xFF33FFFF else if (isMurad) 0xFFEAB308 else if (isYasuo) 0xFFF1F5F9 else 0xFFFFCC33
-            val damage = if (isTulen) 140f else if (isMurad) 195f else if (isYasuo) 180f else 160f
+            val projColor = if (isTulen) 0xFF33FFFF else if (isMurad) 0xFFEAB308 else if (isYasuo) 0xFFF1F5F9 else if (isAlpha) 0xFF22D3EE else 0xFFFFCC33
+            val damage = if (isTulen) 140f else if (isMurad) 195f else if (isYasuo) 180f else if (isAlpha) 175f else 160f
             
-            val isPassiveShot = !isTulen && !isMurad && !isYasuo && (mobaValheinAttackCount >= 2)
-            val projType = if (isMurad) "murad_basic" else if (isYasuo) "yasuo_basic" else if (isPassiveShot) "passive_glaive" else "basic"
+            val isPassiveShot = !isTulen && !isMurad && !isYasuo && !isAlpha && (mobaValheinAttackCount >= 2)
+            val projType = if (isMurad) "murad_basic" else if (isYasuo) "yasuo_basic" else if (isAlpha) "alpha_basic" else if (isPassiveShot) "passive_glaive" else "basic"
             val finalColor = if (isPassiveShot) {
                 val rand = Random.nextInt(3)
                 when (rand) {
@@ -779,12 +881,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val proj = MobaProjectile(
                 x = _mobaHeroX.value,
                 y = _mobaHeroY.value,
-                speed = if (isMurad) 3.0f else if (isYasuo) 3.2f else 2.2f, // Murad and Yasuo attacks hit faster!
+                speed = if (isMurad) 3.0f else if (isYasuo) 3.2f else if (isAlpha) 3.4f else 2.2f, // Murad, Yasuo, Alpha hit faster!
                 isEnemy = false,
                 damage = damage,
                 type = projType,
                 color = finalColor,
-                radius = if (isMurad || isYasuo) 1.2f else 1.8f,
+                radius = if (isMurad || isYasuo || isAlpha) 1.2f else 1.8f,
                 targetX = target.first,
                 targetY = target.second,
                 isHoming = true,
@@ -792,7 +894,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             
             _mobaProjectiles.value = _mobaProjectiles.value + proj
-            if (!isTulen && !isMurad && !isYasuo) {
+            if (!isTulen && !isMurad && !isYasuo && !isAlpha) {
                 mobaValheinAttackCount = if (isPassiveShot) 0 else (mobaValheinAttackCount + 1)
             }
         }
@@ -800,12 +902,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun castMobaSkill(skillIndex: Int) {
         if (_mobaState.value != "playing") return
+        if (_mobaIsPaused.value) return
         if (_mobaHeroHP.value <= 0f) return
         if (_mobaSkillCooldowns.value[skillIndex] > 0f) return
 
         val isTulen = _mobaHero.value == "Tulen"
         val isMurad = _mobaHero.value == "Murad"
         val isYasuo = _mobaHero.value == "Yasuo"
+        val isAlpha = _mobaHero.value == "Alpha"
 
         // For Murad, Ultimate is locked unless passive stacks are 4
         if (isMurad && skillIndex == 2 && _mobaPassiveStacks.value < 4) {
@@ -821,9 +925,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // Check Mana cost (Yasuo uses no mana)
         val manaCost = if (isYasuo) 0f else when (skillIndex) {
-            0 -> if (isTulen) 55f else if (isMurad) 55f else 50f
-            1 -> if (isTulen) 60f else if (isMurad) 60f else 65f
-            else -> if (isTulen) 100f else if (isMurad) 80f else 110f
+            0 -> if (isTulen) 55f else if (isMurad) 55f else if (isAlpha) 50f else 50f
+            1 -> if (isTulen) 60f else if (isMurad) 60f else if (isAlpha) 60f else 65f
+            else -> if (isTulen) 100f else if (isMurad) 80f else if (isAlpha) 100f else 110f
         }
 
         if (_mobaHeroMP.value < manaCost) {
@@ -846,14 +950,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             0 -> {
                 if (isMurad) {
                     if (_mobaMuradCastCount.value < 2) 0.6f else 8.0f
-                } else if (isTulen) 4.5f else 4.0f
+                } else if (isTulen) 4.5f else if (isAlpha) 4.0f else 4.0f
             }
             1 -> {
                 if (isTulen) {
                     if (_mobaTulenS2CastCount.value < 2) 0.4f else 5.5f
-                } else if (isMurad) 7.0f else 6.0f
+                } else if (isMurad) 7.0f else if (isAlpha) 5.5f else 6.0f
             }
-            else -> if (isMurad) 12.0f else if (isTulen) 11.0f else 14.0f
+            else -> if (isMurad) 12.0f else if (isTulen) 11.0f else if (isAlpha) 12.0f else 14.0f
         }
         cds[skillIndex] = baseCd
         _mobaSkillCooldowns.value = cds
@@ -981,6 +1085,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         for (i in 1..4) {
                             dealAoeMobaDamage(eX, eY, radius = 12f, damage = 190f, type = "yasuo_ult")
                             addMobaDamageText("TRĂN TRỐI! 🌪️", eX + Random.nextFloat() * 8f - 4f, eY - 8f - _mobaEnemyKnockupHeight.value, 0xFFFFFFFF)
+                            
+                            val offsetDist = 10f
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = eX - offsetDist + Random.nextFloat() * (2 * offsetDist),
+                                y = eY - offsetDist + Random.nextFloat() * (2 * offsetDist),
+                                speed = 4f,
+                                isEnemy = false,
+                                damage = 0f,
+                                type = "yasuo_slash_visual",
+                                color = 0xFF38BDF8,
+                                radius = 2.0f,
+                                targetX = eX + offsetDist - Random.nextFloat() * (2 * offsetDist),
+                                targetY = eY + offsetDist - Random.nextFloat() * (2 * offsetDist),
+                                isHoming = false
+                            )
                             delay(200)
                         }
 
@@ -1084,6 +1203,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 1 -> { // Chiêu 2: Vô Ảnh Trận (Vòng tròn bão cát)
                     _mobaHeroIsImmune.value = true
                     _mobaLog.value = "⚔️ Murad vẽ VÔ ẢNH TRẬN! Tạo vòng tròn bảo hộ cát vàng tránh sát thương và làm chậm kẻ địch!"
+
+                    _mobaMuradS2X.value = hX
+                    _mobaMuradS2Y.value = hY
+                    _mobaMuradS2Active.value = true
+                    mobaMuradS2DurationLeftMs = 2500L
 
                     // Deal AoE damage
                     dealAoeMobaDamage(hX, hY, radius = 10f, damage = 260f, type = "murad_s2")
@@ -1251,6 +1375,192 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         isHoming = true,
                         homingTargetId = tId
                     )
+                }
+            }
+        } else if (_mobaHero.value == "Alpha") {
+            // Alpha skills
+            when (skillIndex) {
+                0 -> { // Rotary Impact
+                    _mobaLog.value = "🤖 Alpha phóng sóng năng lượng QUÉT ĐAO THĂNG HOA cực đẹp!"
+                    // Projectile wave
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = hX,
+                        y = hY,
+                        speed = 2.4f,
+                        isEnemy = false,
+                        damage = 300f,
+                        type = "alpha_s1_wave",
+                        color = 0xFF22D3EE, // Light Cyan
+                        radius = 2.8f,
+                        targetX = tX,
+                        targetY = tY,
+                        isHoming = false
+                    )
+                    
+                    // Drone Beta laser follow-up
+                    viewModelScope.launch {
+                        delay(250)
+                        if (_mobaState.value == "playing") {
+                            _mobaLog.value = "🛸 Beta phụ kích: Khai hỏa súng laser dọc đường quét!"
+                            // position Beta on target path
+                            val bX = (hX + tX) / 2f
+                            val bY = (hY + tY) / 2f - 4f
+                            _mobaAlphaBetaX.value = bX
+                            _mobaAlphaBetaY.value = bY
+                            
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = bX,
+                                y = bY,
+                                speed = 3.6f,
+                                isEnemy = false,
+                                damage = 150f,
+                                type = "alpha_s1_laser",
+                                color = 0xFF00FFFF, // Neon Cyan
+                                radius = 1.5f,
+                                targetX = tX,
+                                targetY = tY,
+                                isHoming = false
+                            )
+                            delay(400)
+                            // return Beta to orbit
+                            _mobaAlphaBetaX.value = _mobaHeroX.value
+                            _mobaAlphaBetaY.value = _mobaHeroY.value - 4f
+                        }
+                    }
+                }
+                1 -> { // Force Swing
+                    _mobaLog.value = "🤖 Alpha vung thương ĐAO QUÉT NĂNG LƯỢNG vòng tròn và phục hồi sinh lực!"
+                    // Sweep visual projectile (stationary expanding wave)
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = hX,
+                        y = hY,
+                        speed = 0.1f, // near stationary
+                        isEnemy = false,
+                        damage = 320f,
+                        type = "alpha_s2_sweep",
+                        color = 0xFF22D3EE,
+                        radius = 9.0f,
+                        targetX = hX + 0.1f,
+                        targetY = hY,
+                        isHoming = false
+                    )
+                    
+                    // Perform sweeping damage
+                    dealAoeMobaDamage(hX, hY, radius = 9f, damage = 320f, type = "alpha_s2_sweep")
+                    
+                    // Recover health based on hitting target
+                    val eX = _mobaEnemyX.value
+                    val eY = _mobaEnemyY.value
+                    val dx = eX - hX
+                    val dy = eY - hY
+                    val d = kotlin.math.sqrt(dx * dx + dy * dy)
+                    if (d <= 9f) {
+                        // hit enemy, heal Alpha!
+                        val healAmt = 180f
+                        _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                        addMobaDamageText("+$healAmt HP 💚", hX, hY - 6f, 0xFF10B981)
+                    }
+                    
+                    // Drone Beta also sweeps bullets
+                    viewModelScope.launch {
+                        delay(150)
+                        if (_mobaState.value == "playing") {
+                            _mobaLog.value = "🛸 Beta khai hỏa loạt súng đạn năng lượng hỗ trợ!"
+                            _mobaAlphaBetaX.value = hX + 4f
+                            _mobaAlphaBetaY.value = hY - 5f
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = hX + 4f,
+                                y = hY - 5f,
+                                speed = 3.0f,
+                                isEnemy = false,
+                                damage = 100f,
+                                type = "alpha_beta_bullet",
+                                color = 0xFF22D3EE,
+                                radius = 1.0f,
+                                targetX = eX,
+                                targetY = eY,
+                                isHoming = false
+                            )
+                            delay(450)
+                            _mobaAlphaBetaX.value = _mobaHeroX.value
+                            _mobaAlphaBetaY.value = _mobaHeroY.value - 4f
+                        }
+                    }
+                }
+                2 -> { // Spear of Alpha (Ultimate)
+                    _mobaLog.value = "🤖 SIÊU PHẨM MŨI GIÁO ALPHA! Lao thẳng hất tung và phóng Orbital Laser hủy diệt!"
+                    val enemyX = _mobaEnemyX.value
+                    val enemyY = _mobaEnemyY.value
+                    
+                    // 1. Knock up Maloch
+                    triggerMobaEnemyKnockup(1000L)
+                    
+                    // 2. Dash Alpha to Maloch with trails
+                    val steps = 4
+                    val startX = hX
+                    val startY = hY
+                    val destX = enemyX - 3f // stand slightly next to him
+                    val destY = enemyY
+                    
+                    val stepX = (destX - startX) / steps
+                    val stepY = (destY - startY) / steps
+                    
+                    for (i in 1..steps) {
+                        val currX = startX + stepX * i
+                        val currY = startY + stepY * i
+                        _mobaHeroX.value = currX
+                        _mobaHeroY.value = currY
+                        
+                        _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                            id = "alpha_ult_trail_${System.currentTimeMillis()}_$i",
+                            x = currX,
+                            y = currY,
+                            color = 0xFF22D3EE,
+                            isTulen = false,
+                            alpha = 0.25f * i
+                        )
+                        delay(15)
+                    }
+                    _mobaHeroX.value = destX
+                    _mobaHeroY.value = destY
+                    _mobaHeroDestX.value = destX
+                    _mobaHeroDestY.value = destY
+                    
+                    viewModelScope.launch {
+                        delay(250)
+                        _mobaDashTrails.value = emptyList()
+                    }
+                    
+                    // 3. Command Beta to perform a massive high-tech orbital laser strike from above!
+                    viewModelScope.launch {
+                        delay(100)
+                        if (_mobaState.value == "playing") {
+                            _mobaAlphaBetaX.value = enemyX
+                            _mobaAlphaBetaY.value = enemyY - 10f // High above
+                            
+                            // Massive vertical cyber laser
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = enemyX,
+                                y = enemyY - 10f,
+                                speed = 3.5f,
+                                isEnemy = false,
+                                damage = 650f,
+                                type = "alpha_ult_laser",
+                                color = 0xFF00FFFF, // Cyan Glow Laser
+                                radius = 4.5f,
+                                targetX = enemyX,
+                                targetY = enemyY,
+                                isHoming = false
+                            )
+                            
+                            dealAoeMobaDamage(enemyX, enemyY, radius = 10f, damage = 650f, type = "alpha_ult_laser")
+                            addMobaDamageText("MŨI GIÁO ALPHA! 🤖⚡", enemyX, enemyY - 8f, 0xFF00FFFF)
+                            
+                            delay(600)
+                            _mobaAlphaBetaX.value = _mobaHeroX.value
+                            _mobaAlphaBetaY.value = _mobaHeroY.value - 4f
+                        }
+                    }
                 }
             }
         } else {
@@ -1454,6 +1764,106 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun dealAoeMobaEnemyDamage(centerX: Float, centerY: Float, radius: Float, damage: Float, type: String) {
+        var hitHero = false
+
+        // Player Hero
+        if (_mobaHeroHP.value > 0f) {
+            val dist = kotlin.math.sqrt((_mobaHeroX.value - centerX) * (_mobaHeroX.value - centerX) + (_mobaHeroY.value - centerY) * (_mobaHeroY.value - centerY))
+            if (dist <= radius) {
+                hitHero = true
+                if (_mobaHeroIsImmune.value) {
+                    addMobaDamageText("NÉ 💫", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF38BDF8)
+                } else {
+                    val finalDamage = if (_mobaEnemyEnchanted.value) damage * 1.2f else damage
+                    _mobaHeroHP.value = (_mobaHeroHP.value - finalDamage).coerceAtLeast(0f)
+                    
+                    val dmgColor = if (_mobaEnemyEnchanted.value) 0xFFFF1155 else 0xFFFF3333 // Pink/True damage for enchanted, red otherwise
+                    addMobaDamageText("-${finalDamage.toInt()}${if (_mobaEnemyEnchanted.value) " TRUE" else ""}", _mobaHeroX.value, _mobaHeroY.value - 6f, dmgColor)
+
+                    if (type == "maloch_s1") {
+                        // Slow effect
+                        _mobaLog.value = "⚠️ Bạn bị trúng QUỶ KIẾM của Maloch! Bị Chậm di chuyển 50%!"
+                        addMobaDamageText("SLOWED ❄️", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF33CCFF)
+                    } else if (type == "maloch_s3") {
+                        // Knock up!
+                        _mobaLog.value = "🌪️ LUYỆN NGỤC! Maloch hất tung bạn lên không trung!"
+                        triggerHeroKnockup(1200L)
+                    }
+                }
+            }
+        }
+
+        // Allied Creeps
+        val creeps = _mobaCreeps.value.toMutableList()
+        var updated = false
+        var hitCreepCount = 0
+        creeps.forEach { creep ->
+            if (!creep.isEnemy && creep.hp > 0f) {
+                val dist = kotlin.math.sqrt((creep.x - centerX) * (creep.x - centerX) + (creep.y - centerY) * (creep.y - centerY))
+                if (dist <= radius) {
+                    val finalDamage = if (_mobaEnemyEnchanted.value) damage * 1.2f else damage
+                    creep.hp = (creep.hp - finalDamage).coerceAtLeast(0f)
+                    addMobaDamageText("-${finalDamage.toInt()}", creep.x, creep.y - 4f, 0xFFFF3333)
+                    updated = true
+                    hitCreepCount++
+                    if (type == "maloch_s3") {
+                        creep.isStunned = true
+                        creep.stunEndTime = System.currentTimeMillis() + 1200L
+                    }
+                }
+            }
+        }
+        if (updated) {
+            _mobaCreeps.value = creeps
+        }
+
+        // Allied Turrets
+        listOf(
+            Triple(30f, 50f, _mobaAllyTurretHP),
+            Triple(30f, 28f, _mobaAllyTurretTopHP),
+            Triple(30f, 72f, _mobaAllyTurretBotHP)
+        ).forEach { (tX, tY, tHpState) ->
+            if (tHpState.value > 0f) {
+                val dist = kotlin.math.sqrt((tX - centerX) * (tX - centerX) + (tY - centerY) * (tY - centerY))
+                if (dist <= radius) {
+                    tHpState.value = (tHpState.value - damage * 0.4f).coerceAtLeast(0f)
+                    addMobaDamageText("-${(damage * 0.4f).toInt()}", tX, tY - 6f, 0xFFFF3333)
+                }
+            }
+        }
+
+        // S1 effects if hitting hero
+        if (type == "maloch_s1") {
+            if (hitHero) {
+                if (!_mobaEnemyEnchanted.value) {
+                    _mobaEnemyEnchanted.value = true
+                    _mobaLog.value = "😈 QUYẾT ĐỊNH QUỶ KIẾM! Kiếm của Maloch được LUYỆN KIẾM (Sát Thương Chuẩn & Hồi HP)!"
+                    addMobaDamageText("LUYỆN KIẾM! 🔥", _mobaEnemyX.value, _mobaEnemyY.value - 12f, 0xFFFF1155)
+                }
+                malochEnchantedDurationLeft = 8000L // 8s enchanted
+                // Heal Maloch
+                val healAmount = 400f
+                _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmount).coerceAtMost(_mobaEnemyMaxHP.value)
+                addMobaDamageText("+${healAmount.toInt()} HP 💚", _mobaEnemyX.value, _mobaEnemyY.value - 8f, 0xFF10B981)
+            }
+        }
+
+        // S2 Soul Shield calculation
+        if (type == "maloch_s2") {
+            var targetsHit = 0
+            if (hitHero) targetsHit++
+            targetsHit += hitCreepCount.coerceAtMost(4) // capped creep count
+            if (targetsHit > 0) {
+                val shieldVal = targetsHit * 450f
+                _mobaEnemyShield.value = (_mobaEnemyShield.value + shieldVal).coerceAtMost(1800f)
+                malochShieldDurationLeft = 5000L // 5s shield duration
+                _mobaLog.value = "🛡️ ĐOẠT HỒN! Maloch hút hồn $targetsHit mục tiêu và nhận lớp lá chắn cực dày!"
+                addMobaDamageText("+${shieldVal.toInt()} GIÁP 🛡️", _mobaEnemyX.value, _mobaEnemyY.value - 10f, 0xFF38BDF8)
+            }
+        }
+    }
+
     private fun incrementTulenPassive() {
         val stacks = _mobaPassiveStacks.value
         if (stacks >= 5) return
@@ -1480,18 +1890,125 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun incrementAlphaPassive() {
+        if (_mobaHero.value != "Alpha") return
+        val current = _mobaPassiveStacks.value
+        val next = current + 1
+        if (next >= 2) {
+            _mobaPassiveStacks.value = 0
+            // Beta Drone attacks with laser!
+            viewModelScope.launch {
+                _mobaLog.value = "🛸 Beta oanh tạc: Bắn Laser Công Nghệ gây Sát Thương Chuẩn & hồi máu!"
+                
+                // Fly Beta to enemy Maloch
+                val eX = _mobaEnemyX.value
+                val eY = _mobaEnemyY.value
+                
+                // Teleport or fast glide Beta above Maloch
+                _mobaAlphaBetaX.value = eX
+                _mobaAlphaBetaY.value = eY - 6f
+                
+                // Spawn laser projectile from Beta to enemy
+                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                    x = eX,
+                    y = eY - 6f,
+                    speed = 4f,
+                    isEnemy = false,
+                    damage = 220f,
+                    type = "alpha_beta_laser",
+                    color = 0xFF00FFFF, // Cyber Cyan
+                    radius = 2.0f,
+                    targetX = eX,
+                    targetY = eY,
+                    isHoming = false
+                )
+                
+                // Deal true damage!
+                dealAoeMobaDamage(eX, eY, radius = 6f, damage = 220f, type = "alpha_true_damage")
+                addMobaDamageText("BETA QUÉT SÉT! ⚡", eX, eY - 10f, 0xFF00FFFF)
+                
+                // Restore HP to Alpha
+                val healAmt = 150f
+                _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                addMobaDamageText("+$healAmt HP 💚", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF10B981)
+                
+                delay(400)
+                // return to Alpha orbit position
+                _mobaAlphaBetaX.value = _mobaHeroX.value
+                _mobaAlphaBetaY.value = _mobaHeroY.value - 4f
+            }
+        } else {
+            _mobaPassiveStacks.value = next
+            _mobaLog.value = "🤖 Alpha: Tích điện công nghệ ($next/2)"
+            addMobaDamageText("ẤN CÔNG NGHỆ 👾", _mobaEnemyX.value, _mobaEnemyY.value - 10f, 0xFF22D3EE)
+        }
+    }
+
     private suspend fun runMobaGameLoop() {
         var tickCounter = 0
         var creepSpawnTimer = 11f // spawn first wave almost immediately (after 1s)
 
         while (_mobaState.value == "playing") {
             delay(50)
+            if (_mobaIsPaused.value) continue
             tickCounter++
             val currentTime = System.currentTimeMillis()
+
+            // Update Beta orbit position if Alpha is playing
+            if (_mobaHero.value == "Alpha") {
+                val hX = _mobaHeroX.value
+                val hY = _mobaHeroY.value
+                val dx = _mobaAlphaBetaX.value - hX
+                val dy = _mobaAlphaBetaY.value - hY
+                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                if (dist < 12f) {
+                    val orbitRadius = 4.5f
+                    val orbitSpeed = 0.15f
+                    val orbitAngle = (tickCounter * orbitSpeed) % (2f * kotlin.math.PI)
+                    _mobaAlphaBetaX.value = hX + (kotlin.math.cos(orbitAngle) * orbitRadius).toFloat()
+                    _mobaAlphaBetaY.value = hY + (kotlin.math.sin(orbitAngle) * orbitRadius).toFloat() - 2f
+                    _mobaAlphaBetaActive.value = true
+                }
+            } else {
+                _mobaAlphaBetaActive.value = false
+            }
 
             // 1. Cooldown recovery and passive decay
             val cds = _mobaSkillCooldowns.value.map { (it - 0.05f).coerceAtLeast(0f) }
             _mobaSkillCooldowns.value = cds
+
+            // Decrement Maloch cooldowns
+            malochS1Cooldown = (malochS1Cooldown - 0.05f).coerceAtLeast(0f)
+            malochS2Cooldown = (malochS2Cooldown - 0.05f).coerceAtLeast(0f)
+            malochS3Cooldown = (malochS3Cooldown - 0.05f).coerceAtLeast(0f)
+
+            // Decay Maloch active shield
+            if (malochShieldDurationLeft > 0L) {
+                malochShieldDurationLeft -= 50L
+                if (malochShieldDurationLeft <= 0L) {
+                    _mobaEnemyShield.value = 0f
+                }
+            }
+
+            // Decay Maloch enchanted sword duration
+            if (malochEnchantedDurationLeft > 0L) {
+                malochEnchantedDurationLeft -= 50L
+                if (malochEnchantedDurationLeft <= 0L) {
+                    _mobaEnemyEnchanted.value = false
+                    _mobaLog.value = "👿 Kiếm của Maloch đã hết trạng thái LUYỆN KIẾM."
+                }
+            }
+
+            // Decay Murad S2 (Vô Ảnh Trận)
+            if (mobaMuradS2DurationLeftMs > 0L) {
+                mobaMuradS2DurationLeftMs -= 50L
+                if (mobaMuradS2DurationLeftMs <= 0L) {
+                    _mobaMuradS2Active.value = false
+                    _mobaMuradS2X.value = -1f
+                    _mobaMuradS2Y.value = -1f
+                    _mobaLog.value = "⚔️ Vô Ảnh Trận của Murad đã kết thúc."
+                }
+            }
 
             val isTulen = _mobaHero.value == "Tulen"
             val isMurad = _mobaHero.value == "Murad"
@@ -1529,7 +2046,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 }
-            } else if (!isTulen) {
+            } else if (!isTulen && _mobaHero.value != "Alpha") {
                 // Decay Valhein passive speed stacks
                 if (tickCounter % 20 == 0) { // every 1s
                     _mobaPassiveStacks.value = (_mobaPassiveStacks.value - 1).coerceAtLeast(0)
@@ -1582,54 +2099,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val hX = _mobaHeroX.value
             val hY = _mobaHeroY.value
             val speedBonus = if (!isTulen && !isMurad) 1f + (_mobaPassiveStacks.value * 0.06f) else 1f
-            val moveSpeed = if (isMurad) 1.55f else 1.3f * speedBonus
+            val isHeroStunned = _mobaHeroIsStunned.value || _mobaHeroIsKnockedUp.value
 
-            if (_mobaJoystickActive.value) {
-                val angle = _mobaJoystickAngle.value
-                val stepX = kotlin.math.cos(angle) * moveSpeed * 2.2f
-                val stepY = kotlin.math.sin(angle) * moveSpeed * 2.2f
-                _mobaHeroDestX.value = (hX + stepX).coerceIn(0f, 100f)
-                _mobaHeroDestY.value = (hY + stepY).coerceIn(20f, 80f)
+            if (isHeroStunned) {
+                _mobaHeroDestX.value = hX
+                _mobaHeroDestY.value = hY
             } else {
-                val activeDir = _mobaMoveDirection.value
-                if (activeDir != MobaMoveDirection.NONE) {
-                    val step = moveSpeed
-                    when (activeDir) {
-                        MobaMoveDirection.UP -> {
-                            _mobaHeroDestX.value = hX
-                            _mobaHeroDestY.value = (hY - step * 2f).coerceIn(20f, 80f)
+                val moveSpeed = if (isMurad) 1.55f else 1.3f * speedBonus
+
+                if (_mobaJoystickActive.value) {
+                    val angle = _mobaJoystickAngle.value
+                    val stepX = kotlin.math.cos(angle) * moveSpeed * 2.2f
+                    val stepY = kotlin.math.sin(angle) * moveSpeed * 2.2f
+                    _mobaHeroDestX.value = (hX + stepX).coerceIn(0f, 100f)
+                    _mobaHeroDestY.value = (hY + stepY).coerceIn(20f, 80f)
+                } else {
+                    val activeDir = _mobaMoveDirection.value
+                    if (activeDir != MobaMoveDirection.NONE) {
+                        val step = moveSpeed
+                        when (activeDir) {
+                            MobaMoveDirection.UP -> {
+                                _mobaHeroDestX.value = hX
+                                _mobaHeroDestY.value = (hY - step * 2f).coerceIn(20f, 80f)
+                            }
+                            MobaMoveDirection.DOWN -> {
+                                _mobaHeroDestX.value = hX
+                                _mobaHeroDestY.value = (hY + step * 2f).coerceIn(20f, 80f)
+                            }
+                            MobaMoveDirection.LEFT -> {
+                                _mobaHeroDestX.value = (hX - step * 2f).coerceIn(0f, 100f)
+                                _mobaHeroDestY.value = hY
+                            }
+                            MobaMoveDirection.RIGHT -> {
+                                _mobaHeroDestX.value = (hX + step * 2f).coerceIn(0f, 100f)
+                                _mobaHeroDestY.value = hY
+                            }
+                            else -> {}
                         }
-                        MobaMoveDirection.DOWN -> {
-                            _mobaHeroDestX.value = hX
-                            _mobaHeroDestY.value = (hY + step * 2f).coerceIn(20f, 80f)
-                        }
-                        MobaMoveDirection.LEFT -> {
-                            _mobaHeroDestX.value = (hX - step * 2f).coerceIn(0f, 100f)
-                            _mobaHeroDestY.value = hY
-                        }
-                        MobaMoveDirection.RIGHT -> {
-                            _mobaHeroDestX.value = (hX + step * 2f).coerceIn(0f, 100f)
-                            _mobaHeroDestY.value = hY
-                        }
-                        else -> {}
                     }
                 }
-            }
 
-            val destX = _mobaHeroDestX.value
-            val destY = _mobaHeroDestY.value
-            
-            val dx = destX - hX
-            val dy = destY - hY
-            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-            if (dist > 1.0f) {
-                // Movement speed modified by active stacks if Valhein
-                val speedBonus = if (!isTulen && !isMurad) 1f + (_mobaPassiveStacks.value * 0.06f) else 1f
-                val moveSpeed = if (isMurad) 1.55f else 1.3f * speedBonus // Murad is an agile assassin
-                val step = moveSpeed.coerceAtMost(dist)
+                val destX = _mobaHeroDestX.value
+                val destY = _mobaHeroDestY.value
                 
-                _mobaHeroX.value = hX + (dx / dist) * step
-                _mobaHeroY.value = hY + (dy / dist) * step
+                val dx = destX - hX
+                val dy = destY - hY
+                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                if (dist > 1.0f) {
+                    val step = moveSpeed.coerceAtMost(dist)
+                    _mobaHeroX.value = hX + (dx / dist) * step
+                    _mobaHeroY.value = hY + (dy / dist) * step
+                }
             }
 
             // 4. Update Projectiles (Homing, movement, collision)
@@ -1925,6 +2445,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     incrementTulenPassive()
                 } else if (proj.type == "murad_basic") {
                     incrementMuradPassive()
+                } else if (proj.type.startsWith("alpha") && proj.type != "alpha_beta_laser") {
+                    incrementAlphaPassive()
                 }
             } else if (proj.homingTargetId == "enemy_turret") {
                 _mobaEnemyTurretHP.value = (_mobaEnemyTurretHP.value - dmg * 0.7f).coerceAtLeast(0f)
@@ -1952,6 +2474,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         incrementTulenPassive()
                     } else if (proj.type == "murad_basic") {
                         incrementMuradPassive()
+                    } else if (proj.type.startsWith("alpha") && proj.type != "alpha_beta_laser") {
+                        incrementAlphaPassive()
                     }
                     _mobaCreeps.value = creeps
                 }
@@ -1983,6 +2507,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _mobaEnemyKnockupHeight.value = 0f
             _mobaEnemyIsKnockedUp.value = false
+        }
+    }
+
+    fun triggerHeroKnockup(durationMs: Long) {
+        _mobaHeroIsKnockedUp.value = true
+        _mobaHeroIsStunned.value = true
+        addMobaDamageText("HẤT TUNG! 🌪️", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF38BDF8)
+        
+        viewModelScope.launch {
+            val steps = 24
+            val peakHeight = 45f
+            val stepDelay = durationMs / steps
+            for (i in 0..steps) {
+                val progress = i.toFloat() / steps
+                val angle = progress * kotlin.math.PI
+                _mobaHeroKnockupHeight.value = (kotlin.math.sin(angle) * peakHeight).toFloat()
+                delay(stepDelay)
+            }
+            _mobaHeroKnockupHeight.value = 0f
+            _mobaHeroIsKnockedUp.value = false
+            _mobaHeroIsStunned.value = false
+        }
+    }
+
+    fun triggerHeroStun(durationMs: Long) {
+        _mobaHeroIsStunned.value = true
+        addMobaDamageText("CHOÁNG 🌀", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFFFFFF00)
+        viewModelScope.launch {
+            delay(durationMs)
+            _mobaHeroIsStunned.value = false
         }
     }
 
@@ -2130,30 +2684,160 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         // AI decision
-        if (_mobaHeroHP.value > 0f && distToPlayer <= 26f) {
-            // Chase Player
-            val dx = hX - eX
-            val dy = hY - eY
-            if (distToPlayer > 5f) {
+        if (_mobaEnemyIsLeaping.value) {
+            return
+        }
+
+        if (_mobaHeroHP.value > 0f && distToPlayer <= 35f) {
+            // 1. Skill 3: Luyện Ngục (S3)
+            if (malochS3Cooldown <= 0f) {
+                malochS3Cooldown = 12f
+                _mobaEnemyIsLeaping.value = true
+                _mobaLog.value = "👿 Maloch tụ lực phóng lên không trung thi triển LUYỆN NGỤC! 🌪️"
+                
+                val targetS3X = hX
+                val targetS3Y = hY
+                _mobaEnemyS3TargetX.value = targetS3X
+                _mobaEnemyS3TargetY.value = targetS3Y
+
+                viewModelScope.launch {
+                    // Rise up
+                    val steps = 10
+                    for (i in 1..steps) {
+                        _mobaEnemyKnockupHeight.value = (i.toFloat() / steps) * 60f
+                        delay(50)
+                    }
+                    
+                    // Float in the air (invulnerable / warning phase)
+                    delay(700)
+                    
+                    // Teleport to target
+                    _mobaEnemyX.value = targetS3X
+                    _mobaEnemyY.value = targetS3Y
+                    
+                    // Fall down
+                    for (i in steps downTo 0) {
+                        _mobaEnemyKnockupHeight.value = (i.toFloat() / steps) * 60f
+                        delay(25)
+                    }
+                    _mobaEnemyKnockupHeight.value = 0f
+                    
+                    // Impact explosion!
+                    dealAoeMobaEnemyDamage(targetS3X, targetS3Y, radius = 14f, damage = 580f, type = "maloch_s3")
+                    
+                    // Spawn visual impact shockwaves
+                    for (j in 0..3) {
+                        val angleOffset = j * (kotlin.math.PI / 2)
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = targetS3X,
+                            y = targetS3Y,
+                            speed = 3.5f,
+                            isEnemy = true,
+                            damage = 0f,
+                            type = "maloch_s3_visual",
+                            color = 0xFFDC2626,
+                            radius = 2.5f,
+                            targetX = targetS3X + kotlin.math.cos(angleOffset).toFloat() * 12f,
+                            targetY = targetS3Y + kotlin.math.sin(angleOffset).toFloat() * 12f,
+                            isHoming = false
+                        )
+                    }
+                    
+                    _mobaLog.value = "💥 LUYỆN NGỤC giáng lâm! Maloch giẫm nát mặt đất hất tung kẻ địch trong vùng!"
+                    _mobaEnemyIsLeaping.value = false
+                    _mobaEnemyS3TargetX.value = -1f
+                    _mobaEnemyS3TargetY.value = -1f
+                }
+                return
+            }
+
+            // 2. Skill 2: Đoạt Hồn (S2)
+            if (distToPlayer <= 15f && malochS2Cooldown <= 0f) {
+                malochS2Cooldown = 7f
+                _mobaLog.value = "👿 Maloch thi triển ĐOẠT HỒN! Tước đoạt sinh hồn đối thủ tạo lá chắn cực lớn!"
+                dealAoeMobaEnemyDamage(eX, eY, radius = 15f, damage = 120f, type = "maloch_s2")
+                
+                // Spawn soul-pulling particles towards Maloch
+                for (j in 0..3) {
+                    val angleOffset = j * (kotlin.math.PI / 2)
+                    val startPx = hX + kotlin.math.cos(angleOffset).toFloat() * 6f
+                    val startPy = hY + kotlin.math.sin(angleOffset).toFloat() * 6f
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = startPx,
+                        y = startPy,
+                        speed = 3f,
+                        isEnemy = true,
+                        damage = 0f,
+                        type = "maloch_basic_visual",
+                        color = 0xFF7C3AED,
+                        radius = 1.2f,
+                        targetX = eX,
+                        targetY = eY,
+                        isHoming = false
+                    )
+                }
+                return
+            }
+
+            // 3. Skill 1: Quỷ Kiếm (S1)
+            if (distToPlayer <= 7.5f && malochS1Cooldown <= 0f) {
+                malochS1Cooldown = 4f
+                _mobaLog.value = "👿 Maloch tụ lực vung QUỶ KIẾM càn quét cực rộng!"
+                
+                viewModelScope.launch {
+                    delay(200)
+                    val currentEx = _mobaEnemyX.value
+                    val currentEy = _mobaEnemyY.value
+                    dealAoeMobaEnemyDamage(currentEx, currentEy, radius = 9.5f, damage = 380f, type = "maloch_s1")
+                    
+                    // Spawn S1 slash visual projectile!
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = currentEx - 8f,
+                        y = currentEy,
+                        speed = 4f,
+                        isEnemy = true,
+                        damage = 0f,
+                        type = "maloch_cleave",
+                        color = 0xFFFF0033,
+                        radius = 2.0f,
+                        targetX = currentEx + 8f,
+                        targetY = currentEy,
+                        isHoming = false
+                    )
+                }
+                return
+            }
+
+            // 4. Basic Attack & Chase
+            if (distToPlayer > 4.5f) {
+                // Chase
+                val dx = hX - eX
+                val dy = hY - eY
                 _mobaEnemyX.value += (dx / distToPlayer) * 0.75f
                 _mobaEnemyY.value += (dy / distToPlayer) * 0.75f
             } else {
-                // Swing Cleaver
-                if (tickCounterMoba % 24 == 0) { // every 1.2s
-                    _mobaLog.value = "👿 Maloch tung QUỶ KIẾM! Chém kiếm quét ngang gây sát thương lớn!"
+                // Attack
+                if (tickCounterMoba % 20 == 0) {
+                    val dmg = if (_mobaEnemyEnchanted.value) 180f else 130f
+                    dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = dmg, type = "maloch_basic")
+                    if (_mobaEnemyEnchanted.value) {
+                        val hAmt = 150f
+                        _mobaEnemyHP.value = (_mobaEnemyHP.value + hAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                        addMobaDamageText("+$hAmt HP 💚", eX, eY - 8f, 0xFF10B981)
+                    }
+                    
                     _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                         x = eX,
                         y = eY,
-                        speed = 1.8f,
+                        speed = 3f,
                         isEnemy = true,
-                        damage = 180f,
-                        type = "maloch_cleave",
-                        color = 0xFFFF0033,
-                        radius = 2.4f,
+                        damage = 0f,
+                        type = "maloch_basic_visual",
+                        color = 0xFFFF3333,
+                        radius = 1.5f,
                         targetX = hX,
                         targetY = hY,
-                        isHoming = true,
-                        homingTargetId = "player"
+                        isHoming = false
                     )
                 }
             }
@@ -2173,24 +2857,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val tc = targetCreep!!
                 val dx = tc.x - eX
                 val dy = tc.y - eY
-                if (minD > 5f) {
+                if (minD > 4.5f) {
                     _mobaEnemyX.value += (dx / minD) * 0.7f
                     _mobaEnemyY.value += (dy / minD) * 0.7f
                 } else {
-                    if (tickCounterMoba % 30 == 0) {
+                    if (tickCounterMoba % 20 == 0) {
+                        val dmg = if (_mobaEnemyEnchanted.value) 180f else 130f
+                        dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = dmg, type = "maloch_basic")
+                        
                         _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                             x = eX,
                             y = eY,
-                            speed = 1.6f,
+                            speed = 3f,
                             isEnemy = true,
-                            damage = 100f,
-                            type = "basic_cleave",
-                            color = 0xFFFF5555,
-                            radius = 2.0f,
+                            damage = 0f,
+                            type = "maloch_basic_visual",
+                            color = 0xFFFF3333,
+                            radius = 1.5f,
                             targetX = tc.x,
                             targetY = tc.y,
-                            isHoming = true,
-                            homingTargetId = tc.id
+                            isHoming = false
                         )
                     }
                 }
@@ -2492,6 +3178,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         targetMovementJob = viewModelScope.launch {
             while (_reflexState.value == "spawned") {
                 delay(30)
+                if (_fpsIsPaused.value) continue
                 var nextX = _reflexTargetX.value + velX
                 var nextY = _reflexTargetY.value + velY
                 
@@ -2594,6 +3281,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 for (step in 0 until stepCount) {
                     if (_reflexState.value != "spawned" || _fpsBossState.value != "moving") break
                     delay(60)
+                    while (_fpsIsPaused.value) {
+                        delay(100)
+                    }
                     
                     var nextX = _reflexTargetX.value + velX
                     var nextY = _reflexTargetY.value + velY
@@ -2611,7 +3301,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _reflexTargetX.value = Random.nextFloat() * 0.5f + 0.25f
                     _reflexTargetY.value = Random.nextFloat() * 0.4f + 0.25f
                     _reflexMessage.value = "🌀 BOSS dịch chuyển tức thời! Hãy cẩn thận!"
-                    delay(800)
+                    var telElapsed = 0L
+                    while (telElapsed < 800) {
+                        delay(50)
+                        if (!_fpsIsPaused.value) {
+                            telElapsed += 50
+                        }
+                    }
                 }
 
                 if (_reflexState.value != "spawned") break
@@ -2634,7 +3330,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     if (_reflexState.value != "spawned") break
                     delay(tick)
-                    elapsed += tick
+                    if (!_fpsIsPaused.value) {
+                        elapsed += tick
+                    }
                 }
 
                 if (_reflexState.value != "spawned") break
@@ -2643,7 +3341,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     // Boss was hit! Handled inside handleFpsShot
                     _reflexMessage.value = "💥 CHÍNH XÁC! Boss trúng đạn và mất 1 HP!"
                     SoundManager.playSound("boss_hit")
-                    delay(1000)
+                    var hitElapsed = 0L
+                    while (hitElapsed < 1000) {
+                        delay(50)
+                        if (!_fpsIsPaused.value) {
+                            hitElapsed += 50
+                        }
+                    }
                     continue
                 }
 
@@ -2662,7 +3366,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     break
                 }
                 
-                delay(1200)
+                var shotElapsed = 0L
+                while (shotElapsed < 1200) {
+                    delay(50)
+                    if (!_fpsIsPaused.value) {
+                        shotElapsed += 50
+                    }
+                }
             }
         }
     }
@@ -2786,8 +3496,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         // Timeout for this target (5 seconds)
         targetTimeoutJob = viewModelScope.launch {
-            delay(5000)
-            if (_reflexState.value == "spawned") {
+            var elapsed = 0L
+            while (elapsed < 5000) {
+                delay(100)
+                if (!_fpsIsPaused.value) {
+                    elapsed += 100
+                }
+                if (_reflexState.value != "spawned") break
+            }
+            if (_reflexState.value == "spawned" && elapsed >= 5000) {
                 // Target escaped
                 val timeoutMsg = when (_fpsGameMode.value) {
                     "bottle" -> "💨 Chai thủy tinh ${_fpsCurrentTarget.value}/5 rơi xuống đất vỡ vụn!"
@@ -2805,6 +3522,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun handleFpsShot(tapX: Float, tapY: Float, boxWidth: Float, boxHeight: Float) {
         if (_reflexState.value != "spawned") return
+        if (_fpsIsPaused.value) return
         
         val relativeX = tapX / boxWidth
         val relativeY = tapY / boxHeight
