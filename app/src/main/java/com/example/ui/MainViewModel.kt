@@ -623,6 +623,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaEnemyTurretBotHP = MutableStateFlow(1500f)
     val mobaEnemyTurretBotHP = _mobaEnemyTurretBotHP.asStateFlow()
 
+    private val _mobaAllyCastleHP = MutableStateFlow(3500f)
+    val mobaAllyCastleHP = _mobaAllyCastleHP.asStateFlow()
+
+    private val _mobaEnemyCastleHP = MutableStateFlow(3500f)
+    val mobaEnemyCastleHP = _mobaEnemyCastleHP.asStateFlow()
+
+    // Tulen orbiting electrical orbs
+    private val _mobaTulenOrbs = MutableStateFlow<List<MobaOrbitingOrb>>(emptyList())
+    val mobaTulenOrbs = _mobaTulenOrbs.asStateFlow()
+
+    // Tulen S3 Laser Target ID
+    private val _mobaTulenUltLaserTargetId = MutableStateFlow<String?>(null)
+    val mobaTulenUltLaserTargetId = _mobaTulenUltLaserTargetId.asStateFlow()
+
     // Tulen S2 multi-dash state
     private val _mobaTulenS2CastCount = MutableStateFlow(0)
     val mobaTulenS2CastCount = _mobaTulenS2CastCount.asStateFlow()
@@ -741,6 +755,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _mobaEnemyTurretHP.value = 1500f
         _mobaEnemyTurretTopHP.value = 1500f
         _mobaEnemyTurretBotHP.value = 1500f
+        _mobaAllyCastleHP.value = 3500f
+        _mobaEnemyCastleHP.value = 3500f
+        _mobaTulenOrbs.value = emptyList()
+        _mobaTulenUltLaserTargetId.value = null
         _mobaTulenS2CastCount.value = 0
         
         _mobaMuradCloneX.value = -1f
@@ -1452,6 +1470,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             when (skillIndex) {
                 0 -> { // Chiêu 1: Lôi Quang (3 tia điện fan-shape)
                     _mobaLog.value = "⚡ Tulen tung LÔI QUANG! Phóng 3 tia điện càn quét kẻ địch!"
+                    addTulenOrbitingOrbs() // S1 creates orbiting electric orbs!
                     val angles = listOf(angle - 0.25f, angle, angle + 0.25f)
                     angles.forEach { ang ->
                         val speed = 2.0f
@@ -1476,6 +1495,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val healAmt = _mobaHeroMaxHP.value * 0.05f
                     _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
                     addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+                    addTulenOrbitingOrbs() // S2 creates orbiting electric orbs!
 
                     val currentCast = _mobaTulenS2CastCount.value
                     _mobaTulenS2CastCount.value = if (currentCast < 2) currentCast + 1 else 0
@@ -1530,26 +1550,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     // Damage at end
                     dealAoeMobaDamage(nextX, nextY, radius = 8f, damage = 220f, type = "tulen_s2")
                 }
-                2 -> { // Chiêu 3: Lôi Điểu (Ult tracking shot)
+                2 -> { // Chiêu 3: Lôi Điểu (Ult laser targeting -> electric bird)
                     if (target == null) {
                         _mobaLog.value = "⚠️ Tulen: LÔI ĐIỂU cần mục tiêu để khóa!"
                         return
                     }
-                    _mobaLog.value = "⚡ LÔI ĐIỂU ĐÃ KHÓA MỤC TIÊU! Chuẩn bị oanh tạc cực mạnh..."
-                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
-                        x = hX,
-                        y = hY,
-                        speed = 1.6f,
-                        isEnemy = false,
-                        damage = 900f, // Deals massive damage
-                        type = "tulen_ult",
-                        color = 0xFFE020FF,
-                        radius = 4f,
-                        targetX = tX,
-                        targetY = tY,
-                        isHoming = true,
-                        homingTargetId = tId
-                    )
+                    // Start laser targeting phase
+                    _mobaTulenUltLaserTargetId.value = tId
+                    _mobaLog.value = "🎯 Tulen phát tia Laser định vị khóa mục tiêu Lôi Điểu!"
+                    viewModelScope.launch {
+                        delay(1000) // 1 second laser focus
+                        _mobaTulenUltLaserTargetId.value = null // turn off laser
+                        
+                        if (_mobaState.value == "playing" && _mobaHeroHP.value > 0f) {
+                            _mobaLog.value = "⚡ SIÊU PHẨM LÔI ĐIỂU! Phóng đại điểu truy sát mục tiêu bị khóa!"
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = _mobaHeroX.value,
+                                y = _mobaHeroY.value,
+                                speed = 2.4f,
+                                isEnemy = false,
+                                damage = 1200f, // enhanced damage
+                                type = "tulen_ult",
+                                color = 0xFF00FFFF, // White cyan lightning
+                                radius = 5f,
+                                targetX = tX,
+                                targetY = tY,
+                                isHoming = true,
+                                homingTargetId = tId
+                            )
+                        }
+                    }
                 }
             }
         } else if (_mobaHero.value == "Xiao") {
@@ -2040,6 +2070,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
+        // Check enemy castle (Lâu đài địch at X=90, Y=50)
+        val ecHP = _mobaEnemyCastleHP.value
+        if (ecHP > 0f) {
+            val d = kotlin.math.sqrt((90f - hX) * (90f - hX) + (50f - hY) * (50f - hY))
+            if (d < minDist) {
+                minDist = d
+                bestTarget = Triple(90f, 50f, "enemy_castle")
+            }
+        }
+
         return bestTarget
     }
 
@@ -2111,6 +2151,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (dist <= radius) {
                 _mobaEnemyTurretBotHP.value = (_mobaEnemyTurretBotHP.value - damage * 0.5f).coerceAtLeast(0f)
                 addMobaDamageText("-${(damage * 0.5f).toInt()}", 75f, 66f, 0xFFFFCC00)
+                hitAny = true
+            }
+        }
+
+        // Enemy Castle (Lâu đài địch at X=90, Y=50)
+        if (_mobaEnemyCastleHP.value > 0f) {
+            val dist = kotlin.math.sqrt((90f - centerX) * (90f - centerX) + (50f - centerY) * (50f - centerY))
+            if (dist <= radius) {
+                _mobaEnemyCastleHP.value = (_mobaEnemyCastleHP.value - damage * 0.4f).coerceAtLeast(0f) // Castle has high armor
+                addMobaDamageText("-${(damage * 0.4f).toInt()}", 90f, 44f, 0xFFFFCC00)
                 hitAny = true
             }
         }
@@ -2231,6 +2281,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _mobaLog.value = "🛡️ ĐOẠT HỒN! Maloch hút hồn $targetsHit mục tiêu và nhận lớp lá chắn cực dày!"
                 addMobaDamageText("+${shieldVal.toInt()} GIÁP 🛡️", _mobaEnemyX.value, _mobaEnemyY.value - 10f, 0xFF38BDF8)
             }
+        }
+    }
+
+    private fun addTulenOrbitingOrbs() {
+        val now = System.currentTimeMillis()
+        val currentOrbs = _mobaTulenOrbs.value.toMutableList()
+        if (currentOrbs.size < 6) {
+            val baseAngle = (java.lang.Math.random() * java.lang.Math.PI * 2).toFloat()
+            currentOrbs.add(MobaOrbitingOrb("tulen_orb_${now}_1", baseAngle))
+            currentOrbs.add(MobaOrbitingOrb("tulen_orb_${now}_2", baseAngle + 2.094f))
+            currentOrbs.add(MobaOrbitingOrb("tulen_orb_${now}_3", baseAngle + 4.188f))
+            _mobaTulenOrbs.value = currentOrbs
+            _mobaLog.value = "⚡ Tulen tích tụ 3 Quả Cầu Điện tích bao quanh bản thân! ⚡"
         }
     }
 
@@ -2619,6 +2682,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // 4. Update Projectiles (Homing, movement, collision)
             updateMobaProjectiles()
 
+            // 4b. Update Tulen Orbiting Orbs
+            updateTulenOrbitingOrbs()
+
             // 5. Update Creeps (Movement, attacks)
             updateMobaCreeps(currentTime)
 
@@ -2674,6 +2740,104 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             MobaCreep(x = 94f, y = 74f, hp = 450f, maxHp = 450f, isEnemy = true, speed = 0.55f, lane = "bot")
         )
         _mobaCreeps.value = _mobaCreeps.value + allies + enemies
+    }
+
+    private fun updateTulenOrbitingOrbs() {
+        if (_mobaHero.value != "Tulen" || _mobaTulenOrbs.value.isEmpty()) return
+
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+        val orbs = _mobaTulenOrbs.value.toMutableList()
+        val iterator = orbs.iterator()
+        var updated = false
+        var anyHit = false
+
+        while (iterator.hasNext()) {
+            val orb = iterator.next()
+            // Update angle
+            orb.angle = (orb.angle + orb.speed) % (kotlin.math.PI * 2).toFloat()
+            updated = true
+
+            // Calculate absolute (x, y) coordinates of the orb on the map
+            val orbX = hX + kotlin.math.cos(orb.angle) * orb.radius
+            val orbY = hY + kotlin.math.sin(orb.angle) * orb.radius
+
+            // Check collision with enemy units (Champ, creeps, turrets, or castle!)
+            var hitTarget = false
+
+            // 1. Enemy hero
+            if (_mobaEnemyHP.value > 0f) {
+                val eX = _mobaEnemyX.value
+                val eY = _mobaEnemyY.value
+                val d = kotlin.math.sqrt((eX - orbX) * (eX - orbX) + (eY - orbY) * (eY - orbY))
+                if (d <= 5f) { // Touch radius
+                    _mobaEnemyHP.value = (_mobaEnemyHP.value - orb.damage).coerceAtLeast(0f)
+                    addMobaDamageText("-${orb.damage.toInt()} ⚡", eX, eY - 6f, 0xFF00FFFF)
+                    hitTarget = true
+                }
+            }
+
+            // 2. Enemy Creeps
+            if (!hitTarget) {
+                val creeps = _mobaCreeps.value.toMutableList()
+                var creepHitIdx = -1
+                for (i in creeps.indices) {
+                    val creep = creeps[i]
+                    if (creep.isEnemy && creep.hp > 0f) {
+                        val d = kotlin.math.sqrt((creep.x - orbX) * (creep.x - orbX) + (creep.y - orbY) * (creep.y - orbY))
+                        if (d <= 4.0f) {
+                            creepHitIdx = i
+                            break
+                        }
+                    }
+                }
+                if (creepHitIdx != -1) {
+                    val creep = creeps[creepHitIdx]
+                    creep.hp = (creep.hp - orb.damage).coerceAtLeast(0f)
+                    addMobaDamageText("-${orb.damage.toInt()} ⚡", creep.x, creep.y - 4f, 0xFF00FFFF)
+                    _mobaCreeps.value = creeps
+                    hitTarget = true
+                }
+            }
+
+            // 3. Enemy Castle / Turrets
+            if (!hitTarget && _mobaEnemyCastleHP.value > 0f) {
+                val d = kotlin.math.sqrt((90f - orbX) * (90f - orbX) + (50f - orbY) * (50f - orbY))
+                if (d <= 5.5f) {
+                    _mobaEnemyCastleHP.value = (_mobaEnemyCastleHP.value - orb.damage * 0.5f).coerceAtLeast(0f)
+                    addMobaDamageText("-${(orb.damage * 0.5f).toInt()} ⚡", 90f, 44f, 0xFF00FFFF)
+                    hitTarget = true
+                }
+            }
+            if (!hitTarget) {
+                listOf(Triple(75f, 50f, _mobaEnemyTurretHP), Triple(75f, 28f, _mobaEnemyTurretTopHP), Triple(75f, 72f, _mobaEnemyTurretBotHP)).forEach { (tX, tY, tState) ->
+                    if (tState.value > 0f) {
+                        val d = kotlin.math.sqrt((tX - orbX) * (tX - orbX) + (tY - orbY) * (tY - orbY))
+                        if (d <= 5f) {
+                            tState.value = (tState.value - orb.damage * 0.5f).coerceAtLeast(0f)
+                            addMobaDamageText("-${(orb.damage * 0.5f).toInt()} ⚡", tX, tY - 6f, 0xFF00FFFF)
+                            hitTarget = true
+                        }
+                    }
+                }
+            }
+
+            if (hitTarget) {
+                // Trigger 5% health heal for Tulen!
+                val healAmt = _mobaHeroMaxHP.value * 0.05f
+                _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+                _mobaLog.value = "⚡ Hồi phục! Quả cầu điện chạm địch hồi 5% HP!"
+
+                // Remove the orb from orbit
+                iterator.remove()
+                anyHit = true
+            }
+        }
+
+        if (updated || anyHit) {
+            _mobaTulenOrbs.value = orbs
+        }
     }
 
     private fun updateMobaProjectiles() {
@@ -2787,6 +2951,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         targetX = _mobaEnemyX.value
                         targetY = _mobaEnemyY.value
                     }
+                    "enemy_castle" -> {
+                        if (_mobaEnemyCastleHP.value <= 0f) targetAlive = false
+                        targetX = 90f
+                        targetY = 50f
+                    }
+                    "ally_castle" -> {
+                        if (_mobaAllyCastleHP.value <= 0f) targetAlive = false
+                        targetX = 10f
+                        targetY = 50f
+                    }
                     "enemy_turret" -> {
                         if (_mobaEnemyTurretHP.value <= 0f) targetAlive = false
                         targetX = 75f
@@ -2887,6 +3061,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else if (proj.homingTargetId == "ally_turret_bot") {
                 _mobaAllyTurretBotHP.value = (_mobaAllyTurretBotHP.value - dmg).coerceAtLeast(0f)
                 addMobaDamageText("-${dmg.toInt()}", 30f, 66f, 0xFFFF3333)
+            } else if (proj.homingTargetId == "ally_castle") {
+                _mobaAllyCastleHP.value = (_mobaAllyCastleHP.value - dmg).coerceAtLeast(0f)
+                addMobaDamageText("-${dmg.toInt()}", 10f, 44f, 0xFFFF3333)
             } else {
                 // Hit allied creep
                 val creeps = _mobaCreeps.value.toMutableList()
@@ -2930,6 +3107,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else if (proj.homingTargetId == "enemy_turret_bot") {
                 _mobaEnemyTurretBotHP.value = (_mobaEnemyTurretBotHP.value - dmg * 0.7f).coerceAtLeast(0f)
                 addMobaDamageText("-${(dmg * 0.7f).toInt()}", 75f, 66f, 0xFFFFCC00)
+            } else if (proj.homingTargetId == "enemy_castle") {
+                _mobaEnemyCastleHP.value = (_mobaEnemyCastleHP.value - dmg * 0.5f).coerceAtLeast(0f)
+                addMobaDamageText("-${(dmg * 0.5f).toInt()}", 90f, 44f, 0xFFFFCC00)
             } else {
                 // Hit enemy creep
                 val creeps = _mobaCreeps.value.toMutableList()
@@ -3491,16 +3671,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         shootAllyTurret(turretHpState = _mobaAllyTurretTopHP, tX = 30f, tY = 28f, homingId = "ally_turret_top")
         shootAllyTurret(turretHpState = _mobaAllyTurretBotHP, tX = 30f, tY = 72f, homingId = "ally_turret_bot")
 
+        // Allied Castle (Lâu đài ta at X=10, Y=50)
+        shootAllyTurret(turretHpState = _mobaAllyCastleHP, tX = 10f, tY = 50f, homingId = "ally_castle")
+
         // Enemy Turrets (Top, Mid, Bot)
         shootEnemyTurret(turretHpState = _mobaEnemyTurretHP, tX = 75f, tY = 50f, homingId = "enemy_turret")
         shootEnemyTurret(turretHpState = _mobaEnemyTurretTopHP, tX = 75f, tY = 28f, homingId = "enemy_turret_top")
         shootEnemyTurret(turretHpState = _mobaEnemyTurretBotHP, tX = 75f, tY = 72f, homingId = "enemy_turret_bot")
+
+        // Enemy Castle (Lâu đài địch at X=90, Y=50)
+        shootEnemyTurret(turretHpState = _mobaEnemyCastleHP, tX = 90f, tY = 50f, homingId = "enemy_castle")
     }
 
     private fun checkMobaGameOver() {
         val hHP = _mobaHeroHP.value
-        val etHP = _mobaEnemyTurretHP.value
-        val atHP = _mobaAllyTurretHP.value
+        val ecHP = _mobaEnemyCastleHP.value
+        val acHP = _mobaAllyCastleHP.value
 
         // Player Dies -> Respawn at base
         if (hHP <= 0f) {
@@ -3520,20 +3706,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (_mobaState.value == "playing") {
                     _mobaHeroHP.value = _mobaHeroMaxHP.value
                     _mobaHeroMP.value = _mobaHeroMaxMP.value
-                    _mobaLog.value = "🛡️ Bạn đã hồi sinh! Hãy cẩn thận và tiến lên đẩy trụ!"
+                    _mobaLog.value = "🛡️ Bạn đã hồi sinh! Hãy cẩn thận và tiến lên đẩy nát lâu đài địch!"
                 }
             }
         }
 
-        // Victory Condition: Enemy Turret Destroyed
-        if (etHP <= 0f) {
-            _mobaEnemyTurretHP.value = 0f
+        // Victory Condition: Enemy Castle Destroyed
+        if (ecHP <= 0f) {
+            _mobaEnemyCastleHP.value = 0f
             finishMobaGame(isVictory = true)
         }
 
-        // Defeat Condition: Allied Turret Destroyed
-        if (atHP <= 0f) {
-            _mobaAllyTurretHP.value = 0f
+        // Defeat Condition: Allied Castle Destroyed
+        if (acHP <= 0f) {
+            _mobaAllyCastleHP.value = 0f
             finishMobaGame(isVictory = false)
         }
     }
@@ -5030,3 +5216,12 @@ data class MobaDashTrail(
     val isTulen: Boolean,
     val alpha: Float = 0.6f
 )
+
+data class MobaOrbitingOrb(
+    val id: String,
+    var angle: Float,
+    val radius: Float = 6f,
+    val speed: Float = 0.08f,
+    val damage: Float = 120f
+)
+

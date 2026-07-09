@@ -95,6 +95,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -3246,6 +3247,11 @@ fun MobaGameAreaContent(
     val mobaEnemyTurretBotHP by viewModel.mobaEnemyTurretBotHP.collectAsState()
     val mobaDashTrails by viewModel.mobaDashTrails.collectAsState()
 
+    val mobaAllyCastleHP by viewModel.mobaAllyCastleHP.collectAsState()
+    val mobaEnemyCastleHP by viewModel.mobaEnemyCastleHP.collectAsState()
+    val mobaTulenOrbs by viewModel.mobaTulenOrbs.collectAsState()
+    val mobaTulenUltLaserTargetId by viewModel.mobaTulenUltLaserTargetId.collectAsState()
+
     val comboScale = remember { Animatable(1.0f) }
     val comboFlash = remember { Animatable(0.0f) }
 
@@ -3551,12 +3557,16 @@ fun MobaGameAreaContent(
                     // 2. Bases
                     // Allied Base Left (X=5)
                     MobaBaseView(
+                        hp = mobaAllyCastleHP,
+                        maxHp = 3500f,
                         isEnemy = false,
                         modifier = Modifier.align(Alignment.CenterStart).offset(x = 6.dp)
                     )
 
                     // Enemy Base Right (X=95)
                     MobaBaseView(
+                        hp = mobaEnemyCastleHP,
+                        maxHp = 3500f,
                         isEnemy = true,
                         modifier = Modifier.align(Alignment.CenterEnd).offset(x = (-6).dp)
                     )
@@ -4025,6 +4035,64 @@ fun MobaGameAreaContent(
                             hasGlow = glow,
                             isXiaoMaskActive = mobaXiaoMaskActive
                         )
+
+                        // Tulen Orbiting Electric Orbs Visual
+                        if (mobaHero == "Tulen" && mobaTulenOrbs.isNotEmpty()) {
+                            val hX = boardWidth * (mobaHeroX / 100f)
+                            val hY = boardHeight * (mobaHeroY / 100f)
+                            mobaTulenOrbs.forEach { orb ->
+                                val oX = hX + (kotlin.math.cos(orb.angle) * orb.radius).dp
+                                val oY = hY + (kotlin.math.sin(orb.angle) * orb.radius).dp
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = oX - 5.dp, y = oY - 5.dp)
+                                        .size(10.dp)
+                                        .background(Color(0xFF00FFFF), CircleShape)
+                                        .border(1.5.dp, Color.White, CircleShape)
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        drawCircle(
+                                            color = Color.White.copy(alpha = 0.7f),
+                                            radius = size.width * 0.4f
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Tulen Ult Laser Targeting Beam
+                        if (mobaHero == "Tulen" && mobaTulenUltLaserTargetId != null) {
+                            val startX = boardWidth * (mobaHeroX / 100f)
+                            val startY = boardHeight * (mobaHeroY / 100f)
+                            var endX = startX
+                            var endY = startY
+                            if (mobaTulenUltLaserTargetId == "enemy_hero" && mobaEnemyHP > 0f) {
+                                endX = boardWidth * (mobaEnemyX / 100f)
+                                endY = boardHeight * (mobaEnemyY / 100f)
+                            } else {
+                                val tc = mobaCreeps.find { it.id == mobaTulenUltLaserTargetId }
+                                if (tc != null) {
+                                    endX = boardWidth * (tc.x / 100f)
+                                    endY = boardHeight * (tc.y / 100f)
+                                }
+                            }
+                            if (endX != startX || endY != startY) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawLine(
+                                        color = Color(0xFF00FFFF).copy(alpha = 0.6f),
+                                        start = Offset(startX.toPx(), startY.toPx()),
+                                        end = Offset(endX.toPx(), endY.toPx()),
+                                        strokeWidth = 6f
+                                    )
+                                    drawLine(
+                                        color = Color.White,
+                                        start = Offset(startX.toPx(), startY.toPx()),
+                                        end = Offset(endX.toPx(), endY.toPx()),
+                                        strokeWidth = 2f
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // 7. Projectiles (Đạn bay)
@@ -4762,6 +4830,70 @@ fun MobaGameAreaContent(
                                     )
                                 }
                             }
+                        } else if (proj.type == "valhein_s1" || proj.type == "valhein_s2") {
+                            // Valhein S1/S2: Spinning Ninja Shurikens!
+                            val pXDp = boardWidth * (proj.x / 100f)
+                            val pYDp = boardHeight * (proj.y / 100f)
+                            val color = if (proj.type == "valhein_s1") Color(0xFFFF3333) else Color(0xFFFACC15) // Red or Yellow shuriken glow
+                            
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = pXDp - 12.dp, y = pYDp - 12.dp)
+                                    .size(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val rotation = (System.currentTimeMillis() % 360).toFloat()
+                                    rotate(rotation) {
+                                        // Draw a classic 4-pointed ninja shuriken star!
+                                        val path = Path().apply {
+                                            val r = size.width / 2f
+                                            val cx = size.width / 2f
+                                            val cy = size.height / 2f
+                                            // Draw 4 curved points
+                                            moveTo(cx, cy - r)
+                                            quadraticTo(cx + r*0.25f, cy - r*0.25f, cx + r, cy)
+                                            quadraticTo(cx + r*0.25f, cy + r*0.25f, cx, cy + r)
+                                            quadraticTo(cx - r*0.25f, cy + r*0.25f, cx - r, cy)
+                                            quadraticTo(cx - r*0.25f, cy - r*0.25f, cx, cy - r)
+                                            close()
+                                        }
+                                        drawPath(
+                                            path = path,
+                                            color = color
+                                        )
+                                        drawPath(
+                                            path = path,
+                                            color = Color.White,
+                                            style = Stroke(width = 2f)
+                                        )
+                                        drawCircle(
+                                            color = Color.Black,
+                                            radius = size.width * 0.15f,
+                                            center = Offset(size.width / 2f, size.height / 2f)
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (proj.type == "valhein_ult") {
+                            // Valhein S3: White Silver Bullets!
+                            val pXDp = boardWidth * (proj.x / 100f)
+                            val pYDp = boardHeight * (proj.y / 100f)
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = pXDp - 7.dp, y = pYDp - 7.dp)
+                                    .size(14.dp)
+                                    .background(Color.White, CircleShape)
+                                    .border(2.dp, Color(0xFFE2E8F0), CircleShape) // Silver gray border
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        radius = size.width * 0.8f,
+                                        center = Offset(size.width / 2f, size.height / 2f)
+                                    )
+                                }
+                            }
                         } else {
                             Box(
                                 modifier = Modifier
@@ -4868,7 +5000,7 @@ fun MobaGameAreaContent(
 
                         Box(
                             modifier = Modifier
-                                .width(90.dp)
+                                .width(65.dp)
                                 .graphicsLayer(
                                     scaleX = comboScale.value,
                                     scaleY = comboScale.value
@@ -4879,11 +5011,11 @@ fun MobaGameAreaContent(
                                     if (mobaComboActive && mobaComboCount > 0) blendedColor.copy(alpha = 0.8f) else Color.DarkGray.copy(alpha = 0.5f),
                                     RoundedCornerShape(6.dp)
                                 )
-                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                                .padding(horizontal = 5.dp, vertical = 3.dp)
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 // Title & Status text
                                 Row(
@@ -4893,14 +5025,14 @@ fun MobaGameAreaContent(
                                 ) {
                                     Text(
                                         text = "COMBO",
-                                        fontSize = 9.sp,
+                                        fontSize = 7.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (mobaComboActive && mobaComboCount > 0) Color.White else Color.Gray
                                     )
                                     // Bullet glow indicator
                                     Box(
                                         modifier = Modifier
-                                            .size(5.dp)
+                                            .size(3.5.dp)
                                             .background(
                                                 if (mobaComboActive && mobaComboCount > 0) blendedColor else Color.DarkGray,
                                                 CircleShape
@@ -4911,7 +5043,7 @@ fun MobaGameAreaContent(
                                 // Combo Number count
                                 Text(
                                     text = if (mobaComboActive && mobaComboCount > 0) "x$mobaComboCount" else "x0",
-                                    fontSize = 16.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = blendedColor
                                 )
@@ -4920,14 +5052,14 @@ fun MobaGameAreaContent(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(3.dp)
-                                        .background(Color(0xFF1E293B), RoundedCornerShape(1.5.dp))
+                                        .height(2.dp)
+                                        .background(Color(0xFF1E293B), RoundedCornerShape(1.dp))
                                 ) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth(mobaComboTimeProgress)
                                             .fillMaxHeight()
-                                            .background(blendedColor, RoundedCornerShape(1.5.dp))
+                                            .background(blendedColor, RoundedCornerShape(1.dp))
                                     )
                                 }
                             }
@@ -5022,27 +5154,27 @@ fun MobaGameAreaContent(
                                 )
                             }
 
-                            // Objective Health Indicators (Towers)
+                            // Objective Health Indicators (Towers & Castles)
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Box(modifier = Modifier.size(5.dp).background(Color(0xFF38BDF8), CircleShape))
                                     Text(
-                                        text = "Trụ ta: ${mobaAllyTurretHP.toInt()}",
-                                        fontSize = 10.sp,
+                                        text = "L.Đài Ta: ${mobaAllyCastleHP.toInt()}",
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (mobaAllyTurretHP < 500f) Color(0xFFEF4444) else Color.LightGray
+                                        color = if (mobaAllyCastleHP < 1000f) Color(0xFFEF4444) else Color.LightGray
                                     )
                                 }
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFFEF4444), CircleShape))
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Box(modifier = Modifier.size(5.dp).background(Color(0xFFFCA5A5), CircleShape))
                                     Text(
-                                        text = "Trụ địch: ${mobaEnemyTurretHP.toInt()}",
-                                        fontSize = 10.sp,
+                                        text = "L.Đài Địch: ${mobaEnemyCastleHP.toInt()}",
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (mobaEnemyTurretHP < 500f) Color(0xFF10B981) else Color.LightGray
+                                        color = if (mobaEnemyCastleHP < 1000f) Color(0xFF10B981) else Color.LightGray
                                     )
                                 }
                             }
@@ -6143,21 +6275,51 @@ fun MobaHeroSelection(
 }
 
 @Composable
-fun MobaBaseView(isEnemy: Boolean, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(24.dp)
-            .background(
-                if (isEnemy) Color(0xFF7F1D1D) else Color(0xFF1E3A8A),
-                RoundedCornerShape(4.dp)
-            )
-            .border(2.dp, if (isEnemy) Color.Red else Color(0xFF38BDF8), RoundedCornerShape(4.dp)),
-        contentAlignment = Alignment.Center
+fun MobaBaseView(hp: Float, maxHp: Float, isEnemy: Boolean, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.width(36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        // Castle Name Tag
         Text(
-            text = "🏰",
-            fontSize = 11.sp
+            text = if (isEnemy) "L.Đài Địch" else "L.Đài Ta",
+            color = if (isEnemy) Color(0xFFFCA5A5) else Color(0xFF7DD3FC),
+            fontSize = 6.5.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
         )
+        // HP bar
+        val progress = (hp / maxHp).coerceIn(0f, 1f)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(Color.DarkGray)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(if (isEnemy) Color.Red else Color(0xFF10B981))
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .background(
+                    if (isEnemy) Color(0xFF7F1D1D) else Color(0xFF1E3A8A),
+                    RoundedCornerShape(4.dp)
+                )
+                .border(2.dp, if (isEnemy) Color.Red else Color(0xFF38BDF8), RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "🏰",
+                fontSize = 12.sp
+            )
+        }
     }
 }
 
