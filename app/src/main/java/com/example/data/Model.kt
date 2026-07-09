@@ -27,7 +27,11 @@ data class ReflexScore(
     val delayMs: Int,
     val responseTimeMs: Int, // Response time in ms
     val result: String, // "SUCCESS", "FAILED" (clicked wrong), "PACKET_LOSS" (click missed due to loss)
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val kills: Int = 0,
+    val deaths: Int = 0,
+    val targetsHit: Int = 0,
+    val latencyMs: Int = 0
 )
 
 @Dao
@@ -51,7 +55,7 @@ interface AppDao {
     suspend fun clearScores()
 }
 
-@Database(entities = [SimulationHistory::class, ReflexScore::class], version = 1, exportSchema = false)
+@Database(entities = [SimulationHistory::class, ReflexScore::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun appDao(): AppDao
 }

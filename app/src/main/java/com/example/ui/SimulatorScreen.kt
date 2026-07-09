@@ -3224,6 +3224,11 @@ fun MobaGameAreaContent(
     val mobaAlphaBetaX by viewModel.mobaAlphaBetaX.collectAsState()
     val mobaAlphaBetaY by viewModel.mobaAlphaBetaY.collectAsState()
     val mobaAlphaBetaActive by viewModel.mobaAlphaBetaActive.collectAsState()
+    
+    val mobaXiaoMaskActive by viewModel.mobaXiaoMaskActive.collectAsState()
+    val mobaXiaoMaskDurationLeftMs by viewModel.mobaXiaoMaskDurationLeftMs.collectAsState()
+    val mobaXiaoDamageBonus by viewModel.mobaXiaoDamageBonus.collectAsState()
+
     val mobaIsZoomed by viewModel.mobaIsZoomed.collectAsState()
 
     val mobaEnemyIsKnockedUp by viewModel.mobaEnemyIsKnockedUp.collectAsState()
@@ -3998,12 +4003,13 @@ fun MobaGameAreaContent(
                         }
                     }
 
-                    // 6. Player Hero (Tulen / Valhein / Murad / Yasuo)
+                    // 6. Player Hero (Tulen / Valhein / Murad / Yasuo / Xiao)
                     if (mobaHeroHP > 0f) {
                         val glow = (mobaHero == "Tulen" && mobaPassiveStacks >= 5) || 
                                    (mobaHero == "Murad" && mobaPassiveStacks >= 4) || 
                                    (mobaHero == "Yasuo" && mobaHeroKnockupHeight > 0f) ||
-                                   (mobaHero == "Alpha" && mobaPassiveStacks >= 2)
+                                   (mobaHero == "Alpha" && mobaPassiveStacks >= 2) ||
+                                   (mobaHero == "Xiao" && mobaXiaoMaskActive)
                         MobaChampionView(
                             name = mobaHero,
                             isEnemy = false,
@@ -4015,8 +4021,9 @@ fun MobaGameAreaContent(
                                 x = boardWidth * (mobaHeroX / 100f) - 18.dp,
                                 y = boardHeight * (mobaHeroY / 100f) - 18.dp - mobaHeroKnockupHeight.dp
                             ),
-                            color = if (mobaHero == "Tulen") Color(0xFF06B6D4) else if (mobaHero == "Murad") Color(0xFFF59E0B) else if (mobaHero == "Yasuo") Color(0xFF64748B) else if (mobaHero == "Alpha") Color(0xFF22D3EE) else Color(0xFFFFCC33),
-                            hasGlow = glow
+                            color = if (mobaHero == "Tulen") Color(0xFF06B6D4) else if (mobaHero == "Murad") Color(0xFFF59E0B) else if (mobaHero == "Yasuo") Color(0xFF64748B) else if (mobaHero == "Alpha") Color(0xFF22D3EE) else if (mobaHero == "Xiao") Color(0xFF10B981) else Color(0xFFFFCC33),
+                            hasGlow = glow,
+                            isXiaoMaskActive = mobaXiaoMaskActive
                         )
                     }
 
@@ -4049,13 +4056,13 @@ fun MobaGameAreaContent(
                                     drawPath(
                                         path = slashPath,
                                         color = Color(0xFFF472B6).copy(alpha = 0.5f),
-                                        style = Stroke(width = 8f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 44f, cap = StrokeCap.Round)
                                     )
                                     // Bright cyan-white core
                                     drawPath(
                                         path = slashPath,
                                         color = Color(0xFFE0F2FE),
-                                        style = Stroke(width = 3.5f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 18f, cap = StrokeCap.Round)
                                     )
                                 }
                                 // Sakura petals falling off the slash
@@ -4110,13 +4117,13 @@ fun MobaGameAreaContent(
                                     drawPath(
                                         path = slashPath,
                                         color = Color(0xFFD97706).copy(alpha = 0.6f),
-                                        style = Stroke(width = 10f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 46f, cap = StrokeCap.Round)
                                     )
                                     // Golden core dagger line
                                     drawPath(
                                         path = slashPath,
                                         color = Color(0xFFFBBF24),
-                                        style = Stroke(width = 4f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 20f, cap = StrokeCap.Round)
                                     )
                                 }
 
@@ -4228,13 +4235,13 @@ fun MobaGameAreaContent(
                                     drawPath(
                                         path = sweepPath,
                                         color = Color(0xFF581C87).copy(alpha = 0.7f),
-                                        style = Stroke(width = 12f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 54f, cap = StrokeCap.Round)
                                     )
                                     // Hot lava-red core cleave
                                     drawPath(
                                         path = sweepPath,
                                         color = Color(0xFFEF4444),
-                                        style = Stroke(width = 5f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 24f, cap = StrokeCap.Round)
                                     )
                                 }
                                 // Underworld fire skulls
@@ -4351,19 +4358,19 @@ fun MobaGameAreaContent(
                                     drawPath(
                                         path = slashPath,
                                         color = Color(0xFF22D3EE).copy(alpha = 0.4f),
-                                        style = Stroke(width = 12f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 48f, cap = StrokeCap.Round)
                                     )
                                     // Mid purple-tech line
                                     drawPath(
                                         path = slashPath,
                                         color = Color(0xFFD946EF).copy(alpha = 0.7f),
-                                        style = Stroke(width = 6f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 22f, cap = StrokeCap.Round)
                                     )
                                     // Inner white-hot laser core
                                     drawPath(
                                         path = slashPath,
                                         color = Color(0xFFFFFFFF),
-                                        style = Stroke(width = 2.5f, cap = StrokeCap.Round)
+                                        style = Stroke(width = 10f, cap = StrokeCap.Round)
                                     )
                                 }
                                 // Cyber symbols floating off the slash
@@ -4383,6 +4390,163 @@ fun MobaGameAreaContent(
                                         y = eYDp - 10.dp
                                     )
                                 )
+                            }
+                        } else if (proj.type == "xiao_slash_visual" || proj.type == "xiao_dash") {
+                            // "vết chém phong ba dạ xoa" for Xiao (green jade, glowing style)
+                            val sXDp = boardWidth * (proj.x / 100f)
+                            val sYDp = boardHeight * (proj.y / 100f)
+                            val eXDp = boardWidth * (proj.targetX / 100f)
+                            val eYDp = boardHeight * (proj.targetY / 100f)
+                            
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val sX = size.width * (proj.x / 100f)
+                                    val sY = size.height * (proj.y / 100f)
+                                    val eX = size.width * (proj.targetX / 100f)
+                                    val eY = size.height * (proj.targetY / 100f)
+                                    
+                                    val slashPath = Path().apply {
+                                        moveTo(sX, sY)
+                                        quadraticTo(
+                                            (sX + eX) / 2f - 20f,
+                                            (sY + eY) / 2f - 20f,
+                                            eX,
+                                            eY
+                                        )
+                                    }
+                                    // Jade Green outer wind
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFF10B981).copy(alpha = 0.5f),
+                                        style = Stroke(width = 46f, cap = StrokeCap.Round)
+                                    )
+                                    // Glowing emerald core
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFF6EE7B7),
+                                        style = Stroke(width = 20f, cap = StrokeCap.Round)
+                                    )
+                                    // Bright white-teal laser center
+                                    drawPath(
+                                        path = slashPath,
+                                        color = Color(0xFFFFFFFF),
+                                        style = Stroke(width = 9f, cap = StrokeCap.Round)
+                                    )
+                                }
+                                Text(
+                                    text = "🟢",
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.offset(
+                                        x = eXDp - 6.dp,
+                                        y = eYDp - 10.dp
+                                    )
+                                )
+                            }
+                        } else if (proj.type == "xiao_plunge") {
+                            // Genshin-style Ultimate Plunge: Glowing green field + Yaksha's spears thrusting up
+                            val pXDp = boardWidth * (proj.x / 100f)
+                            val pYDp = boardHeight * (proj.y / 100f)
+                            val radiusDp = boardWidth * (proj.radius / 100f)
+                            
+                            val progress = (proj.durationTicks.toFloat() / 24f).coerceIn(0f, 1f)
+                            // Thrust up rapidly in the first 25% of duration, then hold
+                            val thrust = if (progress < 0.25f) (progress / 0.25f) else 1.0f
+                            // Fade out after 50% duration
+                            val alphaValue = if (progress < 0.5f) 0.85f else (0.85f * (1.0f - (progress - 0.5f) / 0.5f)).coerceIn(0f, 0.85f)
+                            val fieldAlpha = if (progress < 0.5f) 0.45f else (0.45f * (1.0f - (progress - 0.5f) / 0.5f)).coerceIn(0f, 0.45f)
+                            
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val centerX = size.width * (proj.x / 100f)
+                                    val centerY = size.height * (proj.y / 100f)
+                                    val radiusPx = size.width * (proj.radius / 100f)
+                                    
+                                    // 1. Draw glowing green AOE circular zone
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                Color(0xFF10B981).copy(alpha = fieldAlpha),
+                                                Color(0xFF047857).copy(alpha = fieldAlpha * 0.4f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        radius = radiusPx,
+                                        center = Offset(centerX, centerY)
+                                    )
+                                    // Outer ring edge
+                                    drawCircle(
+                                        color = Color(0xFF6EE7B7).copy(alpha = fieldAlpha * 1.5f),
+                                        radius = radiusPx,
+                                        center = Offset(centerX, centerY),
+                                        style = Stroke(width = 3f)
+                                    )
+                                    
+                                    // 2. Draw multiple Yaksha's spears rising up
+                                    val spearOffsets = listOf(
+                                        Offset(0.0f, 0.0f),       // Center
+                                        Offset(-0.5f, -0.3f),     // Top-Left
+                                        Offset(0.5f, -0.4f),      // Top-Right
+                                        Offset(-0.4f, 0.4f),      // Bottom-Left
+                                        Offset(0.4f, 0.3f),       // Bottom-Right
+                                        Offset(0.0f, -0.6f),      // Top
+                                        Offset(-0.6f, 0.1f)       // Left
+                                    )
+                                    
+                                    spearOffsets.forEach { offset ->
+                                        val baseX = centerX + offset.x * radiusPx
+                                        val baseY = centerY + offset.y * radiusPx
+                                        
+                                        val spearLen = 32f
+                                        val tipY = baseY - spearLen * thrust
+                                        
+                                        // Draw shaft of the spear
+                                        drawLine(
+                                            color = Color(0xFF047857).copy(alpha = alphaValue),
+                                            start = Offset(baseX, baseY),
+                                            end = Offset(baseX, tipY + 8f * thrust),
+                                            strokeWidth = 3f,
+                                            cap = StrokeCap.Round
+                                        )
+                                        
+                                        // Draw glowing emerald diamond spearhead
+                                        val headPath = Path().apply {
+                                            moveTo(baseX, tipY) // Pointed tip
+                                            lineTo(baseX - 4.5f, tipY + 9f * thrust)
+                                            lineTo(baseX, tipY + 12f * thrust)
+                                            lineTo(baseX + 4.5f, tipY + 9f * thrust)
+                                            close()
+                                        }
+                                        drawPath(
+                                            path = headPath,
+                                            color = Color(0xFF10B981).copy(alpha = alphaValue)
+                                        )
+                                        // Outer glowing border of spearhead
+                                        drawPath(
+                                            path = headPath,
+                                            color = Color(0xFFE6F4EA).copy(alpha = alphaValue),
+                                            style = Stroke(width = 1f)
+                                        )
+                                        // White-hot glowing core line down the spearhead
+                                        drawLine(
+                                            color = Color.White.copy(alpha = alphaValue),
+                                            start = Offset(baseX, tipY),
+                                            end = Offset(baseX, tipY + 12f * thrust),
+                                            strokeWidth = 1.5f
+                                        )
+                                    }
+                                }
+                                
+                                // Floating Anemo sparkles around the plunge
+                                if (progress < 0.75f) {
+                                    Text(
+                                        text = "✨",
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.offset(
+                                            x = pXDp - 4.dp,
+                                            y = pYDp - radiusDp / 2f - 14.dp
+                                        )
+                                    )
+                                }
                             }
                         } else if (proj.type == "alpha_ult_laser") {
                             // Orbital Laser: Gigantic high-tech vertical cyber pillar
@@ -4678,6 +4842,7 @@ fun MobaGameAreaContent(
                                 "Murad" -> Color(0xFFFBBF24) // Gold
                                 "Yasuo" -> Color(0xFFFFCC33) // Elegant Yellow
                                 "Alpha" -> Color(0xFF22D3EE) // Bright Cyan
+                                "Xiao" -> Color(0xFF10B981) // Jade Green
                                 else -> Color(0xFFE11D48) // Red
                             }
                         } else {
@@ -4808,6 +4973,7 @@ fun MobaGameAreaContent(
                                             else if (mobaHero == "Murad") Color(0xFFF59E0B).copy(alpha = 0.2f)
                                             else if (mobaHero == "Yasuo") Color(0xFF38BDF8).copy(alpha = 0.2f)
                                             else if (mobaHero == "Alpha") Color(0xFF22D3EE).copy(alpha = 0.2f)
+                                            else if (mobaHero == "Xiao") Color(0xFF10B981).copy(alpha = 0.2f)
                                             else Color(0xFFE11D48).copy(alpha = 0.2f),
                                             RoundedCornerShape(4.dp)
                                         )
@@ -4817,6 +4983,7 @@ fun MobaGameAreaContent(
                                             else if (mobaHero == "Murad") Color(0xFFF59E0B)
                                             else if (mobaHero == "Yasuo") Color(0xFF38BDF8)
                                             else if (mobaHero == "Alpha") Color(0xFF22D3EE)
+                                            else if (mobaHero == "Xiao") Color(0xFF10B981)
                                             else Color(0xFFE11D48),
                                             RoundedCornerShape(4.dp)
                                         )
@@ -4836,6 +5003,7 @@ fun MobaGameAreaContent(
                                             "Murad" -> if (mobaPassiveStacks >= 4) "🔓 KHAI ẤN!" else "Tích ấn: $mobaPassiveStacks/4"
                                             "Tulen" -> if (mobaPassiveStacks >= 5) "⚡ LÔI ẤN SẴN SÀNG" else "Lôi ấn: $mobaPassiveStacks/5"
                                             "Alpha" -> if (mobaPassiveStacks >= 2) "🛸 BETA LASER!" else "Cyber Mark: $mobaPassiveStacks/2"
+                                            "Xiao" -> "🌀 PHONG THẦN DẠ XOA"
                                             else -> "Tốc đánh: +${mobaPassiveStacks * 6}%"
                                         }
                                         val passiveColor = when (mobaHero) {
@@ -4843,6 +5011,7 @@ fun MobaGameAreaContent(
                                             "Murad" -> if (mobaPassiveStacks >= 4) Color(0xFFF59E0B) else Color.LightGray
                                             "Tulen" -> if (mobaPassiveStacks >= 5) Color(0xFF22D3EE) else Color.LightGray
                                             "Alpha" -> if (mobaPassiveStacks >= 2) Color(0xFF00FFFF) else Color.LightGray
+                                            "Xiao" -> Color(0xFF10B981)
                                             else -> Color(0xFFFCD34D)
                                         }
                                 Text(
@@ -5173,6 +5342,7 @@ fun MobaGameAreaContent(
                             val isMurad = mobaHero == "Murad"
                             val isYasuo = mobaHero == "Yasuo"
                             val isAlpha = mobaHero == "Alpha"
+                            val isXiao = mobaHero == "Xiao"
                             val skills = if (isTulen) {
                                 listOf(
                                     Triple("Chiêu 1: Lôi Quang", "⚡ Sát thương fan-shape", 55f),
@@ -5196,6 +5366,12 @@ fun MobaGameAreaContent(
                                     Triple("Chiêu 1: Đao Quét Thăng Hoa", "🤖 Quét đao thăng hoa & Beta phụ kích", 50f),
                                     Triple("Chiêu 2: Đao Quét Năng Lượng", "🛡️ Vung thương quét tròn & Hồi HP", 60f),
                                     Triple("Ult: Mũi Giáo Alpha", "🔥 Lao thẳng hất tung & Beta xả siêu Orbital Laser", 100f)
+                                )
+                            } else if (isXiao) {
+                                listOf(
+                                    Triple("Chiêu 1: Vũ Điệu Chinh Phục", "🟢 Chém 3 đường Gió Xanh phong ấn & Hồi 10% HP", 0f),
+                                    Triple("Chiêu 2: Gió Tung Hoành", "💨 Lướt kép 2 lần né tránh đột kích", 0f),
+                                    Triple("Ult: Vũ Điệu Đại Thánh", "🔥 Nhảy vút lên không & Đâm plunge 2 lần chấn động", 0f)
                                 )
                             } else {
                                 listOf(
@@ -5897,6 +6073,51 @@ fun MobaHeroSelection(
                     }
                 }
             }
+
+            // Xiao Card
+            Card(
+                modifier = Modifier
+                    .width(142.dp)
+                    .clickable { onSelectHero("Xiao") }
+                    .border(
+                        width = if (mobaHero == "Xiao") 2.dp else 1.dp,
+                        color = if (mobaHero == "Xiao") Color(0xFF10B981) else Color.DarkGray,
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (mobaHero == "Xiao") Color(0xFF064E3B) else Color(0xFF020617)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .background(Color(0xFF10B981).copy(alpha = 0.2f), CircleShape)
+                            .border(2.dp, Color(0xFF10B981), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🟢", fontSize = 28.sp)
+                    }
+                    Text("Xiao", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Hộ Pháp Dạ Xoa", fontSize = 10.sp, color = Color(0xFF10B981))
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Column(
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("• Gió Xanh chém phong ấn hồi phục 10% HP", fontSize = 9.sp, color = Color.LightGray)
+                        Text("• Lướt dạ xoa liên tục hai lần né tránh và đột kích", fontSize = 9.sp, color = Color.LightGray)
+                        Text("• Vũ Điệu Đại Thánh nhảy cao plunged liên tục hai lần", fontSize = 9.sp, color = Color.LightGray)
+                    }
+                }
+            }
         }
 
         // Play Button
@@ -6026,7 +6247,8 @@ fun MobaChampionView(
     color: Color,
     hasGlow: Boolean = false,
     shield: Float = 0f,
-    isEnchanted: Boolean = false
+    isEnchanted: Boolean = false,
+    isXiaoMaskActive: Boolean = false
 ) {
     Column(
         modifier = modifier.width(42.dp), // slightly wider for better accessibility and text layout
@@ -6077,14 +6299,16 @@ fun MobaChampionView(
         }
 
         // Avatar
-        val borderColor = if (isEnchanted) {
+        val borderColor = if (isXiaoMaskActive) {
+            Color(0xFF10B981) // Glowing emerald aura
+        } else if (isEnchanted) {
             Color(0xFFEF4444) // Enchanted sword red aura
         } else if (hasGlow) {
             Color(0xFF38BDF8) // Lightning/passive cyan aura
         } else {
             if (isEnemy) Color(0xFF991B1B) else Color(0xFF166534)
         }
-        val borderWidth = if (isEnchanted || hasGlow) 2.5.dp else 1.5.dp
+        val borderWidth = if (isXiaoMaskActive || isEnchanted || hasGlow) 2.5.dp else 1.5.dp
 
         Box(
             modifier = Modifier
@@ -6097,7 +6321,9 @@ fun MobaChampionView(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            val avatarEmoji = if (isEnemy) {
+            val avatarEmoji = if (isXiaoMaskActive) {
+                "👺" // Yaksha mask
+            } else if (isEnemy) {
                 "👿"
             } else {
                 when (name) {
@@ -6105,6 +6331,7 @@ fun MobaChampionView(
                     "Yasuo" -> "⚔️"
                     "Murad" -> "🗡️"
                     "Alpha" -> "🤖"
+                    "Xiao" -> "🟢"
                     else -> "🏹"
                 }
             }
@@ -6115,11 +6342,11 @@ fun MobaChampionView(
             )
         }
 
-        val displayName = if (isEnchanted) "🔥 $name 🔥" else name
+        val displayName = if (isXiaoMaskActive) "👺 DẠ XOA" else if (isEnchanted) "🔥 $name 🔥" else name
         Text(
             text = displayName,
             fontSize = 7.sp,
-            color = if (isEnchanted) Color(0xFFFCA5A5) else Color.White,
+            color = if (isXiaoMaskActive) Color(0xFF6EE7B7) else if (isEnchanted) Color(0xFFFCA5A5) else Color.White,
             fontWeight = FontWeight.Bold,
             maxLines = 1
         )

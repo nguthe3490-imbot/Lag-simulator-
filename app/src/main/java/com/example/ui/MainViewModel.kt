@@ -101,7 +101,8 @@ data class MobaProjectile(
     val targetY: Float,
     val isHoming: Boolean = false,
     val homingTargetId: String? = null, // homing to creep id, "enemy_hero", or "player"
-    var isFinished: Boolean = false
+    var isFinished: Boolean = false,
+    var durationTicks: Int = 0
 )
 
 data class MobaDamageText(
@@ -427,6 +428,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaHeroHP = MutableStateFlow(3000f)
     val mobaHeroHP = _mobaHeroHP.asStateFlow()
 
+    private val _mobaHeroShield = MutableStateFlow(0f)
+    val mobaHeroShield = _mobaHeroShield.asStateFlow()
+
     private val _mobaDashTrails = MutableStateFlow<List<MobaDashTrail>>(emptyList())
     val mobaDashTrails = _mobaDashTrails.asStateFlow()
 
@@ -494,6 +498,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var malochS3Cooldown = 0f
     var malochShieldDurationLeft = 0L
     var malochEnchantedDurationLeft = 0L
+    var mobaHeroShieldDurationLeft = 0L
+    var xiaoMaskTickCounter = 0
 
     // Player Status
     private val _mobaHeroIsStunned = MutableStateFlow(false)
@@ -580,6 +586,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _mobaAlphaBetaActive = MutableStateFlow(false)
     val mobaAlphaBetaActive = _mobaAlphaBetaActive.asStateFlow()
+
+    // Xiao States
+    private val _mobaXiaoMaskActive = MutableStateFlow(false)
+    val mobaXiaoMaskActive = _mobaXiaoMaskActive.asStateFlow()
+
+    private val _mobaXiaoMaskDurationLeftMs = MutableStateFlow(0L)
+    val mobaXiaoMaskDurationLeftMs = _mobaXiaoMaskDurationLeftMs.asStateFlow()
+
+    private val _mobaXiaoDamageBonus = MutableStateFlow(1.0f)
+    val mobaXiaoDamageBonus = _mobaXiaoDamageBonus.asStateFlow()
 
     // Score
     private val _mobaKills = MutableStateFlow(0)
@@ -671,11 +687,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             "Murad" -> 2900f
             "Yasuo" -> 3500f
             "Alpha" -> 3600f
+            "Xiao" -> 3400f
             else -> 3200f
         }
         _mobaHeroHP.value = maxHp
         _mobaHeroMaxHP.value = maxHp
-        val maxMp = if (_mobaHero.value == "Yasuo") 0f else if (_mobaHero.value == "Alpha") 450f else 500f
+        val maxMp = if (_mobaHero.value == "Yasuo") 0f else if (_mobaHero.value == "Xiao") 2000f else if (_mobaHero.value == "Alpha") 450f else 500f
         _mobaHeroMP.value = maxMp
         _mobaHeroMaxMP.value = maxMp
 
@@ -702,6 +719,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         malochS3Cooldown = 0f
         malochShieldDurationLeft = 0L
         malochEnchantedDurationLeft = 0L
+        mobaHeroShieldDurationLeft = 0L
+        _mobaHeroShield.value = 0f
+        _mobaXiaoMaskActive.value = false
+        _mobaXiaoMaskDurationLeftMs.value = 0L
+        _mobaXiaoDamageBonus.value = 1.0f
+        xiaoMaskTickCounter = 0
         _mobaHeroIsStunned.value = false
         _mobaHeroIsKnockedUp.value = false
 
@@ -862,7 +885,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val isMurad = _mobaHero.value == "Murad"
             val isYasuo = _mobaHero.value == "Yasuo"
             val isAlpha = _mobaHero.value == "Alpha"
-            val target = findNearestMobaEnemy(range = if (isMurad) 16f else if (isYasuo || isAlpha) 18f else 25f)
+            val isXiao = _mobaHero.value == "Xiao"
+            val target = findNearestMobaEnemy(range = if (isMurad || isXiao) 16f else if (isYasuo || isAlpha) 18f else 25f)
             if (target == null) {
                 _mobaLog.value = "⚠️ Không có kẻ địch nào trong tầm đánh!"
                 return@launch
@@ -917,11 +941,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             // Spawn basic projectile
             val isTulen = _mobaHero.value == "Tulen"
-            val projColor = if (isTulen) 0xFF33FFFF else if (isMurad) 0xFFEAB308 else if (isYasuo) 0xFFF1F5F9 else if (isAlpha) 0xFF22D3EE else 0xFFFFCC33
-            val damage = if (isTulen) 140f else if (isMurad) 195f else if (isYasuo) 180f else if (isAlpha) 175f else 160f
+            val projColor = if (isTulen) 0xFF33FFFF else if (isMurad) 0xFFEAB308 else if (isYasuo) 0xFFF1F5F9 else if (isAlpha) 0xFF22D3EE else if (isXiao) 0xFF10B981 else 0xFFFFCC33
+            val damage = if (isTulen) 140f else if (isMurad) 195f else if (isYasuo) 180f else if (isAlpha) 175f else if (isXiao) 190f else 160f
             
-            val isPassiveShot = !isTulen && !isMurad && !isYasuo && !isAlpha && (mobaValheinAttackCount >= 2)
-            val projType = if (isMurad) "murad_basic" else if (isYasuo) "yasuo_basic" else if (isAlpha) "alpha_basic" else if (isPassiveShot) "passive_glaive" else "basic"
+            val isPassiveShot = !isTulen && !isMurad && !isYasuo && !isAlpha && !isXiao && (mobaValheinAttackCount >= 2)
+            val projType = if (isMurad) "murad_basic" else if (isYasuo) "yasuo_basic" else if (isAlpha) "alpha_basic" else if (isXiao) "xiao_basic" else if (isPassiveShot) "passive_glaive" else "basic"
             val finalColor = if (isPassiveShot) {
                 val rand = Random.nextInt(3)
                 when (rand) {
@@ -934,12 +958,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val proj = MobaProjectile(
                 x = _mobaHeroX.value,
                 y = _mobaHeroY.value,
-                speed = if (isMurad) 3.0f else if (isYasuo) 3.2f else if (isAlpha) 3.4f else 2.2f, // Murad, Yasuo, Alpha hit faster!
+                speed = if (isMurad) 3.0f else if (isYasuo) 3.2f else if (isAlpha) 3.4f else if (isXiao) 3.3f else 2.2f, // Murad, Yasuo, Alpha, Xiao hit faster!
                 isEnemy = false,
                 damage = damage,
                 type = projType,
                 color = finalColor,
-                radius = if (isMurad || isYasuo || isAlpha) 1.2f else 1.8f,
+                radius = if (isMurad || isYasuo || isAlpha || isXiao) 1.2f else 1.8f,
                 targetX = target.first,
                 targetY = target.second,
                 isHoming = true,
@@ -947,11 +971,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             
             _mobaProjectiles.value = _mobaProjectiles.value + proj
-            if (!isTulen && !isMurad && !isYasuo && !isAlpha) {
+            if (!isTulen && !isMurad && !isYasuo && !isAlpha && !isXiao) {
                 mobaValheinAttackCount = if (isPassiveShot) 0 else (mobaValheinAttackCount + 1)
                 val healAmt = _mobaHeroMaxHP.value * 0.05f
                 _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
                 addMobaDamageText("+${healAmt.toInt()} HP 💚", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF10B981)
+            } else if (isXiao) {
+                val lossAmt = _mobaHeroMaxHP.value * 0.01f
+                _mobaHeroHP.value = (_mobaHeroHP.value - lossAmt).coerceAtLeast(1f)
+                addMobaDamageText("-${lossAmt.toInt()} HP 🩸", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFFEF4444)
+                
+                // Immediately check if HP falls below 50% to take off the mask
+                if (_mobaHeroHP.value <= _mobaHeroMaxHP.value * 0.5f && _mobaXiaoMaskActive.value) {
+                    _mobaXiaoMaskActive.value = false
+                    _mobaXiaoMaskDurationLeftMs.value = 0L
+                    _mobaXiaoDamageBonus.value = 1.0f
+                    _mobaLog.value = "👺 HP dưới 50%! Xiao tự động tháo Mặt Nạ Dạ Xoa để bảo vệ bản thân!"
+                }
             }
         }
     }
@@ -1066,14 +1102,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (isYasuo) {
             when (skillIndex) {
                 0 -> { // Chiêu 1: Bão Kiếm (Steel Tempest)
-                    val healAmt = _mobaHeroMaxHP.value * 0.05f
+                    val healAmt = _mobaHeroMaxHP.value * 0.12f
                     _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
                     addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
 
                     val stacks = _mobaPassiveStacks.value
                     if (stacks >= 2) {
-                        _mobaLog.value = "🌪️ HASAGI! Yasuo phóng CƠN BÃO CÁT hất tung kẻ địch dọc đường đi!"
+                        _mobaLog.value = "🌪️ HASAGI! Yasuo phóng CƠN BÃO CÁT hất tung kẻ địch dọc đường đi và nhận Giáp gió bảo hộ!"
                         _mobaPassiveStacks.value = 0 // consume
+                        
+                        // Grant 50% Max HP Shield
+                        val shieldAmt = _mobaHeroMaxHP.value * 0.50f
+                        _mobaHeroShield.value = shieldAmt
+                        mobaHeroShieldDurationLeft = 5000L // 5 seconds
+                        addMobaDamageText("+${shieldAmt.toInt()} GIÁP 🛡️", hX, hY - 8f, 0xFF38BDF8)
+
                         // Spawn tornado projectile!
                         _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                             x = hX,
@@ -1509,6 +1552,183 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
             }
+        } else if (_mobaHero.value == "Xiao") {
+            // Xiao skills
+            when (skillIndex) {
+                0 -> { // S1: 3 green slashes + 10% HP heal
+                    val healAmt = _mobaHeroMaxHP.value * 0.10f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+                    _mobaLog.value = "🟢 Xiao tung Vũ Điệu Chinh Phục: Tạo ra 3 đường chém Gió Xanh phong ấn và hồi phục 10% HP!"
+                    
+                    val angle1 = angle - 0.25f
+                    val angle2 = angle
+                    val angle3 = angle + 0.25f
+                    
+                    listOf(angle1, angle2, angle3).forEach { a ->
+                        val dist = 18f
+                        val targetX = hX + kotlin.math.cos(a) * dist
+                        val targetY = hY + kotlin.math.sin(a) * dist
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = hX,
+                            y = hY,
+                            speed = 3.2f,
+                            isEnemy = false,
+                            damage = 260f,
+                            type = "xiao_slash_visual",
+                            color = 0xFF10B981, // Green
+                            radius = 2.0f,
+                            targetX = targetX,
+                            targetY = targetY,
+                            isHoming = false
+                        )
+                    }
+                }
+                1 -> { // S2: Double dash + 5% HP drain
+                    val lossAmt = _mobaHeroMaxHP.value * 0.05f
+                    _mobaHeroHP.value = (_mobaHeroHP.value - lossAmt).coerceAtLeast(1f)
+                    addMobaDamageText("-${lossAmt.toInt()} HP 🩸", hX, hY - 6f, 0xFFEF4444)
+                    _mobaLog.value = "🟢 Xiao tiêu hao 5% HP thi triển Gió Tung Hoành! Lướt xa liên tục hai lần xuyên qua hàng ngũ địch!"
+                    
+                    // Immediately check if HP falls below 50% to take off the mask
+                    if (_mobaHeroHP.value <= _mobaHeroMaxHP.value * 0.5f && _mobaXiaoMaskActive.value) {
+                        _mobaXiaoMaskActive.value = false
+                        _mobaXiaoMaskDurationLeftMs.value = 0L
+                        _mobaXiaoDamageBonus.value = 1.0f
+                        _mobaLog.value = "👺 HP dưới 50%! Xiao tự động tháo Mặt Nạ Dạ Xoa để bảo vệ bản thân!"
+                    }
+
+                    viewModelScope.launch {
+                        _mobaHeroIsImmune.value = true
+                        
+                        // First dash
+                        val stepX1 = kotlin.math.cos(angle) * 15f
+                        val stepY1 = kotlin.math.sin(angle) * 15f
+                        val destX1 = (_mobaHeroX.value + stepX1).coerceIn(10f, 90f)
+                        val destY1 = (_mobaHeroY.value + stepY1).coerceIn(20f, 80f)
+                        
+                        _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                            id = "xiao_dash_1_${System.currentTimeMillis()}",
+                            x = _mobaHeroX.value,
+                            y = _mobaHeroY.value,
+                            color = 0xFF10B981,
+                            isTulen = false,
+                            alpha = 0.5f
+                        )
+                        _mobaHeroX.value = destX1
+                        _mobaHeroY.value = destY1
+                        _mobaHeroDestX.value = destX1
+                        _mobaHeroDestY.value = destY1
+                        dealAoeMobaDamage(destX1, destY1, radius = 7f, damage = 300f, type = "xiao_dash")
+                        addMobaDamageText("DẠ XOA LƯỚT 💨", destX1, destY1 - 6f, 0xFF10B981)
+                        
+                        delay(180) // Short pause
+                        
+                        // Second dash
+                        val curX = _mobaHeroX.value
+                        val curY = _mobaHeroY.value
+                        val stepX2 = kotlin.math.cos(angle) * 15f
+                        val stepY2 = kotlin.math.sin(angle) * 15f
+                        val destX2 = (curX + stepX2).coerceIn(10f, 90f)
+                        val destY2 = (curY + stepY2).coerceIn(20f, 80f)
+                        
+                        _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                            id = "xiao_dash_2_${System.currentTimeMillis()}",
+                            x = curX,
+                            y = curY,
+                            color = 0xFF10B981,
+                            isTulen = false,
+                            alpha = 0.5f
+                        )
+                        _mobaHeroX.value = destX2
+                        _mobaHeroY.value = destY2
+                        _mobaHeroDestX.value = destX2
+                        _mobaHeroDestY.value = destY2
+                        dealAoeMobaDamage(destX2, destY2, radius = 7f, damage = 350f, type = "xiao_dash")
+                        addMobaDamageText("GIÓ TUNG HOÀNH! 🟢💥", destX2, destY2 - 6f, 0xFF059669)
+                        
+                        delay(100)
+                        _mobaHeroIsImmune.value = false
+                        delay(250)
+                        _mobaDashTrails.value = emptyList()
+                    }
+                }
+                2 -> { // S3: Jump and Plunge MULTIPLE times (4 times!)
+                    _mobaXiaoMaskActive.value = true
+                    _mobaXiaoMaskDurationLeftMs.value = 15000L // 15 seconds to allow full 4 plunges
+                    _mobaXiaoDamageBonus.value = 1.0f // reset bonus multiplier to 1.0, increases over time
+                    _mobaLog.value = "👺 Xiao đeo Mặt Nạ Dạ Xoa và tung Vũ Điệu Đại Thánh! Nhảy vút lên không trung thực hiện 4 cú Plunge chấn động liên tục!"
+                    viewModelScope.launch {
+                        _mobaHeroIsImmune.value = true
+                        
+                        val totalPlunges = 4
+                        for (p in 1..totalPlunges) {
+                            if (_mobaHeroHP.value <= 0f) break
+                            
+                            val steps = 10
+                            val peakHeight = 40f
+                            val stepDelay = 150L / steps
+                            
+                            // Jump up
+                            for (i in 0..steps) {
+                                val progress = i.toFloat() / steps
+                                val ang = progress * (kotlin.math.PI / 2.0)
+                                _mobaHeroKnockupHeight.value = (kotlin.math.sin(ang) * peakHeight).toFloat()
+                                delay(stepDelay)
+                            }
+                            delay(60) // Hover
+                            
+                            // Plunge down rapidly
+                            for (i in steps downTo 0) {
+                                val progress = i.toFloat() / steps
+                                val ang = progress * (kotlin.math.PI / 2.0)
+                                _mobaHeroKnockupHeight.value = (kotlin.math.sin(ang) * peakHeight).toFloat()
+                                delay(stepDelay / 2)
+                            }
+                            _mobaHeroKnockupHeight.value = 0f
+                            
+                            // Teleport slightly towards target or Maloch for slam
+                            val targetX = (_mobaEnemyX.value).coerceIn(10f, 90f)
+                            val targetY = (_mobaEnemyY.value).coerceIn(20f, 80f)
+                            _mobaHeroX.value = targetX
+                            _mobaHeroY.value = targetY
+                            _mobaHeroDestX.value = targetX
+                            _mobaHeroDestY.value = targetY
+                            
+                            val isMaskStillActive = _mobaXiaoMaskActive.value
+                            val multiplier = _mobaXiaoDamageBonus.value
+                            val baseDmg = 320f + p * 60f // Increases with each plunge
+                            val finalDmg = baseDmg * multiplier
+                            val radius = if (isMaskStillActive) 14f else 9.5f
+                            
+                            dealAoeMobaDamage(targetX, targetY, radius = radius, damage = finalDmg, type = "xiao_plunge")
+                            
+                            val textLabel = if (isMaskStillActive) "PLUNGE CHẤN ĐỘNG! 👺🟢" else "PLUNGE THƯỜNG! 🟢"
+                            addMobaDamageText(textLabel, targetX, targetY - 6f, 0xFF10B981)
+                            
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = targetX,
+                                y = targetY,
+                                speed = 0f,
+                                isEnemy = false,
+                                damage = 0f,
+                                type = "xiao_plunge",
+                                color = 0xFF10B981,
+                                radius = radius,
+                                targetX = targetX,
+                                targetY = targetY,
+                                isHoming = false
+                            )
+                            
+                            if (p < totalPlunges) {
+                                delay(180) // Pause briefly on ground
+                            }
+                        }
+                        
+                        _mobaHeroIsImmune.value = false
+                    }
+                }
+            }
         } else if (_mobaHero.value == "Alpha") {
             // Alpha skills
             when (skillIndex) {
@@ -1896,6 +2116,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun damagePlayer(amount: Float): Float {
+        val shield = _mobaHeroShield.value
+        return if (shield > 0f) {
+            if (shield >= amount) {
+                _mobaHeroShield.value = shield - amount
+                0f
+            } else {
+                _mobaHeroShield.value = 0f
+                val excess = amount - shield
+                _mobaHeroHP.value = (_mobaHeroHP.value - excess).coerceAtLeast(0f)
+                excess
+            }
+        } else {
+            _mobaHeroHP.value = (_mobaHeroHP.value - amount).coerceAtLeast(0f)
+            amount
+        }
+    }
+
     private fun dealAoeMobaEnemyDamage(centerX: Float, centerY: Float, radius: Float, damage: Float, type: String) {
         var hitHero = false
 
@@ -1908,7 +2146,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     addMobaDamageText("NÉ 💫", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF38BDF8)
                 } else {
                     val finalDamage = if (_mobaEnemyEnchanted.value) damage * 1.2f else damage
-                    _mobaHeroHP.value = (_mobaHeroHP.value - finalDamage).coerceAtLeast(0f)
+                    damagePlayer(finalDamage)
                     
                     val dmgColor = if (_mobaEnemyEnchanted.value) 0xFFFF1155 else 0xFFFF3333 // Pink/True damage for enchanted, red otherwise
                     addMobaDamageText("-${finalDamage.toInt()}${if (_mobaEnemyEnchanted.value) " TRUE" else ""}", _mobaHeroX.value, _mobaHeroY.value - 6f, dmgColor)
@@ -2134,6 +2372,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            // Decay Player active shield
+            if (mobaHeroShieldDurationLeft > 0L) {
+                mobaHeroShieldDurationLeft -= 50L
+                if (mobaHeroShieldDurationLeft <= 0L) {
+                    _mobaHeroShield.value = 0f
+                }
+            }
+
             // Decay Maloch enchanted sword duration
             if (malochEnchantedDurationLeft > 0L) {
                 malochEnchantedDurationLeft -= 50L
@@ -2157,6 +2403,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val isTulen = _mobaHero.value == "Tulen"
             val isMurad = _mobaHero.value == "Murad"
             val isYasuo = _mobaHero.value == "Yasuo"
+            val isXiao = _mobaHero.value == "Xiao"
+
+            if (isXiao && _mobaXiaoMaskActive.value) {
+                val dur = _mobaXiaoMaskDurationLeftMs.value - 50L
+                val maxHP = _mobaHeroMaxHP.value
+                val currentHP = _mobaHeroHP.value
+                
+                if (currentHP <= maxHP * 0.5f) {
+                    _mobaXiaoMaskActive.value = false
+                    _mobaXiaoMaskDurationLeftMs.value = 0L
+                    _mobaXiaoDamageBonus.value = 1.0f
+                    _mobaLog.value = "👺 HP xuống dưới 50%! Xiao tự động tháo Mặt Nạ Dạ Xoa để bảo vệ sinh mệnh!"
+                } else if (dur <= 0L) {
+                    _mobaXiaoMaskActive.value = false
+                    _mobaXiaoMaskDurationLeftMs.value = 0L
+                    _mobaXiaoDamageBonus.value = 1.0f
+                    _mobaLog.value = "🟢 Mặt nạ Dạ Xoa của Xiao đã hết tác dụng."
+                } else {
+                    _mobaXiaoMaskDurationLeftMs.value = dur
+                    if (currentHP > 1f) {
+                        val drainAmount = maxHP * 0.005f // Drain health 3.3x faster (10% max HP per second)
+                        _mobaHeroHP.value = (currentHP - drainAmount).coerceAtLeast(1f)
+                    }
+                    val bonus = (_mobaXiaoDamageBonus.value + 0.005f).coerceAtMost(1.75f)
+                    _mobaXiaoDamageBonus.value = bonus
+
+                    xiaoMaskTickCounter++
+                    if (xiaoMaskTickCounter >= 15) { // Show visual alert slightly more frequently
+                        xiaoMaskTickCounter = 0
+                        val currentBonusPercent = ((bonus - 1.0f) * 100).toInt()
+                        val hX = _mobaHeroX.value
+                        val hY = _mobaHeroY.value
+                        addMobaDamageText("DẠ XOA 👺 -HP", hX, hY - 10f, 0xFFEF4444)
+                        if (currentBonusPercent > 0) {
+                            addMobaDamageText("ST +$currentBonusPercent% ⚡", hX, hY - 6f, 0xFF10B981)
+                        }
+                    }
+                }
+            } else if (!isXiao) {
+                _mobaXiaoMaskActive.value = false
+                _mobaXiaoMaskDurationLeftMs.value = 0L
+                _mobaXiaoDamageBonus.value = 1.0f
+            }
+
             if (isYasuo) {
                 // Decay Yasuo wind wall timer
                 if (mobaWindWallDurationLeftMs > 0L) {
@@ -2393,6 +2683,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         projs.forEach { proj ->
             if (proj.isFinished) return@forEach
 
+            if (proj.type == "xiao_plunge") {
+                proj.durationTicks++
+                if (proj.durationTicks >= 24) {
+                    proj.isFinished = true
+                    updated = true
+                }
+                return@forEach
+            }
+
             // Check Wind Wall blocking (if the projectile is an enemy projectile, and Wind Wall is active, check if it is near the Wind Wall)
             if (proj.isEnemy && _mobaWindWallActive.value) {
                 val wwX = _mobaWindWallX.value
@@ -2570,7 +2869,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (_mobaHeroIsImmune.value) {
                     addMobaDamageText("NÉ 💫", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF38BDF8)
                 } else {
-                    _mobaHeroHP.value = (_mobaHeroHP.value - dmg).coerceAtLeast(0f)
+                    damagePlayer(dmg)
                     addMobaDamageText("-${dmg.toInt()}", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFFFF3333)
                     
                     // Slow effect if Maloch's cleaver
@@ -3220,7 +3519,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 delay(4000)
                 if (_mobaState.value == "playing") {
                     _mobaHeroHP.value = _mobaHeroMaxHP.value
-                    _mobaHeroMP.value = 500f
+                    _mobaHeroMP.value = _mobaHeroMaxMP.value
                     _mobaLog.value = "🛡️ Bạn đã hồi sinh! Hãy cẩn thận và tiến lên đẩy trụ!"
                 }
             }
@@ -3317,7 +3616,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 delayMs = basePing,
                 responseTimeMs = if (isVictory) 220 + basePing else 360 + basePing,
                 result = if (isVictory) "SUCCESS" else "FAILED",
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                kills = _mobaKills.value,
+                deaths = _mobaDeaths.value,
+                targetsHit = mobaSkillHitsCount,
+                latencyMs = basePing
             )
             repository.insertScore(reflexScore)
 
@@ -3608,13 +3911,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val modeName = "Đấu Boss 👹"
         val resultString = "FPS|$modeName|${if (victory) "THẮNG" else "THUA"}|Acc: $accuracy%|HP Boss: ${_fpsBossHp.value}/5"
+        val fpsPing = if (_isSimulating.value) _currentPing.value else 10
         viewModelScope.launch {
             repository.insertScore(
                 ReflexScore(
                     gameName = "FPS 2D - $modeName",
-                    delayMs = if (_isSimulating.value) _currentPing.value else 10,
-                    responseTimeMs = if (_isSimulating.value) _currentPing.value else 10,
-                    result = resultString
+                    delayMs = fpsPing,
+                    responseTimeMs = fpsPing,
+                    result = resultString,
+                    kills = if (victory) 1 else 0,
+                    deaths = if (victory) 0 else 1,
+                    targetsHit = _fpsHits.value,
+                    latencyMs = fpsPing
                 )
             )
         }
@@ -3974,7 +4282,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     gameName = "FPS 2D - $modeName",
                     delayMs = basePing,
                     responseTimeMs = avgWithNetwork,
-                    result = resultString
+                    result = resultString,
+                    kills = hits,
+                    deaths = 0,
+                    targetsHit = hits,
+                    latencyMs = basePing
                 )
             )
         }
