@@ -641,6 +641,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaTulenS2CastCount = MutableStateFlow(0)
     val mobaTulenS2CastCount = _mobaTulenS2CastCount.asStateFlow()
 
+    // Xiao S2 multi-dash state
+    private val _mobaXiaoS2CastCount = MutableStateFlow(0)
+    val mobaXiaoS2CastCount = _mobaXiaoS2CastCount.asStateFlow()
+
     private val _mobaLog = MutableStateFlow("Đại Lộ Công Lý đã sẵn sàng! Chọn tướng và xuất kích ngay! ⚔️")
     val mobaLog = _mobaLog.asStateFlow()
 
