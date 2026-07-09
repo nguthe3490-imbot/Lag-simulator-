@@ -817,6 +817,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 targetX = (currentX + stepSize).coerceIn(0f, 100f)
                 targetY = currentY
             }
+            MobaMoveDirection.UP_LEFT -> {
+                targetX = (currentX - stepSize * 0.707f).coerceIn(0f, 100f)
+                targetY = (currentY - stepSize * 0.707f).coerceIn(20f, 80f)
+            }
+            MobaMoveDirection.UP_RIGHT -> {
+                targetX = (currentX + stepSize * 0.707f).coerceIn(0f, 100f)
+                targetY = (currentY - stepSize * 0.707f).coerceIn(20f, 80f)
+            }
+            MobaMoveDirection.DOWN_LEFT -> {
+                targetX = (currentX - stepSize * 0.707f).coerceIn(0f, 100f)
+                targetY = (currentY + stepSize * 0.707f).coerceIn(20f, 80f)
+            }
+            MobaMoveDirection.DOWN_RIGHT -> {
+                targetX = (currentX + stepSize * 0.707f).coerceIn(0f, 100f)
+                targetY = (currentY + stepSize * 0.707f).coerceIn(20f, 80f)
+            }
             else -> return
         }
 
@@ -997,7 +1013,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (_mobaTulenS2CastCount.value < 2) 0.4f else 5.5f
                 } else if (isMurad) 7.0f else if (isAlpha) 5.5f else 6.0f
             }
-            else -> if (isMurad) 12.0f else if (isTulen) 11.0f else if (isAlpha) 12.0f else 14.0f
+            else -> if (isMurad) 4.0f else if (isTulen) 11.0f else if (isAlpha) 12.0f else 14.0f
         }
         cds[skillIndex] = baseCd
         _mobaSkillCooldowns.value = cds
@@ -1336,7 +1352,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _mobaHeroIsImmune.value = false
                 }
                 2 -> { // Chiêu 3: Ảo Ảnh Trảm (Flurry attack, invulnerable)
-                    val healAmt = _mobaHeroMaxHP.value * 0.05f
+                    val healAmt = _mobaHeroMaxHP.value * 0.20f
                     _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
                     addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
 
@@ -2275,6 +2291,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             MobaMoveDirection.RIGHT -> {
                                 _mobaHeroDestX.value = (hX + step * 2f).coerceIn(0f, 100f)
                                 _mobaHeroDestY.value = hY
+                            }
+                            MobaMoveDirection.UP_LEFT -> {
+                                _mobaHeroDestX.value = (hX - step * 1.414f).coerceIn(0f, 100f)
+                                _mobaHeroDestY.value = (hY - step * 1.414f).coerceIn(20f, 80f)
+                            }
+                            MobaMoveDirection.UP_RIGHT -> {
+                                _mobaHeroDestX.value = (hX + step * 1.414f).coerceIn(0f, 100f)
+                                _mobaHeroDestY.value = (hY - step * 1.414f).coerceIn(20f, 80f)
+                            }
+                            MobaMoveDirection.DOWN_LEFT -> {
+                                _mobaHeroDestX.value = (hX - step * 1.414f).coerceIn(0f, 100f)
+                                _mobaHeroDestY.value = (hY + step * 1.414f).coerceIn(20f, 80f)
+                            }
+                            MobaMoveDirection.DOWN_RIGHT -> {
+                                _mobaHeroDestX.value = (hX + step * 1.414f).coerceIn(0f, 100f)
+                                _mobaHeroDestY.value = (hY + step * 1.414f).coerceIn(20f, 80f)
                             }
                             else -> {}
                         }
@@ -4676,7 +4708,7 @@ data class LagReport(
     val tips: List<Pair<String, String>>
 )
 
-enum class MobaMoveDirection { NONE, UP, DOWN, LEFT, RIGHT }
+enum class MobaMoveDirection { NONE, UP, DOWN, LEFT, RIGHT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT }
 
 data class MobaDashTrail(
     val id: String,

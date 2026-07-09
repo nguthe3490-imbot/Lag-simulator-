@@ -5403,6 +5403,122 @@ fun MobaGameAreaContent(
                                 )
                             }
 
+                            // Up-Left Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.UP_LEFT) },
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .size(36.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.UP_LEFT)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
+                                            }
+                                        )
+                                    }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Di chuyển Lên Trái",
+                                    tint = NeonCyan.copy(alpha = 0.8f),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer(rotationZ = -45f)
+                                )
+                            }
+
+                            // Up-Right Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.UP_RIGHT) },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(36.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.UP_RIGHT)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
+                                            }
+                                        )
+                                    }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Di chuyển Lên Phải",
+                                    tint = NeonCyan.copy(alpha = 0.8f),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer(rotationZ = 45f)
+                                )
+                            }
+
+                            // Down-Left Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.DOWN_LEFT) },
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .size(36.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.DOWN_LEFT)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
+                                            }
+                                        )
+                                    }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Di chuyển Xuống Trái",
+                                    tint = NeonCyan.copy(alpha = 0.8f),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer(rotationZ = 45f)
+                                )
+                            }
+
+                            // Down-Right Button
+                            IconButton(
+                                onClick = { viewModel.moveHeroInDirection(MobaMoveDirection.DOWN_RIGHT) },
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(36.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                viewModel.setMobaMoveDirection(MobaMoveDirection.DOWN_RIGHT)
+                                                try {
+                                                    awaitRelease()
+                                                } finally {
+                                                    viewModel.setMobaMoveDirection(MobaMoveDirection.NONE)
+                                                }
+                                            }
+                                        )
+                                    }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Di chuyển Xuống Phải",
+                                    tint = NeonCyan.copy(alpha = 0.8f),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer(rotationZ = -45f)
+                                )
+                            }
+
                             // Center STOP Button
                             IconButton(
                                 onClick = {
