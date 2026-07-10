@@ -159,7 +159,8 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 val tabs = listOf(
                     Triple(0, t("subtab_network"), Icons.Default.Speed),
                     Triple(1, t("subtab_fps"), Icons.Default.Bolt),
-                    Triple(2, t("subtab_moba"), Icons.Default.CellTower)
+                    Triple(2, t("subtab_moba"), Icons.Default.CellTower),
+                    Triple(3, t("subtab_sphere"), Icons.Default.Info)
                 )
                 tabs.forEach { (index, title, icon) ->
                     val isTabSelected = selectedSubTab == index
@@ -854,6 +855,12 @@ fun SimulatorScreen(viewModel: MainViewModel) {
             val fpsUserHp by viewModel.fpsUserHp.collectAsState()
             val fpsBossState by viewModel.fpsBossState.collectAsState()
             val fpsWeapon by viewModel.fpsWeapon.collectAsState()
+            val fpsZombies by viewModel.fpsZombies.collectAsState()
+
+            val sphereList by viewModel.sphereList.collectAsState()
+            val sphereFps by viewModel.sphereFps.collectAsState()
+            val sphereGameState by viewModel.sphereGameState.collectAsState()
+            val sphereCount by viewModel.sphereCount.collectAsState()
 
             if (fpsIsZoomed) {
                 Dialog(
@@ -1140,33 +1147,144 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                         }
                                     }
                                     "spawned", "delaying" -> {
-                                        val infiniteTransition = rememberInfiniteTransition(label = "pulse_dialog")
-                                        val scale by infiniteTransition.animateFloat(
-                                            initialValue = 0.95f,
-                                            targetValue = 1.15f,
-                                            animationSpec = infiniteRepeatable(
-                                                animation = tween(450),
-                                                repeatMode = RepeatMode.Reverse
-                                            ),
-                                            label = "scale_dialog"
-                                        )
+                                        if (fpsGameMode == "zombie") {
+                                            // Render all active zombies moving down in zoomed mode!
+                                            fpsZombies.forEach { zombie ->
+                                                val sizeFactor = zombie.sizeMultiplier
+                                                val zombieSize = 48.dp * sizeFactor
+                                                Box(
+                                                    modifier = Modifier
+                                                        .offset(
+                                                            x = boxWidthDp * zombie.x - (zombieSize / 2),
+                                                            y = boxHeightDp * zombie.y - (zombieSize / 2)
+                                                        )
+                                                        .size(zombieSize),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        val w = size.width
+                                                        val h = size.height
+                                                        val headRadius = size.minDimension * 0.42f
+                                                        
+                                                        // Zombie Head Glow/Shadow
+                                                        drawCircle(
+                                                            color = if (zombie.isBoss) Color(0xFF9333EA).copy(alpha = 0.35f) else Color(0xFF10B981).copy(alpha = 0.25f),
+                                                            radius = headRadius * 1.2f
+                                                        )
+                                                        
+                                                        // Head Oval
+                                                        drawCircle(
+                                                            color = if (zombie.isBoss) Color(0xFF7E22CE) else Color(0xFF047857),
+                                                            radius = headRadius
+                                                        )
+                                                        
+                                                        // Eyes
+                                                        val eyeRadius = headRadius * 0.18f
+                                                        drawCircle(
+                                                            color = Color(0xFFEF4444),
+                                                            radius = eyeRadius,
+                                                            center = Offset(w * 0.33f, h * 0.43f)
+                                                        )
+                                                        drawCircle(
+                                                            color = Color(0xFFEF4444),
+                                                            radius = eyeRadius,
+                                                            center = Offset(w * 0.67f, h * 0.43f)
+                                                        )
+                                                        // Pupils
+                                                        drawCircle(
+                                                            color = Color.White,
+                                                            radius = eyeRadius * 0.4f,
+                                                            center = Offset(w * 0.33f, h * 0.43f)
+                                                        )
+                                                        drawCircle(
+                                                            color = Color.White,
+                                                            radius = eyeRadius * 0.4f,
+                                                            center = Offset(w * 0.67f, h * 0.43f)
+                                                        )
+                                                        
+                                                        // Mouth
+                                                        drawLine(
+                                                            color = Color.Black,
+                                                            start = Offset(w * 0.25f, h * 0.72f),
+                                                            end = Offset(w * 0.75f, h * 0.72f),
+                                                            strokeWidth = 2.5.dp.toPx()
+                                                        )
+                                                        
+                                                        // Stitches
+                                                        for (k in 1..4) {
+                                                            val xOffset = w * (0.25f + k * 0.1f)
+                                                            drawLine(
+                                                                color = Color.Black,
+                                                                start = Offset(xOffset, h * 0.65f),
+                                                                end = Offset(xOffset + 2.dp.toPx(), h * 0.79f),
+                                                                strokeWidth = 1.5.dp.toPx()
+                                                            )
+                                                        }
+                                                    }
+                                                    
+                                                    // Health Bar
+                                                    val maxHpOfZ = if (zombie.isBoss) 15f else 1f
+                                                    val hpPercent = (zombie.hp / maxHpOfZ).coerceIn(0f, 1f)
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopCenter)
+                                                            .offset(y = (-14).dp)
+                                                            .width(36.dp)
+                                                            .height(5.dp)
+                                                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                                                            .border(0.5.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .fillMaxHeight()
+                                                                .fillMaxWidth(hpPercent)
+                                                                .background(if (zombie.isBoss) Color(0xFFA855F7) else Color(0xFFEF4444))
+                                                        )
+                                                    }
 
-                                        val targetSize = when (fpsGameMode) {
-                                            "boss" -> 84.dp
-                                            "sniper" -> 28.dp
-                                            "bottle" -> 64.dp
-                                            else -> 56.dp
-                                        }
+                                                    if (zombie.isBoss) {
+                                                        Text(
+                                                            text = "👑 TRÙM 👑",
+                                                            color = Color(0xFFF3E8FF),
+                                                            fontSize = 7.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            modifier = Modifier
+                                                                .align(Alignment.BottomCenter)
+                                                                .offset(y = 10.dp)
+                                                                .background(Color(0xFF6B21A8), RoundedCornerShape(3.dp))
+                                                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            val infiniteTransition = rememberInfiniteTransition(label = "pulse_dialog")
+                                            val scale by infiniteTransition.animateFloat(
+                                                initialValue = 0.95f,
+                                                targetValue = 1.15f,
+                                                animationSpec = infiniteRepeatable(
+                                                    animation = tween(450),
+                                                    repeatMode = RepeatMode.Reverse
+                                                ),
+                                                label = "scale_dialog"
+                                            )
 
-                                        Box(
-                                            modifier = Modifier
-                                                .offset(
-                                                    x = boxWidthDp * targetX - (targetSize / 2),
-                                                    y = boxHeightDp * targetY - (targetSize / 2)
-                                                )
-                                                .size(targetSize * scale),
-                                            contentAlignment = Alignment.Center
-                                        ) {
+                                            val targetSize = when (fpsGameMode) {
+                                                "boss" -> 84.dp
+                                                "sniper" -> 28.dp
+                                                "bottle" -> 64.dp
+                                                else -> 56.dp
+                                            }
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .offset(
+                                                        x = boxWidthDp * targetX - (targetSize / 2),
+                                                        y = boxHeightDp * targetY - (targetSize / 2)
+                                                    )
+                                                    .size(targetSize * scale),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                             when (fpsGameMode) {
                                                 "boss" -> {
                                                     val bossState = fpsBossState
@@ -1418,6 +1536,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                                     )
                                                 }
                                             }
+                                        }
                                         }
                                     }
                                     "finished" -> {
@@ -1821,7 +1940,8 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                             "bottle" to "Bắn Chai 🍾",
                             "fast" to "Siêu Tốc ⚡",
                             "sniper" to "Bắn Tỉa 🔭",
-                            "boss" to "Đấu Boss Alien 👾"
+                            "boss" to "Đấu Boss Alien 👾",
+                            "zombie" to "Săn Zombie 🧟"
                         ).forEach { (modeKey, modeLabel) ->
                             val isSelected = fpsGameMode == modeKey
                             Box(
@@ -2339,285 +2459,398 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                             }
                         }
                         "spawned", "delaying" -> {
-                            // Render target bullseye
-                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                            val scale by infiniteTransition.animateFloat(
-                                initialValue = 0.95f,
-                                targetValue = 1.15f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(450),
-                                    repeatMode = RepeatMode.Reverse
-                                ),
-                                label = "scale"
-                            )
-
-                            val targetSize = when (fpsGameMode) {
-                                "boss" -> 76.dp
-                                "sniper" -> 24.dp
-                                "bottle" -> 56.dp
-                                else -> 48.dp
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .offset(
-                                        x = boxWidthDp * targetX - (targetSize / 2),
-                                        y = boxHeightDp * targetY - (targetSize / 2)
-                                    )
-                                    .size(targetSize * scale),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                when (fpsGameMode) {
-                                    "boss" -> {
-                                        val bossState = fpsBossState
+                            if (fpsGameMode == "zombie") {
+                                // Render all active zombies moving down
+                                fpsZombies.forEach { zombie ->
+                                    val sizeFactor = zombie.sizeMultiplier
+                                    val zombieSize = 48.dp * sizeFactor
+                                    Box(
+                                        modifier = Modifier
+                                            .offset(
+                                                x = boxWidthDp * zombie.x - (zombieSize / 2),
+                                                y = boxHeightDp * zombie.y - (zombieSize / 2)
+                                            )
+                                            .size(zombieSize),
+                                        contentAlignment = Alignment.Center
+                                    ) {
                                         Canvas(modifier = Modifier.fillMaxSize()) {
                                             val w = size.width
                                             val h = size.height
-                                            val center = Offset(w / 2f, h / 2f)
-                                            val radius = size.minDimension / 2f
+                                            val headRadius = size.minDimension * 0.42f
                                             
-                                            // 1. Draw glowing aura based on boss state
-                                            val auraColor = when (bossState) {
-                                                "preparing" -> Color(0xFFFFB300) // Amber / Warning
-                                                "shooting" -> NeonPink
-                                                "hit" -> Color.Red
-                                                else -> Color(0xFF39FF14) // Alien Neon Green
-                                            }
-                                            
+                                            // Zombie Head Glow/Shadow
                                             drawCircle(
-                                                color = auraColor.copy(alpha = 0.22f),
-                                                radius = radius * (if (bossState == "preparing") 1.25f else 1.0f)
+                                                color = if (zombie.isBoss) Color(0xFF9333EA).copy(alpha = 0.35f) else Color(0xFF10B981).copy(alpha = 0.25f),
+                                                radius = headRadius * 1.2f
                                             )
                                             
-                                            // Charging ring
-                                            if (bossState == "preparing") {
-                                                drawCircle(
-                                                    color = auraColor,
-                                                    radius = radius * 1.12f,
-                                                    style = Stroke(width = 3.dp.toPx())
-                                                )
-                                            }
-                                            
-                                            // 2. Head & Antenna Outline and Base Colors
-                                            val headColor = if (bossState == "hit") Color(0xFFFF5722) else Color(0xFF2ECC71) // Hit: Orange/Red, Normal: Alien Green
-                                            val outlineColor = if (bossState == "hit") Color.White else Color(0xFF27AE60)
-                                            
-                                            // Draw Alien Antennae
-                                            // Left Antenna
-                                            drawLine(
-                                                color = outlineColor,
-                                                start = Offset(w * 0.4f, h * 0.35f),
-                                                end = Offset(w * 0.28f, h * 0.15f),
-                                                strokeWidth = 3.dp.toPx()
-                                            )
-                                            // Right Antenna
-                                            drawLine(
-                                                color = outlineColor,
-                                                start = Offset(w * 0.6f, h * 0.35f),
-                                                end = Offset(w * 0.72f, h * 0.15f),
-                                                strokeWidth = 3.dp.toPx()
+                                            // Head Oval
+                                            drawCircle(
+                                                color = if (zombie.isBoss) Color(0xFF7E22CE) else Color(0xFF047857), // purple for boss, green for normal
+                                                radius = headRadius
                                             )
                                             
-                                            // Antenna Balls (glowing bulb)
-                                            val bulbColor = when (bossState) {
-                                                "preparing" -> Color(0xFFFFD700)
-                                                "shooting" -> NeonPink
-                                                "hit" -> Color.Red
-                                                else -> Color(0xFFF1C40F)
-                                            }
-                                            drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f))
-                                            drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
-                                            drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f))
-                                            drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
-                                            
-                                            // Main Head Oval (Alien shape: wider on top)
-                                            drawOval(
-                                                color = headColor,
-                                                topLeft = Offset(w * 0.15f, h * 0.28f),
-                                                size = Size(w * 0.7f, h * 0.58f)
+                                            // Eyes (large glowing red/white eyes)
+                                            val eyeRadius = headRadius * 0.18f
+                                            drawCircle(
+                                                color = Color(0xFFEF4444),
+                                                radius = eyeRadius,
+                                                center = Offset(w * 0.33f, h * 0.43f)
                                             )
-                                            drawOval(
-                                                color = outlineColor,
-                                                topLeft = Offset(w * 0.15f, h * 0.28f),
-                                                size = Size(w * 0.7f, h * 0.58f),
-                                                style = Stroke(width = 3.dp.toPx())
+                                            drawCircle(
+                                                color = Color(0xFFEF4444),
+                                                radius = eyeRadius,
+                                                center = Offset(w * 0.67f, h * 0.43f)
                                             )
-                                            
-                                            // 3. Draw Eyes (Alien style, large, cute, slightly tilted)
-                                            if (bossState == "hit") {
-                                                // Dizzied cross eyes "X X"
-                                                val sizeEye = 8.dp.toPx()
-                                                // Left cross eye
-                                                val lx = w * 0.36f
-                                                val ly = h * 0.48f
-                                                drawLine(color = Color.White, start = Offset(lx - sizeEye, ly - sizeEye), end = Offset(lx + sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
-                                                drawLine(color = Color.White, start = Offset(lx + sizeEye, ly - sizeEye), end = Offset(lx - sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
-                                                
-                                                // Right cross eye
-                                                val rx = w * 0.64f
-                                                val ry = h * 0.48f
-                                                drawLine(color = Color.White, start = Offset(rx - sizeEye, ry - sizeEye), end = Offset(rx + sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
-                                                drawLine(color = Color.White, start = Offset(rx + sizeEye, ry - sizeEye), end = Offset(rx - sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
-                                            } else {
-                                                // Huge cute alien black eyes
-                                                // Left eye
-                                                drawOval(
-                                                    color = Color.Black,
-                                                    topLeft = Offset(w * 0.26f, h * 0.42f),
-                                                    size = Size(w * 0.18f, h * 0.16f)
-                                                )
-                                                // Right eye
-                                                drawOval(
-                                                    color = Color.Black,
-                                                    topLeft = Offset(w * 0.56f, h * 0.42f),
-                                                    size = Size(w * 0.18f, h * 0.16f)
-                                                )
-                                                
-                                                // White sparkle reflections
-                                                drawCircle(
-                                                    color = Color.White,
-                                                    radius = radius * 0.045f,
-                                                    center = Offset(w * 0.32f, h * 0.47f)
-                                                )
-                                                drawCircle(
-                                                    color = Color.White,
-                                                    radius = radius * 0.045f,
-                                                    center = Offset(w * 0.62f, h * 0.47f)
-                                                )
-                                            }
-                                            
-                                            // 4. Smile & Tongue (Goofy alien)
-                                            val mouthCenterY = h * 0.68f
-                                            if (bossState == "hit") {
-                                                // Funny wave / confused mouth
-                                                val wavePath = Path().apply {
-                                                    moveTo(w * 0.4f, mouthCenterY)
-                                                    quadraticBezierTo(w * 0.45f, mouthCenterY - 4.dp.toPx(), w * 0.5f, mouthCenterY)
-                                                    quadraticBezierTo(w * 0.55f, mouthCenterY + 4.dp.toPx(), w * 0.6f, mouthCenterY)
-                                                }
-                                                drawPath(
-                                                    path = wavePath,
-                                                    color = Color.White,
-                                                    style = Stroke(width = 2.5.dp.toPx())
-                                                )
-                                            } else {
-                                                // Big happy smile!
-                                                val smilePath = Path().apply {
-                                                    moveTo(w * 0.36f, mouthCenterY)
-                                                    quadraticBezierTo(w * 0.5f, mouthCenterY + 12.dp.toPx(), w * 0.64f, mouthCenterY)
-                                                }
-                                                drawPath(
-                                                    path = smilePath,
-                                                    color = Color.Black,
-                                                    style = Stroke(width = 3.dp.toPx())
-                                                )
-                                                
-                                                // Tongue sticking out!
-                                                val tongueRect = androidx.compose.ui.geometry.Rect(
-                                                    left = w * 0.46f,
-                                                    top = mouthCenterY + 3.dp.toPx(),
-                                                    right = w * 0.54f,
-                                                    bottom = mouthCenterY + 11.dp.toPx()
-                                                )
-                                                drawRoundRect(
-                                                    color = Color(0xFFFF5E7E), // Cheeky Pink Tongue
-                                                    topLeft = Offset(tongueRect.left, tongueRect.top),
-                                                    size = Size(tongueRect.width, tongueRect.height),
-                                                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
-                                                )
-                                            }
-                                        }
-                                    }
-                                    "bottle" -> {
-                                        Canvas(modifier = Modifier.fillMaxSize()) {
-                                            val w = size.width
-                                            val h = size.height
-                                            val glassColor = Color(0xFF4DEEEA)
-                                            drawRoundRect(
-                                                color = glassColor,
-                                                topLeft = Offset(w * 0.38f, h * 0.05f),
-                                                size = Size(w * 0.24f, h * 0.35f),
-                                                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
-                                            )
-                                            drawRect(
-                                                color = NeonPink,
-                                                topLeft = Offset(w * 0.34f, h * 0.02f),
-                                                size = Size(w * 0.32f, h * 0.06f)
-                                            )
-                                            drawRoundRect(
-                                                color = glassColor,
-                                                topLeft = Offset(w * 0.2f, h * 0.35f),
-                                                size = Size(w * 0.6f, h * 0.6f),
-                                                cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
-                                            )
-                                            drawRect(
+                                            // Pupils
+                                            drawCircle(
                                                 color = Color.White,
-                                                topLeft = Offset(w * 0.28f, h * 0.48f),
-                                                size = Size(w * 0.44f, h * 0.2f)
+                                                radius = eyeRadius * 0.4f,
+                                                center = Offset(w * 0.33f, h * 0.43f)
                                             )
+                                            drawCircle(
+                                                color = Color.White,
+                                                radius = eyeRadius * 0.4f,
+                                                center = Offset(w * 0.67f, h * 0.43f)
+                                            )
+                                            
+                                            // Mouth (grotesque or stitches)
                                             drawLine(
-                                                color = Color.Red,
-                                                start = Offset(w * 0.32f, h * 0.58f),
-                                                end = Offset(w * 0.68f, h * 0.58f),
-                                                strokeWidth = 2.dp.toPx()
+                                                color = Color.Black,
+                                                start = Offset(w * 0.25f, h * 0.72f),
+                                                end = Offset(w * 0.75f, h * 0.72f),
+                                                strokeWidth = 2.5.dp.toPx()
+                                            )
+                                            
+                                            // Stitches
+                                            for (k in 1..4) {
+                                                val xOffset = w * (0.25f + k * 0.1f)
+                                                drawLine(
+                                                    color = Color.Black,
+                                                    start = Offset(xOffset, h * 0.65f),
+                                                    end = Offset(xOffset + 2.dp.toPx(), h * 0.79f),
+                                                    strokeWidth = 1.5.dp.toPx()
+                                                )
+                                            }
+                                        }
+                                        
+                                        // Health Bar
+                                        val maxHpOfZ = if (zombie.isBoss) 15f else 1f
+                                        val hpPercent = (zombie.hp / maxHpOfZ).coerceIn(0f, 1f)
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.TopCenter)
+                                                .offset(y = (-14).dp)
+                                                .width(36.dp)
+                                                .height(5.dp)
+                                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                                                .border(0.5.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth(hpPercent)
+                                                    .background(if (zombie.isBoss) Color(0xFFA855F7) else Color(0xFFEF4444))
                                             )
                                         }
-                                    }
-                                    "sniper" -> {
-                                        Canvas(modifier = Modifier.fillMaxSize()) {
-                                            val radius = size.minDimension / 2f
-                                            drawCircle(color = NeonCyan, radius = radius, style = Stroke(1.5.dp.toPx()))
-                                            drawCircle(color = NeonCyan, radius = radius * 0.5f, style = Stroke(1.dp.toPx()))
-                                            drawCircle(color = Color.Red, radius = radius * 0.15f)
-                                            drawLine(color = NeonCyan, start = Offset(0f, size.height / 2f), end = Offset(size.width, size.height / 2f), strokeWidth = 1.dp.toPx())
-                                            drawLine(color = NeonCyan, start = Offset(size.width / 2f, 0f), end = Offset(size.width / 2f, size.height), strokeWidth = 1.dp.toPx())
-                                        }
-                                    }
-                                    "fast" -> {
-                                        Canvas(modifier = Modifier.fillMaxSize()) {
-                                            val radius = size.minDimension / 2f
-                                            drawCircle(color = Color(0xFFFFD700), radius = radius, style = Stroke(2.dp.toPx()))
-                                            drawCircle(color = Color.Red, radius = radius * 0.7f, style = Stroke(1.5.dp.toPx()))
-                                            drawCircle(color = Color.Yellow, radius = radius * 0.35f)
-                                            drawLine(
-                                                color = Color(0xFFFFD700).copy(alpha = 0.8f),
-                                                start = Offset(-10.dp.toPx(), size.height / 2f),
-                                                end = Offset(-2.dp.toPx(), size.height / 2f),
-                                                strokeWidth = 2.dp.toPx()
+
+                                        // Text badge for Boss Zombie
+                                        if (zombie.isBoss) {
+                                            Text(
+                                                text = "👑 TRÙM 👑",
+                                                color = Color(0xFFF3E8FF),
+                                                fontSize = 7.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomCenter)
+                                                    .offset(y = 12.dp)
+                                                    .background(Color(0xFF7E22CE), RoundedCornerShape(3.dp))
+                                                    .padding(horizontal = 4.dp, vertical = 1.dp)
                                             )
-                                            drawLine(
-                                                color = Color(0xFFFFD700).copy(alpha = 0.5f),
-                                                start = Offset(-18.dp.toPx(), size.height * 0.4f),
-                                                end = Offset(-6.dp.toPx(), size.height * 0.4f),
-                                                strokeWidth = 1.5.dp.toPx()
-                                            )
-                                        }
-                                    }
-                                    else -> {
-                                        Canvas(modifier = Modifier.fillMaxSize()) {
-                                            val radius = size.minDimension / 2f
-                                            drawCircle(color = Color.Red, radius = radius)
-                                            drawCircle(color = Color.White, radius = radius * 0.65f)
-                                            drawCircle(color = Color.Red, radius = radius * 0.4f)
-                                            drawCircle(color = Color.Yellow, radius = radius * 0.15f)
                                         }
                                     }
                                 }
-                                
-                                // Show "DELAY" tag if shot in progress (the ping flight)
-                                if (reflexState == "delaying") {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(NeonPink)
-                                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "SENDING...",
-                                            fontSize = 7.sp,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
+                            } else {
+                                // Render target bullseye
+                                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                                val scale by infiniteTransition.animateFloat(
+                                    initialValue = 0.95f,
+                                    targetValue = 1.15f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(450),
+                                        repeatMode = RepeatMode.Reverse
+                                    ),
+                                    label = "scale"
+                                )
+
+                                val targetSize = when (fpsGameMode) {
+                                    "boss" -> 76.dp
+                                    "sniper" -> 24.dp
+                                    "bottle" -> 56.dp
+                                    else -> 48.dp
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .offset(
+                                            x = boxWidthDp * targetX - (targetSize / 2),
+                                            y = boxHeightDp * targetY - (targetSize / 2)
                                         )
+                                        .size(targetSize * scale),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    when (fpsGameMode) {
+                                        "boss" -> {
+                                            val bossState = fpsBossState
+                                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                                val w = size.width
+                                                val h = size.height
+                                                val center = Offset(w / 2f, h / 2f)
+                                                val radius = size.minDimension / 2f
+                                                
+                                                // 1. Draw glowing aura based on boss state
+                                                val auraColor = when (bossState) {
+                                                    "preparing" -> Color(0xFFFFB300) // Amber / Warning
+                                                    "shooting" -> NeonPink
+                                                    "hit" -> Color.Red
+                                                    else -> Color(0xFF39FF14) // Alien Neon Green
+                                                }
+                                                
+                                                drawCircle(
+                                                    color = auraColor.copy(alpha = 0.22f),
+                                                    radius = radius * (if (bossState == "preparing") 1.25f else 1.0f)
+                                                )
+                                                
+                                                // Charging ring
+                                                if (bossState == "preparing") {
+                                                    drawCircle(
+                                                        color = auraColor,
+                                                        radius = radius * 1.12f,
+                                                        style = Stroke(width = 3.dp.toPx())
+                                                    )
+                                                }
+                                                
+                                                // 2. Head & Antenna Outline and Base Colors
+                                                val headColor = if (bossState == "hit") Color(0xFFFF5722) else Color(0xFF2ECC71) // Hit: Orange/Red, Normal: Alien Green
+                                                val outlineColor = if (bossState == "hit") Color.White else Color(0xFF27AE60)
+                                                
+                                                // Draw Alien Antennae
+                                                // Left Antenna
+                                                drawLine(
+                                                    color = outlineColor,
+                                                    start = Offset(w * 0.4f, h * 0.35f),
+                                                    end = Offset(w * 0.28f, h * 0.15f),
+                                                    strokeWidth = 3.dp.toPx()
+                                                )
+                                                // Right Antenna
+                                                drawLine(
+                                                    color = outlineColor,
+                                                    start = Offset(w * 0.6f, h * 0.35f),
+                                                    end = Offset(w * 0.72f, h * 0.15f),
+                                                    strokeWidth = 3.dp.toPx()
+                                                )
+                                                
+                                                // Antenna Balls (glowing bulb)
+                                                val bulbColor = when (bossState) {
+                                                    "preparing" -> Color(0xFFFFD700)
+                                                    "shooting" -> NeonPink
+                                                    "hit" -> Color.Red
+                                                    else -> Color(0xFFF1C40F)
+                                                }
+                                                drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f))
+                                                drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.28f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
+                                                drawCircle(color = bulbColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f))
+                                                drawCircle(color = outlineColor, radius = radius * 0.12f, center = Offset(w * 0.72f, h * 0.15f), style = Stroke(1.5.dp.toPx()))
+                                                
+                                                // Main Head Oval (Alien shape: wider on top)
+                                                drawOval(
+                                                    color = headColor,
+                                                    topLeft = Offset(w * 0.15f, h * 0.28f),
+                                                    size = Size(w * 0.7f, h * 0.58f)
+                                                )
+                                                drawOval(
+                                                    color = outlineColor,
+                                                    topLeft = Offset(w * 0.15f, h * 0.28f),
+                                                    size = Size(w * 0.7f, h * 0.58f),
+                                                    style = Stroke(width = 3.dp.toPx())
+                                                )
+                                                
+                                                // 3. Draw Eyes (Alien style, large, cute, slightly tilted)
+                                                if (bossState == "hit") {
+                                                    // Dizzied cross eyes "X X"
+                                                    val sizeEye = 8.dp.toPx()
+                                                    // Left cross eye
+                                                    val lx = w * 0.36f
+                                                    val ly = h * 0.48f
+                                                    drawLine(color = Color.White, start = Offset(lx - sizeEye, ly - sizeEye), end = Offset(lx + sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                    drawLine(color = Color.White, start = Offset(lx + sizeEye, ly - sizeEye), end = Offset(lx - sizeEye, ly + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                    
+                                                    // Right cross eye
+                                                    val rx = w * 0.64f
+                                                    val ry = h * 0.48f
+                                                    drawLine(color = Color.White, start = Offset(rx - sizeEye, ry - sizeEye), end = Offset(rx + sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                    drawLine(color = Color.White, start = Offset(rx + sizeEye, ry - sizeEye), end = Offset(rx - sizeEye, ry + sizeEye), strokeWidth = 2.5.dp.toPx())
+                                                } else {
+                                                    // Huge cute alien black eyes
+                                                    // Left eye
+                                                    drawOval(
+                                                        color = Color.Black,
+                                                        topLeft = Offset(w * 0.26f, h * 0.42f),
+                                                        size = Size(w * 0.18f, h * 0.16f)
+                                                    )
+                                                    // Right eye
+                                                    drawOval(
+                                                        color = Color.Black,
+                                                        topLeft = Offset(w * 0.56f, h * 0.42f),
+                                                        size = Size(w * 0.18f, h * 0.16f)
+                                                    )
+                                                    
+                                                    // White sparkle reflections
+                                                    drawCircle(
+                                                        color = Color.White,
+                                                        radius = radius * 0.045f,
+                                                        center = Offset(w * 0.32f, h * 0.47f)
+                                                    )
+                                                    drawCircle(
+                                                        color = Color.White,
+                                                        radius = radius * 0.045f,
+                                                        center = Offset(w * 0.62f, h * 0.47f)
+                                                    )
+                                                }
+                                                
+                                                // 4. Smile & Tongue (Goofy alien)
+                                                val mouthCenterY = h * 0.68f
+                                                if (bossState == "hit") {
+                                                    // Funny wave / confused mouth
+                                                    val wavePath = Path().apply {
+                                                        moveTo(w * 0.4f, mouthCenterY)
+                                                        quadraticBezierTo(w * 0.45f, mouthCenterY - 4.dp.toPx(), w * 0.5f, mouthCenterY)
+                                                        quadraticBezierTo(w * 0.55f, mouthCenterY + 4.dp.toPx(), w * 0.6f, mouthCenterY)
+                                                    }
+                                                    drawPath(
+                                                        path = wavePath,
+                                                        color = Color.White,
+                                                        style = Stroke(width = 2.5.dp.toPx())
+                                                    )
+                                                } else {
+                                                    // Big happy smile!
+                                                    val smilePath = Path().apply {
+                                                        moveTo(w * 0.36f, mouthCenterY)
+                                                        quadraticBezierTo(w * 0.5f, mouthCenterY + 12.dp.toPx(), w * 0.64f, mouthCenterY)
+                                                    }
+                                                    drawPath(
+                                                        path = smilePath,
+                                                        color = Color.Black,
+                                                        style = Stroke(width = 3.dp.toPx())
+                                                    )
+                                                    
+                                                    // Tongue sticking out!
+                                                    val tongueRect = androidx.compose.ui.geometry.Rect(
+                                                        left = w * 0.46f,
+                                                        top = mouthCenterY + 3.dp.toPx(),
+                                                        right = w * 0.54f,
+                                                        bottom = mouthCenterY + 11.dp.toPx()
+                                                    )
+                                                    drawRoundRect(
+                                                        color = Color(0xFFFF5E7E), // Cheeky Pink Tongue
+                                                        topLeft = Offset(tongueRect.left, tongueRect.top),
+                                                        size = Size(tongueRect.width, tongueRect.height),
+                                                        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        "bottle" -> {
+                                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                                val w = size.width
+                                                val h = size.height
+                                                val glassColor = Color(0xFF4DEEEA)
+                                                drawRoundRect(
+                                                    color = glassColor,
+                                                    topLeft = Offset(w * 0.38f, h * 0.05f),
+                                                    size = Size(w * 0.24f, h * 0.35f),
+                                                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                                                )
+                                                drawRect(
+                                                    color = NeonPink,
+                                                    topLeft = Offset(w * 0.34f, h * 0.02f),
+                                                    size = Size(w * 0.32f, h * 0.06f)
+                                                )
+                                                drawRoundRect(
+                                                    color = glassColor,
+                                                    topLeft = Offset(w * 0.2f, h * 0.35f),
+                                                    size = Size(w * 0.6f, h * 0.6f),
+                                                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                                                )
+                                                drawRect(
+                                                    color = Color.White,
+                                                    topLeft = Offset(w * 0.28f, h * 0.48f),
+                                                    size = Size(w * 0.44f, h * 0.2f)
+                                                )
+                                                drawLine(
+                                                    color = Color.Red,
+                                                    start = Offset(w * 0.32f, h * 0.58f),
+                                                    end = Offset(w * 0.68f, h * 0.58f),
+                                                    strokeWidth = 2.dp.toPx()
+                                                )
+                                            }
+                                        }
+                                        "sniper" -> {
+                                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                                val radius = size.minDimension / 2f
+                                                drawCircle(color = NeonCyan, radius = radius, style = Stroke(1.5.dp.toPx()))
+                                                drawCircle(color = NeonCyan, radius = radius * 0.5f, style = Stroke(1.dp.toPx()))
+                                                drawCircle(color = Color.Red, radius = radius * 0.15f)
+                                                drawLine(color = NeonCyan, start = Offset(0f, size.height / 2f), end = Offset(size.width, size.height / 2f), strokeWidth = 1.dp.toPx())
+                                                drawLine(color = NeonCyan, start = Offset(size.width / 2f, 0f), end = Offset(size.width / 2f, size.height), strokeWidth = 1.dp.toPx())
+                                            }
+                                        }
+                                        "fast" -> {
+                                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                                val radius = size.minDimension / 2f
+                                                drawCircle(color = Color(0xFFFFD700), radius = radius, style = Stroke(2.dp.toPx()))
+                                                drawCircle(color = Color.Red, radius = radius * 0.7f, style = Stroke(1.5.dp.toPx()))
+                                                drawCircle(color = Color.Yellow, radius = radius * 0.35f)
+                                                drawLine(
+                                                    color = Color(0xFFFFD700).copy(alpha = 0.8f),
+                                                    start = Offset(-10.dp.toPx(), size.height / 2f),
+                                                    end = Offset(-2.dp.toPx(), size.height / 2f),
+                                                    strokeWidth = 2.dp.toPx()
+                                                )
+                                                drawLine(
+                                                    color = Color(0xFFFFD700).copy(alpha = 0.5f),
+                                                    start = Offset(-18.dp.toPx(), size.height * 0.4f),
+                                                    end = Offset(-6.dp.toPx(), size.height * 0.4f),
+                                                    strokeWidth = 1.5.dp.toPx()
+                                                )
+                                            }
+                                        }
+                                        else -> {
+                                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                                val radius = size.minDimension / 2f
+                                                drawCircle(color = Color.Red, radius = radius)
+                                                drawCircle(color = Color.White, radius = radius * 0.65f)
+                                                drawCircle(color = Color.Red, radius = radius * 0.4f)
+                                                drawCircle(color = Color.Yellow, radius = radius * 0.15f)
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Show "DELAY" tag if shot in progress (the ping flight)
+                                    if (reflexState == "delaying") {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(NeonPink)
+                                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "SENDING...",
+                                                fontSize = 7.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -3067,6 +3300,8 @@ fun SimulatorScreen(viewModel: MainViewModel) {
             val mobaMuradCloneX by viewModel.mobaMuradCloneX.collectAsState()
             val mobaMuradCloneY by viewModel.mobaMuradCloneY.collectAsState()
             val mobaMuradCastCount by viewModel.mobaMuradCastCount.collectAsState()
+            val mobaYasuoGreenZones by viewModel.mobaYasuoGreenZones.collectAsState()
+            val mobaYasuoArcSlashes by viewModel.mobaYasuoArcSlashes.collectAsState()
 
             if (mobaIsZoomed) {
                 Dialog(
@@ -3174,6 +3409,203 @@ fun SimulatorScreen(viewModel: MainViewModel) {
             }
         }
         }
+
+        if (selectedSubTab == 3) {
+            // --- Sphere Simulation Section ---
+            Card(
+                modifier = Modifier.fillMaxWidth().testTag("sphere_sim_section_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CardSpaceBackground),
+                border = BorderStroke(1.dp, CardSpaceBorder)
+            ) {
+                val sphereList by viewModel.sphereList.collectAsState()
+                val sphereFps by viewModel.sphereFps.collectAsState()
+                val sphereGameState by viewModel.sphereGameState.collectAsState()
+                val sphereCount by viewModel.sphereCount.collectAsState()
+
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Header / HUD
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "MÔ PHỎNG QUẢ CẦU NHÂN ĐÔI",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ElegantGold
+                            )
+                            Text(
+                                "Hãy chạm vào quả cầu để kích hoạt nhân đôi!",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                        }
+
+                        // FPS Meter / Count Badge
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (sphereFps > 20) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFFEF4444).copy(alpha = 0.2f))
+                                    .border(1.dp, if (sphereFps > 20) Color(0xFF10B981) else Color(0xFFEF4444), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    "FPS: ${sphereFps.roundToInt()}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (sphereFps > 20) Color(0xFF34D399) else Color(0xFFF87171)
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(NeonCyan.copy(alpha = 0.2f))
+                                    .border(1.dp, NeonCyan, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    "Số lượng: $sphereCount",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonCyan
+                                )
+                            }
+                        }
+                    }
+
+                    // Simulated Physics Canvas Box
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF070512))
+                            .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                    ) {
+                        val widthPx = constraints.maxWidth.toFloat()
+                        val heightPx = constraints.maxHeight.toFloat()
+
+                        if (sphereGameState == "idle") {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Button(
+                                    onClick = { viewModel.startSphereSimulation() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Bắt đầu mô phỏng 🔮", color = Color.Black, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        } else if (sphereGameState == "ended") {
+                            Box(
+                                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.8f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("💥 ĐÃ ĐẠT ĐỘ TRỄ CỰC HẠN! 💥", color = Color.Red, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    Text("Hệ thống quá tải khi FPS giảm còn 5!", color = Color.White, fontSize = 12.sp)
+                                    Text("Tổng số quả cầu tạo ra: $sphereCount", color = ElegantGold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Button(
+                                        onClick = { viewModel.startSphereSimulation() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = NeonPink),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text("Thử Lại 🔄", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        } else {
+                            // Active simulation canvas!
+                            Canvas(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(Unit) {
+                                        detectTapGestures { offset ->
+                                            viewModel.handleSphereTap(offset.x, offset.y, widthPx, heightPx)
+                                        }
+                                    }
+                            ) {
+                                sphereList.forEach { sphere ->
+                                    val posX = (sphere.x / 100f) * size.width
+                                    val posY = (sphere.y / 100f) * size.height
+                                    val rad = (sphere.radius / 100f) * size.width
+                                    val sphereColor = Color(sphere.color)
+                                    val glowRadius = rad * 1.5f
+                                    
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                sphereColor.copy(alpha = 0.6f),
+                                                sphereColor.copy(alpha = 0.2f),
+                                                Color.Transparent
+                                            ),
+                                            center = Offset(posX, posY),
+                                            radius = glowRadius
+                                        ),
+                                        radius = glowRadius,
+                                        center = Offset(posX, posY)
+                                    )
+                                    drawCircle(
+                                        color = sphereColor,
+                                        radius = rad,
+                                        center = Offset(posX, posY)
+                                    )
+                                    drawCircle(
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        radius = rad * 0.4f,
+                                        center = Offset(posX - rad * 0.25f, posY - rad * 0.25f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Helper Controls when running
+                    if (sphereGameState == "running") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.doubleAllSpheres() },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonPink),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("🔥 Nhân Đôi Toàn Bộ", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+
+                            Button(
+                                onClick = { viewModel.startSphereSimulation() }, // resets
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Khởi Động Lại 🔄", color = Color.White, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -3229,6 +3661,8 @@ fun MobaGameAreaContent(
     val mobaXiaoMaskActive by viewModel.mobaXiaoMaskActive.collectAsState()
     val mobaXiaoMaskDurationLeftMs by viewModel.mobaXiaoMaskDurationLeftMs.collectAsState()
     val mobaXiaoDamageBonus by viewModel.mobaXiaoDamageBonus.collectAsState()
+    val mobaYasuoGreenZones by viewModel.mobaYasuoGreenZones.collectAsState()
+    val mobaYasuoArcSlashes by viewModel.mobaYasuoArcSlashes.collectAsState()
 
     val mobaIsZoomed by viewModel.mobaIsZoomed.collectAsState()
 
@@ -3764,6 +4198,102 @@ fun MobaGameAreaContent(
                                 "💨",
                                 modifier = Modifier.align(Alignment.Center),
                                 fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    // 5cc. Yasuo's Green Zones (Hasagi Zones)
+                    mobaYasuoGreenZones.forEach { zone ->
+                        val zoneDiameter = boardWidth * (zone.radius * 2f / 100f)
+                        val zX = boardWidth * (zone.x / 100f)
+                        val zY = boardHeight * (zone.y / 100f)
+
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = zX - (zoneDiameter / 2),
+                                    y = zY - (zoneDiameter / 2)
+                                )
+                                .size(zoneDiameter)
+                                .background(
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFF10B981).copy(alpha = 0.45f), // Emerald green
+                                            Color(0xFF059669).copy(alpha = 0.25f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                )
+                                .border(1.5.dp, Color(0xFF34D399).copy(alpha = 0.6f), CircleShape)
+                        ) {
+                            Text(
+                                "🌪️ HASAGI",
+                                modifier = Modifier.align(Alignment.Center),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    // 5cd. Yasuo's Arc Slashes (Crescent wind arc sweep)
+                    mobaYasuoArcSlashes.forEach { arc ->
+                        val arcDiameter = boardWidth * (arc.radius * 2f / 100f)
+                        val aX = boardWidth * (arc.x / 100f)
+                        val aY = boardHeight * (arc.y / 100f)
+
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = aX - (arcDiameter / 2),
+                                    y = aY - (arcDiameter / 2)
+                                )
+                                .size(arcDiameter),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val w = size.width
+                                val h = size.height
+                                
+                                val path = Path().apply {
+                                    moveTo(w * 0.1f, h * 0.5f)
+                                    quadraticBezierTo(w * 0.5f, h * 1.1f, w * 0.9f, h * 0.5f)
+                                    quadraticBezierTo(w * 0.5f, h * 0.75f, w * 0.1f, h * 0.5f)
+                                    close()
+                                }
+                                
+                                drawPath(
+                                    path = path,
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFF00F5D4).copy(alpha = 0.9f),
+                                            Color(0xFF10B981).copy(alpha = 0.4f),
+                                            Color.Transparent
+                                        ),
+                                        center = Offset(w / 2f, h * 0.75f),
+                                        radius = w / 2f
+                                    )
+                                )
+                                
+                                drawPath(
+                                    path = path,
+                                    color = Color.White,
+                                    style = Stroke(
+                                        width = 3.dp.toPx(),
+                                        cap = StrokeCap.Round
+                                    )
+                                )
+                            }
+                            
+                            Text(
+                                "CRITICAL SLASH! ⚔️",
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .offset(y = 12.dp),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF00F5D4)
                             )
                         }
                     }
@@ -5949,13 +6479,70 @@ fun MobaGameAreaContent(
                 } // End of inner Column
             }
             "victory", "defeat" -> {
-                if (mobaDiagnosticReport != null) {
-                    MobaDiagnosticView(
-                        report = mobaDiagnosticReport,
-                        onRestart = { viewModel.startMobaGame() },
-                        onBack = { viewModel.stopMobaGame() },
-                        viewModel = viewModel
-                    )
+                val mobaGameOverShowSplash by viewModel.mobaGameOverShowSplash.collectAsState()
+                if (mobaGameOverShowSplash) {
+                    val isVictory = mobaState == "victory"
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.95f))
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            Text(
+                                text = if (isVictory) "VICTORY" else "DEFEAT",
+                                fontSize = 54.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 4.sp,
+                                color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444)
+                            )
+                            
+                            Text(
+                                text = if (isVictory) "CHÚC MỪNG CHIẾN THẮNG! 🎉" else "BẠN ĐÃ BỊ ĐÁNH BẠI! 💀",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.LightGray
+                            )
+                            
+                            Icon(
+                                imageVector = if (isVictory) Icons.Filled.Info else Icons.Filled.Warning,
+                                contentDescription = null,
+                                tint = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444),
+                                modifier = Modifier.size(96.dp)
+                            )
+                            
+                            Button(
+                                onClick = { viewModel.dismissMobaSplash() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444),
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth(0.8f)
+                                    .height(48.dp)
+                            ) {
+                                Text(
+                                    text = "XEM TỔNG KẾT TRẬN ĐẤU 📊",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    if (mobaDiagnosticReport != null) {
+                        MobaDiagnosticView(
+                            report = mobaDiagnosticReport,
+                            onRestart = { viewModel.startMobaGame() },
+                            onBack = { viewModel.stopMobaGame() },
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
         }

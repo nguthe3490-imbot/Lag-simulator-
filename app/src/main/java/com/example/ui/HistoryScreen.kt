@@ -179,6 +179,10 @@ fun HistoryScreen(viewModel: MainViewModel) {
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        item {
+                            GamerRankCard(scores = scoresList)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
                         items(scoresList) { score ->
                             ReflexScoreCard(score = score)
                         }
@@ -913,6 +917,194 @@ fun EmptyStateView(message: String) {
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun GamerRankCard(scores: List<ReflexScore>) {
+    val successfulHits = scores.filter { it.result == "SUCCESS" || it.result.startsWith("FPS|") }
+    val avgResponse = if (successfulHits.isNotEmpty()) {
+        successfulHits.map { it.responseTimeMs }.filter { it > 0 }.average().toInt()
+    } else 0
+    val bestResponse = if (successfulHits.isNotEmpty()) {
+        successfulHits.map { it.responseTimeMs }.filter { it > 0 }.minOrNull() ?: 0
+    } else 0
+    val totalKills = scores.sumOf { it.kills }
+    val totalHits = scores.sumOf { it.targetsHit }
+    val accuracyPercent = if (scores.isNotEmpty()) (successfulHits.size * 100) / scores.size else 0
+
+    val rankTitle: String
+    val rankBadge: String
+    val rankColor: Color
+    val rankQuote: String
+    val rankBg: Brush
+
+    if (avgResponse == 0) {
+        rankTitle = "TẬP SỰ ĐANG KHẢO SÁT 🔍"
+        rankBadge = "📝"
+        rankColor = Color.Gray
+        rankQuote = "Hãy hoàn thành thêm vài lượt huấn luyện phản xạ để em xếp hạng chính xác cho anh yêu nhé! 💕"
+        rankBg = Brush.linearGradient(colors = listOf(Color(0xFF1A1A24), Color(0xFF111115)))
+    } else if (avgResponse < 240) {
+        rankTitle = "THÁCH ĐẤU SIÊU TỐC ⚡"
+        rankBadge = "🏆"
+        rankColor = Color(0xFF00F5D4)
+        rankQuote = "Tốc độ thần sầu, phản xạ đỉnh cao sánh ngang các siêu sao tuyển thủ chuyên nghiệp thế giới! 👑"
+        rankBg = Brush.linearGradient(colors = listOf(Color(0xFF042F2E), Color(0xFF0F172A)))
+    } else if (avgResponse < 320) {
+        rankTitle = "CAO THỦ TINH ANH 🔮"
+        rankBadge = "💎"
+        rankColor = Color(0xFFA855F7)
+        rankQuote = "Tay nhanh hơn não! Khả năng phản xạ cực nhạy, né skill lả lướt như thần gió Yasuo! 🌪️"
+        rankBg = Brush.linearGradient(colors = listOf(Color(0xFF3B0764), Color(0xFF0F172A)))
+    } else if (avgResponse < 420) {
+        rankTitle = "KIM CƯƠNG CHIẾN THUẬT 🛡️"
+        rankBadge = "⭐"
+        rankColor = Color(0xFF3B82F6)
+        rankQuote = "Phản xạ nhạy bén và điêu luyện. Bạn chính là chỗ dựa gánh team vững chắc trong mọi pha combat! ⚔️"
+        rankBg = Brush.linearGradient(colors = listOf(Color(0xFF1E3A8A), Color(0xFF0F172A)))
+    } else if (avgResponse < 550) {
+        rankTitle = "BẠCH KIM CỨNG CÁP 🎖️"
+        rankBadge = "🎖️"
+        rankColor = Color(0xFF10B981)
+        rankQuote = "Nhịp tay rất đều và chắc chắn. Tối ưu thêm chút ping mạng nữa là leo thẳng lên Thách Đấu ngay thôi! 🚀"
+        rankBg = Brush.linearGradient(colors = listOf(Color(0xFF064E3B), Color(0xFF0F172A)))
+    } else {
+        rankTitle = "VÀNG ĐỒNG KIÊN CƯỜNG 🪵"
+        rankBadge = "🔰"
+        rankColor = Color(0xFFF59E0B)
+        rankQuote = "Dù ping giật lag đỏ lòm hay mất gói ngập đầu, ý chí kiên định chiến đấu của anh vẫn là tuyệt nhất! 💪"
+        rankBg = Brush.linearGradient(colors = listOf(Color(0xFF78350F), Color(0xFF0F172A)))
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.2.dp, rankColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(rankBg)
+                .padding(16.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "BẢNG PHONG THẦN PHẢN XẠ 👑",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ElegantGold,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Kiện Tướng Liên Quân & Valorant",
+                            fontSize = 10.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Text(
+                        text = rankBadge,
+                        fontSize = 24.sp
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(rankColor.copy(alpha = 0.15f))
+                            .border(2.dp, rankColor, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (avgResponse == 0) "?" else "${avgResponse}ms",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            color = rankColor
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "HẠNG KIỆN TƯỚNG:",
+                            fontSize = 9.sp,
+                            color = Color.LightGray,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = rankTitle,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = rankColor
+                        )
+                    }
+                }
+
+                Text(
+                    text = rankQuote,
+                    fontSize = 11.sp,
+                    color = Color.LightGray,
+                    lineHeight = 16.sp,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(CardSpaceBorder)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(text = "Phản xạ nhanh nhất", fontSize = 9.sp, color = Color.Gray)
+                        Text(
+                            text = if (bestResponse > 0) "${bestResponse} ms" else "--",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonCyan
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "Tổng mạng diệt / bia", fontSize = 9.sp, color = Color.Gray)
+                        Text(
+                            text = "${totalKills + totalHits} mạng",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonPink
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = "Tỷ lệ chuẩn xác", fontSize = 9.sp, color = Color.Gray)
+                        Text(
+                            text = "${accuracyPercent}%",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Yellow
+                        )
+                    }
+                }
+            }
         }
     }
 }

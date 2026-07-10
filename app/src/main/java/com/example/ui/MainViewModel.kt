@@ -102,7 +102,46 @@ data class MobaProjectile(
     val isHoming: Boolean = false,
     val homingTargetId: String? = null, // homing to creep id, "enemy_hero", or "player"
     var isFinished: Boolean = false,
-    var durationTicks: Int = 0
+    var durationTicks: Int = 0,
+    val yasuoHitCount: Int = 1,
+    val yasuoHitTargets: List<String> = emptyList()
+)
+
+data class YasuoGreenZone(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val x: Float,
+    val y: Float,
+    val radius: Float = 10f,
+    val durationTicks: Int = 300 // about 5 seconds
+)
+
+data class YasuoArcSlash(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val x: Float,
+    val y: Float,
+    val radius: Float = 14f,
+    val durationTicks: Int = 15 // about 0.25 seconds for a fast flash slash
+)
+
+data class FpsZombie(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    var x: Float,
+    var y: Float,
+    val speed: Float,
+    var hp: Float,
+    val maxHp: Float,
+    val isBoss: Boolean = false,
+    val sizeMultiplier: Float = 1.0f
+)
+
+data class SimSphere(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    var x: Float,
+    var y: Float,
+    var vx: Float,
+    var vy: Float,
+    val radius: Float = 3f,
+    val color: Long = 0xFF3B82F6
 )
 
 data class MobaDamageText(
@@ -392,6 +431,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaState = MutableStateFlow("idle") // "idle", "preparing", "playing", "victory", "defeat"
     val mobaState = _mobaState.asStateFlow()
 
+    private val _mobaGameOverShowSplash = MutableStateFlow(true)
+    val mobaGameOverShowSplash = _mobaGameOverShowSplash.asStateFlow()
+
+    fun dismissMobaSplash() {
+        _mobaGameOverShowSplash.value = false
+    }
+
     private val _mobaMoveDirection = MutableStateFlow(MobaMoveDirection.NONE)
     val mobaMoveDirection = _mobaMoveDirection.asStateFlow()
 
@@ -577,6 +623,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _mobaYasuoDoubleDashAvailable = MutableStateFlow(false)
     val mobaYasuoDoubleDashAvailable = _mobaYasuoDoubleDashAvailable.asStateFlow()
 
+    private val _mobaYasuoGreenZones = MutableStateFlow<List<YasuoGreenZone>>(emptyList())
+    val mobaYasuoGreenZones = _mobaYasuoGreenZones.asStateFlow()
+
+    private val _mobaYasuoArcSlashes = MutableStateFlow<List<YasuoArcSlash>>(emptyList())
+    val mobaYasuoArcSlashes = _mobaYasuoArcSlashes.asStateFlow()
+
+    // FPS Zombies States
+    private val _fpsZombies = MutableStateFlow<List<FpsZombie>>(emptyList())
+    val fpsZombies = _fpsZombies.asStateFlow()
+
+    // Sphere Simulation States
+    private val _sphereList = MutableStateFlow<List<SimSphere>>(emptyList())
+    val sphereList = _sphereList.asStateFlow()
+
+    private val _sphereFps = MutableStateFlow(60f)
+    val sphereFps = _sphereFps.asStateFlow()
+
+    private val _sphereGameState = MutableStateFlow("idle") // "idle", "running", "ended"
+    val sphereGameState = _sphereGameState.asStateFlow()
+
+    private val _sphereCount = MutableStateFlow(0)
+    val sphereCount = _sphereCount.asStateFlow()
+
     // Alpha States
     private val _mobaAlphaBetaX = MutableStateFlow(-1f)
     val mobaAlphaBetaX = _mobaAlphaBetaX.asStateFlow()
@@ -694,6 +763,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _mobaState.value = "preparing"
         _mobaLog.value = "Đang tải bản đồ Đại Lộ Bình Nguyên Vô Tận & tải dữ liệu lính..."
         _mobaDiagnosticReport.value = null
+        _mobaGameOverShowSplash.value = true
 
         _mobaHeroX.value = 15f
         _mobaHeroY.value = 50f
@@ -764,6 +834,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _mobaTulenOrbs.value = emptyList()
         _mobaTulenUltLaserTargetId.value = null
         _mobaTulenS2CastCount.value = 0
+        _mobaXiaoS2CastCount.value = 0
         
         _mobaMuradCloneX.value = -1f
         _mobaMuradCloneY.value = -1f
@@ -1024,6 +1095,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val isMurad = _mobaHero.value == "Murad"
         val isYasuo = _mobaHero.value == "Yasuo"
         val isAlpha = _mobaHero.value == "Alpha"
+        val isXiao = _mobaHero.value == "Xiao"
 
         // For Murad, Ultimate is locked unless passive stacks are 4
         if (isMurad && skillIndex == 2 && _mobaPassiveStacks.value < 4) {
@@ -1056,7 +1128,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val cds = _mobaSkillCooldowns.value.toMutableList()
         val baseCd = if (isYasuo) {
             when (skillIndex) {
-                0 -> 2.5f // Short cooldown for Q
+                0 -> 2.0f // Short cooldown for Q (Yasuo S1 cooldown reduced to 2s)
                 1 -> 10.0f // W Wall cooldown
                 else -> 9.0f // Ultimate cooldown
             }
@@ -1069,6 +1141,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             1 -> {
                 if (isTulen) {
                     if (_mobaTulenS2CastCount.value < 2) 0.4f else 5.5f
+                } else if (isXiao) {
+                    if (_mobaXiaoS2CastCount.value < 1) 0.4f else 6.0f
                 } else if (isMurad) 7.0f else if (isAlpha) 5.5f else 6.0f
             }
             else -> if (isMurad) 4.0f else if (isTulen) 11.0f else if (isAlpha) 12.0f else 14.0f
@@ -1589,11 +1663,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else if (_mobaHero.value == "Xiao") {
             // Xiao skills
             when (skillIndex) {
-                0 -> { // S1: 3 green slashes + 10% HP heal
-                    val healAmt = _mobaHeroMaxHP.value * 0.10f
+                0 -> { // S1: 3 green slashes + 17% HP heal
+                    val healAmt = _mobaHeroMaxHP.value * 0.17f
                     _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
                     addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
-                    _mobaLog.value = "🟢 Xiao tung Vũ Điệu Chinh Phục: Tạo ra 3 đường chém Gió Xanh phong ấn và hồi phục 10% HP!"
+                    _mobaLog.value = "🟢 Xiao tung Vũ Điệu Chinh Phục: Tạo ra 3 đường chém Gió Xanh phong ấn và hồi phục 17% HP!"
                     
                     val angle1 = angle - 0.25f
                     val angle2 = angle
@@ -1618,70 +1692,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
-                1 -> { // S2: Double dash + 5% HP drain
-                    val lossAmt = _mobaHeroMaxHP.value * 0.05f
-                    _mobaHeroHP.value = (_mobaHeroHP.value - lossAmt).coerceAtLeast(1f)
-                    addMobaDamageText("-${lossAmt.toInt()} HP 🩸", hX, hY - 6f, 0xFFEF4444)
-                    _mobaLog.value = "🟢 Xiao tiêu hao 5% HP thi triển Gió Tung Hoành! Lướt xa liên tục hai lần xuyên qua hàng ngũ địch!"
-                    
-                    // Immediately check if HP falls below 50% to take off the mask
-                    if (_mobaHeroHP.value <= _mobaHeroMaxHP.value * 0.5f && _mobaXiaoMaskActive.value) {
-                        _mobaXiaoMaskActive.value = false
-                        _mobaXiaoMaskDurationLeftMs.value = 0L
-                        _mobaXiaoDamageBonus.value = 1.0f
-                        _mobaLog.value = "👺 HP dưới 50%! Xiao tự động tháo Mặt Nạ Dạ Xoa để bảo vệ bản thân!"
-                    }
+                1 -> { // S2: Single dash (up to 2 times) + 15% HP heal
+                    val currentCast = _mobaXiaoS2CastCount.value
+                    _mobaXiaoS2CastCount.value = if (currentCast < 1) currentCast + 1 else 0
+                    _mobaLog.value = "🟢 Xiao tung Gió Tung Hoành (Lần ${currentCast + 1}/2)! Hồi phục 15% HP và lướt chém diện rộng!"
+
+                    val healAmt = _mobaHeroMaxHP.value * 0.15f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+
+                    val destX = _mobaHeroDestX.value
+                    val destY = _mobaHeroDestY.value
+                    val dist = kotlin.math.sqrt((destX - hX) * (destX - hX) + (destY - hY) * (destY - hY))
+                    val dashDist = if (dist > 1.0f) dist.coerceAtMost(16f) else 14f
+                    val bAng = if (dist > 1.0f) kotlin.math.atan2(destY - hY, destX - hX) else angle
+                    val nextX = (hX + kotlin.math.cos(bAng) * dashDist).coerceIn(10f, 90f)
+                    val nextY = (hY + kotlin.math.sin(bAng) * dashDist).coerceIn(20f, 80f)
 
                     viewModelScope.launch {
                         _mobaHeroIsImmune.value = true
                         
-                        // First dash
-                        val stepX1 = kotlin.math.cos(angle) * 15f
-                        val stepY1 = kotlin.math.sin(angle) * 15f
-                        val destX1 = (_mobaHeroX.value + stepX1).coerceIn(10f, 90f)
-                        val destY1 = (_mobaHeroY.value + stepY1).coerceIn(20f, 80f)
-                        
                         _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
-                            id = "xiao_dash_1_${System.currentTimeMillis()}",
-                            x = _mobaHeroX.value,
-                            y = _mobaHeroY.value,
+                            id = "xiao_dash_${System.currentTimeMillis()}",
+                            x = hX,
+                            y = hY,
                             color = 0xFF10B981,
                             isTulen = false,
                             alpha = 0.5f
                         )
-                        _mobaHeroX.value = destX1
-                        _mobaHeroY.value = destY1
-                        _mobaHeroDestX.value = destX1
-                        _mobaHeroDestY.value = destY1
-                        dealAoeMobaDamage(destX1, destY1, radius = 7f, damage = 300f, type = "xiao_dash")
-                        addMobaDamageText("DẠ XOA LƯỚT 💨", destX1, destY1 - 6f, 0xFF10B981)
                         
-                        delay(180) // Short pause
+                        // Smooth slide transition
+                        val steps = 4
+                        val stepX = (nextX - hX) / steps
+                        val stepY = (nextY - hY) / steps
+                        for (i in 1..steps) {
+                            val currX = hX + stepX * i
+                            val currY = hY + stepY * i
+                            _mobaHeroX.value = currX
+                            _mobaHeroY.value = currY
+                            delay(15)
+                        }
+
+                        _mobaHeroX.value = nextX
+                        _mobaHeroY.value = nextY
+                        _mobaHeroDestX.value = nextX
+                        _mobaHeroDestY.value = nextY
+                        dealAoeMobaDamage(nextX, nextY, radius = 8f, damage = 350f, type = "xiao_dash")
+                        addMobaDamageText("DẠ XOA LƯỚT 💨", nextX, nextY - 6f, 0xFF10B981)
                         
-                        // Second dash
-                        val curX = _mobaHeroX.value
-                        val curY = _mobaHeroY.value
-                        val stepX2 = kotlin.math.cos(angle) * 15f
-                        val stepY2 = kotlin.math.sin(angle) * 15f
-                        val destX2 = (curX + stepX2).coerceIn(10f, 90f)
-                        val destY2 = (curY + stepY2).coerceIn(20f, 80f)
-                        
-                        _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
-                            id = "xiao_dash_2_${System.currentTimeMillis()}",
-                            x = curX,
-                            y = curY,
-                            color = 0xFF10B981,
-                            isTulen = false,
-                            alpha = 0.5f
-                        )
-                        _mobaHeroX.value = destX2
-                        _mobaHeroY.value = destY2
-                        _mobaHeroDestX.value = destX2
-                        _mobaHeroDestY.value = destY2
-                        dealAoeMobaDamage(destX2, destY2, radius = 7f, damage = 350f, type = "xiao_dash")
-                        addMobaDamageText("GIÓ TUNG HOÀNH! 🟢💥", destX2, destY2 - 6f, 0xFF059669)
-                        
-                        delay(100)
                         _mobaHeroIsImmune.value = false
                         delay(250)
                         _mobaDashTrails.value = emptyList()
@@ -1721,9 +1779,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             }
                             _mobaHeroKnockupHeight.value = 0f
                             
-                            // Teleport slightly towards target or Maloch for slam
-                            val targetX = (_mobaEnemyX.value).coerceIn(10f, 90f)
-                            val targetY = (_mobaEnemyY.value).coerceIn(20f, 80f)
+                            // Check if an enemy hero or enemy creep is within a logical range of 35f
+                            var nearestEnemy: Pair<Float, Float>? = null
+                            var minDistance = 35f
+
+                            // 1. Check enemy hero
+                            if (_mobaEnemyHP.value > 0f) {
+                                val dHero = kotlin.math.sqrt((_mobaEnemyX.value - _mobaHeroX.value) * (_mobaEnemyX.value - _mobaHeroX.value) + (_mobaEnemyY.value - _mobaHeroY.value) * (_mobaEnemyY.value - _mobaHeroY.value))
+                                if (dHero < minDistance) {
+                                    minDistance = dHero
+                                    nearestEnemy = Pair(_mobaEnemyX.value, _mobaEnemyY.value)
+                                }
+                            }
+                            // 2. Check enemy creeps
+                            _mobaCreeps.value.filter { it.isEnemy && it.hp > 0f }.forEach { creep ->
+                                val dCreep = kotlin.math.sqrt((creep.x - _mobaHeroX.value) * (creep.x - _mobaHeroX.value) + (creep.y - _mobaHeroY.value) * (creep.y - _mobaHeroY.value))
+                                if (dCreep < minDistance) {
+                                    minDistance = dCreep
+                                    nearestEnemy = Pair(creep.x, creep.y)
+                                }
+                            }
+
+                            val targetX: Float
+                            val targetY: Float
+                            if (nearestEnemy != null) {
+                                // Jump directly to nearest target
+                                targetX = nearestEnemy.first.coerceIn(10f, 90f)
+                                targetY = nearestEnemy.second.coerceIn(20f, 80f)
+                                _mobaLog.value = "🎯 Xiao nhảy định vị và đâm xuống kẻ địch gần nhất!"
+                            } else {
+                                // Free placement at user's destination marker
+                                targetX = _mobaHeroDestX.value.coerceIn(10f, 90f)
+                                targetY = _mobaHeroDestY.value.coerceIn(20f, 80f)
+                                _mobaLog.value = "🟢 Không có mục tiêu! Xiao tự do nhảy đáp xuống vị trí chỉ định!"
+                            }
+                            
                             _mobaHeroX.value = targetX
                             _mobaHeroY.value = targetY
                             _mobaHeroDestX.value = targetX
@@ -2704,14 +2794,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _mobaDamageTexts.value = dmgTexts.filter { it.age < 18 }
 
+            // 8b. Update Yasuo Green Zones
+            val greenZones = _mobaYasuoGreenZones.value.map {
+                it.copy(durationTicks = it.durationTicks - 1)
+            }
+            _mobaYasuoGreenZones.value = greenZones.filter { it.durationTicks > 0 }
+
+            val arcSlashes = _mobaYasuoArcSlashes.value.map {
+                it.copy(durationTicks = it.durationTicks - 1)
+            }
+            _mobaYasuoArcSlashes.value = arcSlashes.filter { it.durationTicks > 0 }
+
             // 9. Game Over checks
             checkMobaGameOver()
         }
     }
 
     private fun spawnMobaCreepWave() {
-        _mobaLog.value = "🛡️ Lính 3 đường (Kinh Thống, Giữa, Rồng) đã xuất trận!"
-        val allies = listOf(
+        val enemyAllTurretsDestroyed = _mobaEnemyTurretHP.value <= 0f && _mobaEnemyTurretTopHP.value <= 0f && _mobaEnemyTurretBotHP.value <= 0f
+        val allyAllTurretsDestroyed = _mobaAllyTurretHP.value <= 0f && _mobaAllyTurretTopHP.value <= 0f && _mobaAllyTurretBotHP.value <= 0f
+
+        if (enemyAllTurretsDestroyed || allyAllTurretsDestroyed) {
+            _mobaLog.value = "🔥 LÍNH SIÊU CẤP ĐÃ XUẤT TRẬN! Kích hoạt đường tiến công trực tiếp dẫn thẳng đến lâu đài!"
+        } else {
+            _mobaLog.value = "🛡️ Lính 3 đường (Kinh Thống, Giữa, Rồng) đã xuất trận!"
+        }
+
+        var allies = listOf(
             // Top lane
             MobaCreep(x = 10f, y = 26f, hp = 450f, maxHp = 450f, isEnemy = false, speed = 0.55f, lane = "top"),
             MobaCreep(x = 8f, y = 28f, hp = 600f, maxHp = 600f, isEnemy = false, speed = 0.5f, lane = "top"),
@@ -2727,7 +2836,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             MobaCreep(x = 8f, y = 72f, hp = 600f, maxHp = 600f, isEnemy = false, speed = 0.5f, lane = "bot"),
             MobaCreep(x = 6f, y = 74f, hp = 450f, maxHp = 450f, isEnemy = false, speed = 0.55f, lane = "bot")
         )
-        val enemies = listOf(
+
+        if (enemyAllTurretsDestroyed) {
+            allies = allies.map { creep ->
+                val newMax = creep.maxHp * 2.2f
+                creep.copy(hp = newMax, maxHp = newMax, speed = creep.speed * 1.15f)
+            }
+            // Add direct lane allies
+            val directAllies = listOf(
+                MobaCreep(x = 10f, y = 50f, hp = 1400f, maxHp = 1400f, isEnemy = false, speed = 0.55f, lane = "direct"),
+                MobaCreep(x = 7f, y = 50f, hp = 1400f, maxHp = 1400f, isEnemy = false, speed = 0.55f, lane = "direct")
+            )
+            allies = allies + directAllies
+        }
+
+        var enemies = listOf(
             // Top lane
             MobaCreep(x = 90f, y = 26f, hp = 450f, maxHp = 450f, isEnemy = true, speed = 0.55f, lane = "top"),
             MobaCreep(x = 92f, y = 28f, hp = 600f, maxHp = 600f, isEnemy = true, speed = 0.5f, lane = "top"),
@@ -2743,6 +2866,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             MobaCreep(x = 92f, y = 72f, hp = 600f, maxHp = 600f, isEnemy = true, speed = 0.5f, lane = "bot"),
             MobaCreep(x = 94f, y = 74f, hp = 450f, maxHp = 450f, isEnemy = true, speed = 0.55f, lane = "bot")
         )
+
+        if (allyAllTurretsDestroyed) {
+            enemies = enemies.map { creep ->
+                val newMax = creep.maxHp * 2.2f
+                creep.copy(hp = newMax, maxHp = newMax, speed = creep.speed * 1.15f)
+            }
+            // Add direct lane enemies
+            val directEnemies = listOf(
+                MobaCreep(x = 90f, y = 50f, hp = 1400f, maxHp = 1400f, isEnemy = true, speed = 0.55f, lane = "direct"),
+                MobaCreep(x = 93f, y = 50f, hp = 1400f, maxHp = 1400f, isEnemy = true, speed = 0.55f, lane = "direct")
+            )
+            enemies = enemies + directEnemies
+        }
+
         _mobaCreeps.value = _mobaCreeps.value + allies + enemies
     }
 
@@ -3138,6 +3275,78 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        if (proj.type == "yasuo_basic") {
+            // Yasuo's basic attack bounce logic
+            val hitId = proj.homingTargetId ?: ""
+            if (hitId.isNotEmpty()) {
+                val hitX = proj.x
+                val hitY = proj.y
+                val currentHitCount = proj.yasuoHitCount
+                val alreadyHitList = proj.yasuoHitTargets + hitId
+
+                if (currentHitCount < 5) {
+                    // Try to bounce to a random target
+                    val candidates = mutableListOf<Triple<String, Float, Float>>()
+                    
+                    // Check enemy hero (Maloch)
+                    if (_mobaEnemyHP.value > 0f && !alreadyHitList.contains("enemy_hero")) {
+                        candidates.add(Triple("enemy_hero", _mobaEnemyX.value, _mobaEnemyY.value))
+                    }
+
+                    // Check enemy creeps
+                    _mobaCreeps.value.filter { it.isEnemy && it.hp > 0f && !alreadyHitList.contains(it.id) }.forEach { creep ->
+                        candidates.add(Triple(creep.id, creep.x, creep.y))
+                    }
+
+                    val chosenTarget = if (candidates.isNotEmpty()) {
+                        candidates.random()
+                    } else {
+                        // If all distinct targets hit but we haven't reached 5 yet, allow bouncing back to other alive targets
+                        val backupCandidates = mutableListOf<Triple<String, Float, Float>>()
+                        if (_mobaEnemyHP.value > 0f && hitId != "enemy_hero") {
+                            backupCandidates.add(Triple("enemy_hero", _mobaEnemyX.value, _mobaEnemyY.value))
+                        }
+                        _mobaCreeps.value.filter { it.isEnemy && it.hp > 0f && hitId != it.id }.forEach { creep ->
+                            backupCandidates.add(Triple(creep.id, creep.x, creep.y))
+                        }
+                        if (backupCandidates.isNotEmpty()) backupCandidates.random() else null
+                    }
+
+                    if (chosenTarget != null) {
+                        val (nextId, nextX, nextY) = chosenTarget
+                        val nextCount = currentHitCount + 1
+                        val bounceProj = MobaProjectile(
+                            x = hitX,
+                            y = hitY,
+                            speed = proj.speed,
+                            isEnemy = false,
+                            damage = proj.damage * 0.95f,
+                            type = "yasuo_basic",
+                            color = 0xFF10B981, // green trail for bounce
+                            radius = proj.radius,
+                            targetX = nextX,
+                            targetY = nextY,
+                            isHoming = true,
+                            homingTargetId = nextId,
+                            yasuoHitCount = nextCount,
+                            yasuoHitTargets = alreadyHitList
+                        )
+                        _mobaProjectiles.value = _mobaProjectiles.value + bounceProj
+                        addMobaDamageText("HASAGI BOUNCE ⚡", hitX, hitY - 4f, 0xFF34D399)
+                        _mobaLog.value = "🌪️ Kiếm khí của Yasuo nảy ngẫu nhiên sang mục tiêu tiếp theo! (${nextCount}/5)"
+                    }
+                } else if (currentHitCount == 5) {
+                    // Reached 5 targets! Create green zone, arc slash visual, and activate Hasagi!
+                    _mobaYasuoGreenZones.value = _mobaYasuoGreenZones.value + YasuoGreenZone(x = hitX, y = hitY)
+                    _mobaYasuoArcSlashes.value = _mobaYasuoArcSlashes.value + YasuoArcSlash(x = hitX, y = hitY)
+                    _mobaPassiveStacks.value = 2 // Activate Hasagi (Bão kiếm level 2)
+                    dealAoeMobaDamage(hitX, hitY, radius = 14f, damage = 550f, type = "yasuo_hasagi")
+                    addMobaDamageText("HASAGI! 🌪️💚", hitX, hitY - 8f, 0xFF10B981)
+                    _mobaLog.value = "💚 HASAGI! Đòn đánh thường nảy trúng 5 mục tiêu, tung Bão Kiếm Vòng Cung quét sạch và kích hoạt Tụ Bão!"
+                }
+            }
+        }
     }
 
     private fun triggerMobaEnemyStun(durationMs: Long) {
@@ -3258,15 +3467,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (currentTime - creep.lastAttackTime > 1300L) {
                     creep.lastAttackTime = currentTime
                     // Spawn small bullet projectile
+                    val creepDmg = if (creep.maxHp > 650f) 70f else 35f
+                    val projRadius = if (creep.maxHp > 650f) 1.6f else 1.2f
                     _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                         x = creep.x,
                         y = creep.y,
                         speed = 1.4f,
                         isEnemy = creep.isEnemy,
-                        damage = 35f,
+                        damage = creepDmg,
                         type = "creep_atk",
                         color = if (creep.isEnemy) 0xFFFF5555 else 0xFF44FF44,
-                        radius = 1.2f,
+                        radius = projRadius,
                         targetX = finalTarget.first,
                         targetY = finalTarget.second,
                         isHoming = true,
@@ -3277,10 +3488,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Move towards lane base
                 val destX = if (creep.isEnemy) 10f else 90f
                 val dx = destX - creep.x
-                val targetY = when (creep.lane) {
-                    "top" -> 28f
-                    "bot" -> 72f
-                    else -> 50f
+
+                val enemyAllTurretsDestroyed = _mobaEnemyTurretHP.value <= 0f && _mobaEnemyTurretTopHP.value <= 0f && _mobaEnemyTurretBotHP.value <= 0f
+                val allyAllTurretsDestroyed = _mobaAllyTurretHP.value <= 0f && _mobaAllyTurretTopHP.value <= 0f && _mobaAllyTurretBotHP.value <= 0f
+
+                val isDirectLaneForThisCreep = if (creep.isEnemy) {
+                    allyAllTurretsDestroyed
+                } else {
+                    enemyAllTurretsDestroyed
+                }
+
+                val targetY = if (isDirectLaneForThisCreep) {
+                    50f // Straight to castle!
+                } else {
+                    when (creep.lane) {
+                        "top" -> 28f
+                        "bot" -> 72f
+                        "direct" -> 50f
+                        else -> 50f
+                    }
                 }
                 val dy = targetY - creep.y
                 val dist = kotlin.math.sqrt(dx * dx + dy * dy)
@@ -3731,6 +3957,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun finishMobaGame(isVictory: Boolean) {
         mobaGameJob?.cancel()
         _mobaState.value = if (isVictory) "victory" else "defeat"
+        _mobaGameOverShowSplash.value = true
         
         val gameTimeSeconds = ((System.currentTimeMillis() - mobaGameStartTime) / 1000).toInt()
         val basePing = if (_isSimulating.value) _currentPing.value else 10
@@ -3879,6 +4106,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _reflexState.value = "preparing"
             val loadingMsg = when (_fpsGameMode.value) {
                 "boss" -> "👹 BOSS TRÙM CUỐI XUẤT HIỆN! Hãy nhắm bắn khi Boss đứng yên chuẩn bị ra chiêu!"
+                "zombie" -> "🧟 ĐẠI DỊCH ZOMBIE! Chuẩn bị vũ khí để chặn đứng bầy xác sống điên cuồng..."
                 "bottle" -> "🥤 Đang xếp chai thủy tinh lên kệ gỗ & chuẩn bị đạn..."
                 "fast" -> "⚡ Đang kích hoạt hệ thống đĩa bay siêu tốc & sạc pin laser..."
                 "sniper" -> "🔭 Đang lắp kính ngắm AWM 8x & hiệu chỉnh hướng gió..."
@@ -3901,19 +4129,314 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _fpsIsZoomed.value = true
             targetMovementJob?.cancel()
             bossGameJob?.cancel()
+            zombieGameJob?.cancel()
             
             _fpsBossHp.value = 5
-            _fpsUserHp.value = 3
+            _fpsUserHp.value = if (_fpsGameMode.value == "zombie") 5 else 3
             _fpsBossState.value = "idle"
+            _fpsZombies.value = emptyList()
             
             delay(1500) // loading game
             
             if (_fpsGameMode.value == "boss") {
                 startBossGameLoop()
+            } else if (_fpsGameMode.value == "zombie") {
+                startZombieGameLoop()
             } else {
                 spawnNextTarget()
             }
         }
+    }
+
+    private var zombieGameJob: kotlinx.coroutines.Job? = null
+
+    private fun startZombieGameLoop() {
+        zombieGameJob?.cancel()
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        bossGameJob?.cancel()
+        
+        _reflexState.value = "spawned"
+        _fpsUserHp.value = 5 // Give player 5 lives for zombie mode
+        _fpsZombies.value = emptyList()
+        _fpsBulletHoles.value = emptyList()
+        _fpsShotVisuals.value = emptyList()
+        _fpsCurrentTarget.value = 1
+        _fpsHits.value = 0
+        _fpsShots.value = 0
+
+        _reflexMessage.value = "🧟 ĐẠI DỊCH ZOMBIE! Tiêu diệt toàn bộ zombie đang tiến từ trên xuống! Sau 30s Trùm Zombie sẽ xuất hiện!"
+        _reflexTimerText.value = "Thời gian: 0s | Mạng: ❤️ 5/5"
+
+        zombieGameJob = viewModelScope.launch {
+            val startTime = System.currentTimeMillis()
+            var lastSpawnTime = 0L
+            var bossSpawned = false
+
+            while (_fpsUserHp.value > 0 && _reflexState.value == "spawned") {
+                delay(50)
+                while (_fpsIsPaused.value) {
+                    delay(100)
+                }
+
+                val now = System.currentTimeMillis()
+                val elapsedMs = now - startTime
+                val elapsedSeconds = (elapsedMs / 1000).toInt()
+
+                _reflexTimerText.value = "Thời gian: ${elapsedSeconds}s | Zombie Đã Diệt: ${_fpsHits.value} | Mạng: ❤️ ${_fpsUserHp.value}/5"
+
+                // Spawn logic
+                if (elapsedSeconds < 30) {
+                    // Spawn regular zombie every 1.8 seconds
+                    if (now - lastSpawnTime >= 1800) {
+                        val newZ = FpsZombie(
+                            x = Random.nextFloat() * 0.7f + 0.15f,
+                            y = 0.05f,
+                            speed = Random.nextFloat() * 0.005f + 0.004f, // slow walk down
+                            hp = 1f,
+                            maxHp = 1f,
+                            isBoss = false
+                        )
+                        _fpsZombies.value = _fpsZombies.value + newZ
+                        lastSpawnTime = now
+                    }
+                } else if (!bossSpawned) {
+                    // Spawn Zombie Boss!
+                    bossSpawned = true
+                    _reflexMessage.value = "🚨 CẢNH BÁO! TRÙM ZOMBIE KHỔNG LỒ ĐÃ XUẤT HIỆN! TIÊU DIỆT HẮN ĐỂ KẾT THÚC MÀN CHƠI!"
+                    SoundManager.playSound("boss_teleport")
+                    val bossZ = FpsZombie(
+                        x = 0.5f,
+                        y = 0.05f,
+                        speed = 0.002f, // boss walks slower
+                        hp = 8f,
+                        maxHp = 8f,
+                        isBoss = true,
+                        sizeMultiplier = 2.2f
+                    )
+                    _fpsZombies.value = _fpsZombies.value + bossZ
+                    lastSpawnTime = now
+                }
+
+                // Update zombie positions
+                val currentZombies = _fpsZombies.value.map { it.copy() }.toMutableList()
+                val iterator = currentZombies.listIterator()
+                while (iterator.hasNext()) {
+                    val zombie = iterator.next()
+                    
+                    // Move
+                    val speedFactor = if (zombie.isBoss) 0.002f else zombie.speed
+                    val nextY = zombie.y + speedFactor
+                    
+                    if (nextY >= 0.95f) {
+                        // Reached bottom, hit player!
+                        _fpsUserHp.value = (_fpsUserHp.value - 1).coerceAtLeast(0)
+                        SoundManager.playSound("boss_hit") // or player hit sound
+                        iterator.remove()
+                        _reflexMessage.value = "⚠️ Zombie đã vượt qua ranh giới và cắn bạn! Mất 1 HP!"
+                    } else {
+                        zombie.y = nextY
+                    }
+                }
+                _fpsZombies.value = currentZombies
+
+                // Lose condition check
+                if (_fpsUserHp.value <= 0) {
+                    finishZombieGame(victory = false)
+                    break
+                }
+
+                // Win condition check: after 30s, boss was spawned, and all zombies (including boss) are dead
+                if (bossSpawned && _fpsZombies.value.isEmpty()) {
+                    finishZombieGame(victory = true)
+                    break
+                }
+            }
+        }
+    }
+
+    private fun finishZombieGame(victory: Boolean) {
+        _reflexState.value = "finished"
+        zombieGameJob?.cancel()
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        bossGameJob?.cancel()
+        
+        val flir = _flirtingStyle.value
+        val evaluation = if (victory) {
+            SoundManager.playSound("victory")
+            when (flir) {
+                "Hài hước" -> "Quá đẳng cấp anh yêu ơi! 🧟‍♂️ Thắng cả dịch bệnh zombie cứu sống mỹ nhân rồi! Thưởng cho anh ngàn nụ hôn nè! 😘"
+                "Lãng mạn" -> "Người hùng dũng cảm của em đã vượt qua đại lộ thây ma! Trông anh kiên định bảo vệ em khỏi lũ quái vật làm tim em xao xuyến không thôi... 💕"
+                else -> "Chúc mừng anh dũng sĩ! Anh đã đẩy lùi đợt tấn công thảm khốc của đại dịch Zombie và tiêu diệt thành công Zombie Chúa!"
+            }
+        } else {
+            SoundManager.playSound("game_over")
+            when (flir) {
+                "Hài hước" -> "Ui da, bị zombie cạp mất tiêu rồi anh iu ơi! 😭 Dậy uống trà sữa để hồi sinh ngay thôi kẻo nguội nè! 🥤"
+                "Lãng mạn" -> "Lũ thây ma thật đáng ghét khi làm anh mỏi mệt... Để em ôm anh thật chặt, sưởi ấm tâm hồn anh nhé. Mình cùng làm lại nha! 🌸"
+                else -> "Rất tiếc! Lũ Zombie đã vượt qua phòng tuyến. Hãy cố gắng hạ gục chúng trước khi chúng đi xuống cuối màn hình!"
+            }
+        }
+
+        val mainIssue = if (victory) "Quét Sạch Đại Dịch Zombie! 🎉" else "Bị Zombie Vượt Qua Phòng Tuyến 💀"
+        val tips = if (victory) {
+            listOf(
+                "Xạ thủ vô song" to "Kỹ năng ghìm tâm di chuột xuất sắc của bạn đã dọn sạch bầy zombie.",
+                "Trùm cuối bị hạ" to "Sức chịu đựng đáng kinh ngạc của Zombie Chúa cũng không chống đỡ nổi sát thương của bạn!"
+            )
+        } else {
+            listOf(
+                "Ưu tiên zombie đi nhanh" to "Hãy hạ gục những con zombie di chuyển nhanh trước khi chúng kịp tiếp cận bạn.",
+                "Canh bắn trùm" to "Zombie Chúa có lượng máu cực lớn, cần tập trung xả đạn liên tục!"
+            )
+        }
+
+        _fpsDiagnosticReport.value = FpsDiagnostic(
+            gameName = "MiniGame FPS 2D (Săn Thây Ma 🧟)",
+            totalTargets = _fpsHits.value + _fpsLostShots.value + 5,
+            hits = _fpsHits.value,
+            accuracy = if (_fpsShots.value > 0) (_fpsHits.value.toFloat() / _fpsShots.value * 100).toInt() else 0,
+            avgPhysicalResponseMs = 280,
+            avgWithNetworkResponseMs = 280 + (if (_isSimulating.value) _currentPing.value.toInt() else 10),
+            lostShotsCount = _fpsLostShots.value,
+            networkPingSimulated = if (_isSimulating.value) _currentPing.value.toInt() else 10,
+            networkJitterSimulated = if (_isSimulating.value) _targetJitter.value else 0,
+            networkLossSimulated = if (_isSimulating.value) _targetLoss.value else 0,
+            mainIssue = mainIssue,
+            detailedTips = tips,
+            linhChiEvaluation = evaluation
+        )
+    }
+
+    private var sphereJob: kotlinx.coroutines.Job? = null
+
+    fun startSphereSimulation() {
+        sphereJob?.cancel()
+        _sphereGameState.value = "running"
+        _sphereFps.value = 60f
+        _sphereCount.value = 1
+        
+        val initialSpheres = listOf(
+            SimSphere(
+                x = 50f,
+                y = 50f,
+                vx = (Random.nextFloat() * 1.6f - 0.8f).let { if (it == 0f) 0.5f else it },
+                vy = (Random.nextFloat() * 1.6f - 0.8f).let { if (it == 0f) -0.5f else it }
+            )
+        )
+        _sphereList.value = initialSpheres
+
+        sphereJob = viewModelScope.launch {
+            while (_sphereGameState.value == "running") {
+                delay(16) // roughly 60 fps simulation
+                
+                val currentSpheres = _sphereList.value.map { it.copy() }
+                if (currentSpheres.isEmpty()) continue
+
+                // Update physics
+                currentSpheres.forEach { sphere ->
+                    sphere.x += sphere.vx
+                    sphere.y += sphere.vy
+
+                    // Bound checks & Wall bounces
+                    if (sphere.x <= 3f) {
+                        sphere.x = 3f
+                        sphere.vx = -sphere.vx
+                    } else if (sphere.x >= 97f) {
+                        sphere.x = 97f
+                        sphere.vx = -sphere.vx
+                    }
+
+                    if (sphere.y <= 3f) {
+                        sphere.y = 3f
+                        sphere.vy = -sphere.vy
+                    } else if (sphere.y >= 97f) {
+                        sphere.y = 97f
+                        sphere.vy = -sphere.vy
+                    }
+                }
+
+                _sphereList.value = currentSpheres
+                val count = currentSpheres.size
+                _sphereCount.value = count
+
+                // Non-linear FPS drop simulation
+                val calculatedFps = (60f / (1f + (count - 1) * 0.03f)).coerceIn(5f, 60f)
+                _sphereFps.value = calculatedFps
+
+                if (calculatedFps <= 5f) {
+                    _sphereGameState.value = "ended"
+                    SoundManager.playSound("game_over")
+                    break
+                }
+            }
+        }
+    }
+
+    fun handleSphereTap(tapX: Float, tapY: Float, boxWidth: Float, boxHeight: Float) {
+        if (_sphereGameState.value != "running") return
+        
+        val relativeX = (tapX / boxWidth) * 100f
+        val relativeY = (tapY / boxHeight) * 100f
+
+        val currentSpheres = _sphereList.value.toMutableList()
+        var hitSphere: SimSphere? = null
+        var minDistance = 8f // tap threshold in percent
+
+        currentSpheres.forEach { sphere ->
+            val d = kotlin.math.sqrt((sphere.x - relativeX) * (sphere.x - relativeX) + (sphere.y - relativeY) * (sphere.y - relativeY))
+            if (d < minDistance) {
+                minDistance = d
+                hitSphere = sphere
+            }
+        }
+
+        if (hitSphere != null) {
+            SoundManager.playSound("hit")
+            // Double the tapped sphere: keep the original, and add another with randomized opposite velocity!
+            val parent = hitSphere!!
+            val newVx = -parent.vx + (Random.nextFloat() * 0.4f - 0.2f)
+            val newVy = -parent.vy + (Random.nextFloat() * 0.4f - 0.2f)
+            val duplicate = SimSphere(
+                x = parent.x,
+                y = parent.y,
+                vx = if (newVx == 0f) 0.6f else newVx,
+                vy = if (newVy == 0f) -0.6f else newVy,
+                color = when (Random.nextInt(5)) {
+                    0 -> 0xFFEF4444 // Red
+                    1 -> 0xFF10B981 // Green
+                    2 -> 0xFFF59E0B // Yellow
+                    3 -> 0xFF8B5CF6 // Purple
+                    else -> 0xFF3B82F6 // Blue
+                }
+            )
+            _sphereList.value = _sphereList.value + duplicate
+        }
+    }
+
+    fun doubleAllSpheres() {
+        if (_sphereGameState.value != "running") return
+        SoundManager.playSound("boss_teleport")
+        val currentSpheres = _sphereList.value
+        val duplicates = currentSpheres.map { parent ->
+            val newVx = -parent.vx + (Random.nextFloat() * 0.4f - 0.2f)
+            val newVy = -parent.vy + (Random.nextFloat() * 0.4f - 0.2f)
+            SimSphere(
+                x = parent.x,
+                y = parent.y,
+                vx = if (newVx == 0f) 0.6f else newVx,
+                vy = if (newVy == 0f) -0.6f else newVy,
+                color = when (Random.nextInt(5)) {
+                    0 -> 0xFFEF4444
+                    1 -> 0xFF10B981
+                    2 -> 0xFFF59E0B
+                    3 -> 0xFF8B5CF6
+                    else -> 0xFF3B82F6
+                }
+            )
+        }
+        _sphereList.value = currentSpheres + duplicates
     }
 
     private fun startBossGameLoop() {
@@ -4253,6 +4776,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 _fpsMisses.value += 1
                 _reflexMessage.value = "💨 Bắn hụt rồi! Hãy ngắm chính xác vào tên Boss ác độc nhé!"
+            }
+            return
+        }
+
+        // Special handling for ZOMBIE mode!
+        if (_fpsGameMode.value == "zombie") {
+            val hitZombie = _fpsZombies.value.map { it.copy() }.find { zombie ->
+                val hitRadius = 0.08f * zombie.sizeMultiplier
+                val d = kotlin.math.sqrt(
+                    ((relativeX - zombie.x) * (relativeX - zombie.x)) + 
+                    ((relativeY - zombie.y) * (relativeY - zombie.y))
+                )
+                d < hitRadius
+            }
+
+            val isTargetHit = hitZombie != null
+            val newHole = FpsBulletHole(x = tapX, y = tapY, isHit = isTargetHit)
+            _fpsBulletHoles.value = _fpsBulletHoles.value + newHole
+
+            if (hitZombie != null) {
+                // Good shot!
+                SoundManager.playSound("hit")
+                val zombieList = _fpsZombies.value.map { it.copy() }.toMutableList()
+                val targetZ = zombieList.find { it.id == hitZombie.id }
+                if (targetZ != null) {
+                    targetZ.hp = (targetZ.hp - 1f).coerceAtLeast(0f)
+                    if (targetZ.hp <= 0f) {
+                        zombieList.remove(targetZ)
+                        _fpsHits.value += 1
+                        SoundManager.playSound("boss_hit") // play death sound
+                    } else {
+                        // Boss or tough zombie was damaged!
+                        SoundManager.playSound("boss_hit")
+                    }
+                }
+                _fpsZombies.value = zombieList
+            } else {
+                _fpsMisses.value += 1
             }
             return
         }
