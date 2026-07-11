@@ -6950,16 +6950,26 @@ fun MobaTurretView(hp: Float, maxHp: Float, isEnemy: Boolean, modifier: Modifier
 
 @Composable
 fun MobaCreepView(creep: MobaCreep, modifier: Modifier = Modifier) {
+    val isEnhanced = creep.maxHp > 900f
+    val size = if (isEnhanced) 20.dp else 13.dp
+    val emoji = if (isEnhanced) {
+        if (creep.isEnemy) "👹" else "🦁"
+    } else {
+        if (creep.isEnemy) "⚔️" else "🛡️"
+    }
+    val width = if (isEnhanced) 28.dp else 18.dp
+    val hpHeight = if (isEnhanced) 3.5.dp else 2.dp
+    val progress = (creep.hp / creep.maxHp).coerceIn(0f, 1f)
+
     Column(
-        modifier = modifier.width(18.dp),
+        modifier = modifier.width(width),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
-        val progress = (creep.hp / creep.maxHp).coerceIn(0f, 1f)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(2.dp)
+                .height(hpHeight)
                 .background(Color.DarkGray)
         ) {
             Box(
@@ -6972,12 +6982,18 @@ fun MobaCreepView(creep: MobaCreep, modifier: Modifier = Modifier) {
 
         Box(
             modifier = Modifier
-                .size(13.dp)
+                .size(size)
                 .background(if (creep.isEnemy) Color(0xFFEF4444) else Color(0xFF3B82F6), CircleShape)
+                .then(
+                    if (isEnhanced) {
+                        Modifier.border(1.5.dp, Color(0xFFFFD700), CircleShape)
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Text(
-                text = if (creep.isEnemy) "⚔️" else "🛡️",
-                fontSize = 7.sp,
+                text = emoji,
+                fontSize = if (isEnhanced) 11.sp else 7.sp,
                 modifier = Modifier.align(Alignment.Center)
             )
         }
@@ -7202,6 +7218,52 @@ fun MobaDiagnosticView(
                         color = Color.LightGray,
                         lineHeight = 16.sp
                     )
+                }
+            }
+        }
+
+        // Match Medals / Huy hiệu Trận đấu
+        val matchMedals = remember(report) {
+            val list = mutableListOf<Triple<String, String, Color>>()
+            val isWin = report.turretStatus.contains("Chiến Thắng")
+            if (isWin) {
+                list.add(Triple("🏆 CHIẾN THẮNG TRỌN VẸN", "Đập sập sào huyệt đối phương!", Color(0xFF34D399)))
+                if (report.kills >= 5) {
+                    list.add(Triple("🔥 CHIẾN THẦN GANH ĐUA", "Gây áp lực khổng lồ lên Maloch!", Color(0xFFFFD700)))
+                } else {
+                    list.add(Triple("🛡️ KINH VÔ ĐỊCH", "Phá huỷ phòng tuyến kiên cố!", Color(0xFF60A5FA)))
+                }
+                if (report.skillsInterruptedCount == 0) {
+                    list.add(Triple("✨ PHÁP SƯ HOÀN MỸ", "Chuyển chiêu mượt mà như nước chảy!", Color(0xFFA78BFA)))
+                }
+            } else {
+                list.add(Triple("💀 THẤT BẠI TIẾC NUỐI", "Mạng lag ngăn cản đôi bàn tay vàng!", Color(0xFFF87171)))
+                if (report.skillsInterruptedCount > 2) {
+                    list.add(Triple("📶 NẠN NHÂN MẠNG ĐỎ", "Bị đứt kết nối trong lúc combo!", Color(0xFFF59E0B)))
+                }
+                list.add(Triple("🏋️ NỖ LỰC VƯỢT KHÓ", "Kiên định chiến đấu dù đường truyền nghẽn!", Color(0xFF94A3B8)))
+            }
+            list
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            matchMedals.forEach { (name, desc, color) ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(color.copy(alpha = 0.12f))
+                        .border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Column {
+                        Text(text = name, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = color)
+                        Text(text = desc, fontSize = 7.5.sp, color = Color.LightGray)
+                    }
                 }
             }
         }

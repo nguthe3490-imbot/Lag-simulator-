@@ -1104,6 +1104,75 @@ fun GamerRankCard(scores: List<ReflexScore>) {
                         )
                     }
                 }
+
+                // Dynamic Badges / Trophy Room
+                val badges = remember(scores) {
+                    val list = mutableListOf<Triple<String, String, Color>>()
+                    if (bestResponse in 1..200) {
+                        list.add(Triple("⚡ ÁNH SÁNG", "Phản xạ cực đỉnh < 200ms", Color(0xFF00F5D4)))
+                    }
+                    if (totalKills + totalHits >= 30) {
+                        list.add(Triple("⚔️ SÁT THỦ", "Hạ gục trên 30 mục tiêu", Color(0xFFEF4444)))
+                    }
+                    if (accuracyPercent >= 85 && scores.size >= 3) {
+                        list.add(Triple("🎯 THẦN TIỄN", "Chuẩn xác xuất sắc ≥ 85%", Color(0xFFFFD700)))
+                    }
+                    if (scores.size >= 8) {
+                        list.add(Triple("🛡️ BẤT KHUẤT", "Rèn luyện bền bỉ ≥ 8 lượt", Color(0xFF3B82F6)))
+                    }
+                    if (scores.any { it.kills > 0 }) {
+                        list.add(Triple("👑 DIỆT MA", "Chiến thắng Ma Vương Maloch", Color(0xFFA855F7)))
+                    }
+                    list
+                }
+
+                if (badges.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(0.5.dp)
+                            .background(CardSpaceBorder)
+                    )
+                    
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "DANH HIỆU ĐẠT ĐƯỢC 🏆",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ElegantGold
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            badges.forEach { (title, desc, color) ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(color.copy(alpha = 0.12f))
+                                        .border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Column(horizontalAlignment = Alignment.Start) {
+                                        Text(
+                                            text = title,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = color
+                                        )
+                                        Text(
+                                            text = desc,
+                                            fontSize = 8.sp,
+                                            color = Color.LightGray
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

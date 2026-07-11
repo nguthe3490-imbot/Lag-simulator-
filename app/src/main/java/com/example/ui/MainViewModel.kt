@@ -3410,6 +3410,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val creeps = _mobaCreeps.value.toMutableList()
         if (creeps.isEmpty()) return
 
+        val enemyAllTurretsDestroyed = _mobaEnemyTurretHP.value <= 0f && _mobaEnemyTurretTopHP.value <= 0f && _mobaEnemyTurretBotHP.value <= 0f
+        val allyAllTurretsDestroyed = _mobaAllyTurretHP.value <= 0f && _mobaAllyTurretTopHP.value <= 0f && _mobaAllyTurretBotHP.value <= 0f
+
+        // Dynamic Upgrading of existing creeps when all three turrets fall
+        if (enemyAllTurretsDestroyed) {
+            creeps.forEachIndexed { index, creep ->
+                if (!creep.isEnemy && creep.maxHp <= 900f) {
+                    val newMax = creep.maxHp * 2.5f
+                    creeps[index] = creep.copy(hp = newMax, maxHp = newMax, speed = creep.speed * 1.2f)
+                    addMobaDamageText("CƯỜNG HOÁ! 🔥", creep.x, creep.y - 6f, 0xFFFFD700)
+                }
+            }
+        }
+        if (allyAllTurretsDestroyed) {
+            creeps.forEachIndexed { index, creep ->
+                if (creep.isEnemy && creep.maxHp <= 900f) {
+                    val newMax = creep.maxHp * 2.5f
+                    creeps[index] = creep.copy(hp = newMax, maxHp = newMax, speed = creep.speed * 1.2f)
+                    addMobaDamageText("CƯỜNG HOÁ! 😈", creep.x, creep.y - 6f, 0xFFEF4444)
+                }
+            }
+        }
+
         creeps.forEach { creep ->
             if (creep.hp <= 0f) return@forEach
 
@@ -3427,10 +3450,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var target: Triple<Float, Float, String>? = null
 
             if (creep.isEnemy) {
-                // Enemy creep looks for Player or allied creeps
+                // Enemy creep looks for Player or allied creeps, or allied castle if all ally turrets are destroyed
                 val distToPlayer = kotlin.math.sqrt((_mobaHeroX.value - creep.x) * (_mobaHeroX.value - creep.x) + (_mobaHeroY.value - creep.y) * (_mobaHeroY.value - creep.y))
+                val distToCastle = kotlin.math.sqrt((10f - creep.x) * (10f - creep.x) + (50f - creep.y) * (50f - creep.y))
+                
                 if (_mobaHeroHP.value > 0f && distToPlayer <= range) {
                     target = Triple(_mobaHeroX.value, _mobaHeroY.value, "player")
+                } else if (allyAllTurretsDestroyed && distToCastle <= 15f && _mobaAllyCastleHP.value > 0f) {
+                    target = Triple(10f, 50f, "ally_castle")
                 } else {
                     // find nearest allied creep
                     var nearestD = range
@@ -3443,10 +3470,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } else {
-                // Allied creep looks for Enemy champion or enemy creeps
+                // Allied creep looks for Enemy champion or enemy creeps, or enemy castle if all enemy turrets are destroyed
                 val distToEnemyHero = kotlin.math.sqrt((_mobaEnemyX.value - creep.x) * (_mobaEnemyX.value - creep.x) + (_mobaEnemyY.value - creep.y) * (_mobaEnemyY.value - creep.y))
+                val distToCastle = kotlin.math.sqrt((90f - creep.x) * (90f - creep.x) + (50f - creep.y) * (50f - creep.y))
+                
                 if (_mobaEnemyHP.value > 0f && distToEnemyHero <= range) {
                     target = Triple(_mobaEnemyX.value, _mobaEnemyY.value, "enemy_hero")
+                } else if (enemyAllTurretsDestroyed && distToCastle <= 15f && _mobaEnemyCastleHP.value > 0f) {
+                    target = Triple(90f, 50f, "enemy_castle")
                 } else {
                     // find nearest enemy creep
                     var nearestD = range
