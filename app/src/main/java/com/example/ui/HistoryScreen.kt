@@ -260,7 +260,7 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
         // Game filter chip row
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = "Bộ lọc Trò chơi:",
+                text = t("history_game_filter_label"),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.LightGray
@@ -292,7 +292,7 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = gameName,
+                            text = if (gameName == allGamesOption) t("all_games_option") else getLocalizedGameName(gameName),
                             color = if (isSelected) Color.White else Color.LightGray,
                             fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
@@ -941,40 +941,40 @@ fun GamerRankCard(scores: List<ReflexScore>) {
     val rankBg: Brush
 
     if (avgResponse == 0) {
-        rankTitle = "TẬP SỰ ĐANG KHẢO SÁT 🔍"
+        rankTitle = t("rank_surveying_title")
         rankBadge = "📝"
         rankColor = Color.Gray
-        rankQuote = "Hãy hoàn thành thêm vài lượt huấn luyện phản xạ để em xếp hạng chính xác cho anh yêu nhé! 💕"
+        rankQuote = t("rank_surveying_quote")
         rankBg = Brush.linearGradient(colors = listOf(Color(0xFF1A1A24), Color(0xFF111115)))
     } else if (avgResponse < 240) {
-        rankTitle = "THÁCH ĐẤU SIÊU TỐC ⚡"
+        rankTitle = t("rank_challenger_title")
         rankBadge = "🏆"
         rankColor = Color(0xFF00F5D4)
-        rankQuote = "Tốc độ thần sầu, phản xạ đỉnh cao sánh ngang các siêu sao tuyển thủ chuyên nghiệp thế giới! 👑"
+        rankQuote = t("rank_challenger_quote")
         rankBg = Brush.linearGradient(colors = listOf(Color(0xFF042F2E), Color(0xFF0F172A)))
     } else if (avgResponse < 320) {
-        rankTitle = "CAO THỦ TINH ANH 🔮"
+        rankTitle = t("rank_master_title")
         rankBadge = "💎"
         rankColor = Color(0xFFA855F7)
-        rankQuote = "Tay nhanh hơn não! Khả năng phản xạ cực nhạy, né skill lả lướt như thần gió Yasuo! 🌪️"
+        rankQuote = t("rank_master_quote")
         rankBg = Brush.linearGradient(colors = listOf(Color(0xFF3B0764), Color(0xFF0F172A)))
     } else if (avgResponse < 420) {
-        rankTitle = "KIM CƯƠNG CHIẾN THUẬT 🛡️"
+        rankTitle = t("rank_diamond_title")
         rankBadge = "⭐"
         rankColor = Color(0xFF3B82F6)
-        rankQuote = "Phản xạ nhạy bén và điêu luyện. Bạn chính là chỗ dựa gánh team vững chắc trong mọi pha combat! ⚔️"
+        rankQuote = t("rank_diamond_quote")
         rankBg = Brush.linearGradient(colors = listOf(Color(0xFF1E3A8A), Color(0xFF0F172A)))
     } else if (avgResponse < 550) {
-        rankTitle = "BẠCH KIM CỨNG CÁP 🎖️"
+        rankTitle = t("rank_platinum_title")
         rankBadge = "🎖️"
         rankColor = Color(0xFF10B981)
-        rankQuote = "Nhịp tay rất đều và chắc chắn. Tối ưu thêm chút ping mạng nữa là leo thẳng lên Thách Đấu ngay thôi! 🚀"
+        rankQuote = t("rank_platinum_quote")
         rankBg = Brush.linearGradient(colors = listOf(Color(0xFF064E3B), Color(0xFF0F172A)))
     } else {
-        rankTitle = "VÀNG ĐỒNG KIÊN CƯỜNG 🪵"
+        rankTitle = t("rank_gold_title")
         rankBadge = "🔰"
         rankColor = Color(0xFFF59E0B)
-        rankQuote = "Dù ping giật lag đỏ lòm hay mất gói ngập đầu, ý chí kiên định chiến đấu của anh vẫn là tuyệt nhất! 💪"
+        rankQuote = t("rank_gold_quote")
         rankBg = Brush.linearGradient(colors = listOf(Color(0xFF78350F), Color(0xFF0F172A)))
     }
 
@@ -998,7 +998,7 @@ fun GamerRankCard(scores: List<ReflexScore>) {
                 ) {
                     Column {
                         Text(
-                            text = "BẢNG PHONG THẦN PHẢN XẠ 👑",
+                            text = t("gamer_rank_card_title"),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = ElegantGold,
@@ -1006,7 +1006,7 @@ fun GamerRankCard(scores: List<ReflexScore>) {
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Kiện Tướng Liên Quân & Valorant",
+                            text = t("gamer_rank_card_subtitle"),
                             fontSize = 10.sp,
                             color = Color.Gray
                         )
@@ -1043,7 +1043,7 @@ fun GamerRankCard(scores: List<ReflexScore>) {
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "HẠNG KIỆN TƯỚNG:",
+                            text = t("gamer_rank_card_rank_label"),
                             fontSize = 9.sp,
                             color = Color.LightGray,
                             fontWeight = FontWeight.Bold
@@ -1077,7 +1077,7 @@ fun GamerRankCard(scores: List<ReflexScore>) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(horizontalAlignment = Alignment.Start) {
-                        Text(text = "Phản xạ nhanh nhất", fontSize = 9.sp, color = Color.Gray)
+                        Text(text = t("gamer_rank_card_best"), fontSize = 9.sp, color = Color.Gray)
                         Text(
                             text = if (bestResponse > 0) "${bestResponse} ms" else "--",
                             fontSize = 13.sp,
@@ -1086,16 +1086,16 @@ fun GamerRankCard(scores: List<ReflexScore>) {
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "Tổng mạng diệt / bia", fontSize = 9.sp, color = Color.Gray)
+                        Text(text = t("gamer_rank_card_total"), fontSize = 9.sp, color = Color.Gray)
                         Text(
-                            text = "${totalKills + totalHits} mạng",
+                            text = t("gamer_rank_card_total_pattern").format(totalKills + totalHits),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = NeonPink
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text(text = "Tỷ lệ chuẩn xác", fontSize = 9.sp, color = Color.Gray)
+                        Text(text = t("gamer_rank_card_accuracy"), fontSize = 9.sp, color = Color.Gray)
                         Text(
                             text = "${accuracyPercent}%",
                             fontSize = 13.sp,
@@ -1109,19 +1109,19 @@ fun GamerRankCard(scores: List<ReflexScore>) {
                 val badges = remember(scores) {
                     val list = mutableListOf<Triple<String, String, Color>>()
                     if (bestResponse in 1..200) {
-                        list.add(Triple("⚡ ÁNH SÁNG", "Phản xạ cực đỉnh < 200ms", Color(0xFF00F5D4)))
+                        list.add(Triple(t("badge_light_title"), t("badge_light_desc"), Color(0xFF00F5D4)))
                     }
                     if (totalKills + totalHits >= 30) {
-                        list.add(Triple("⚔️ SÁT THỦ", "Hạ gục trên 30 mục tiêu", Color(0xFFEF4444)))
+                        list.add(Triple(t("badge_assassin_title"), t("badge_assassin_desc"), Color(0xFFEF4444)))
                     }
                     if (accuracyPercent >= 85 && scores.size >= 3) {
-                        list.add(Triple("🎯 THẦN TIỄN", "Chuẩn xác xuất sắc ≥ 85%", Color(0xFFFFD700)))
+                        list.add(Triple(t("badge_sharpshooter_title"), t("badge_sharpshooter_desc"), Color(0xFFFFD700)))
                     }
                     if (scores.size >= 8) {
-                        list.add(Triple("🛡️ BẤT KHUẤT", "Rèn luyện bền bỉ ≥ 8 lượt", Color(0xFF3B82F6)))
+                        list.add(Triple(t("badge_unyielding_title"), t("badge_unyielding_desc"), Color(0xFF3B82F6)))
                     }
                     if (scores.any { it.kills > 0 }) {
-                        list.add(Triple("👑 DIỆT MA", "Chiến thắng Ma Vương Maloch", Color(0xFFA855F7)))
+                        list.add(Triple(t("badge_slayer_title"), t("badge_slayer_desc"), Color(0xFFA855F7)))
                     }
                     list
                 }
@@ -1136,7 +1136,7 @@ fun GamerRankCard(scores: List<ReflexScore>) {
                     
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "DANH HIỆU ĐẠT ĐƯỢC 🏆",
+                            text = t("gamer_rank_card_badges_title"),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = ElegantGold

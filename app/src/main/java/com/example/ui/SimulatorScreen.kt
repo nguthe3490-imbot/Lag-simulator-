@@ -299,7 +299,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Cấu Hình Đường Truyền",
+                    text = t("sim_network_setup").uppercase(),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = NeonCyan
@@ -308,7 +308,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 // Game selection
                 var dropdownExpanded by remember { mutableStateOf(false) }
                 Column {
-                    Text(text = "Trò chơi mục tiêu", fontSize = 12.sp, color = Color.Gray)
+                    Text(text = t("sim_game_target"), fontSize = 12.sp, color = Color.Gray)
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
@@ -326,7 +326,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = selectedGame, color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text(text = getLocalizedGameName(selectedGame), color = Color.White, fontWeight = FontWeight.SemiBold)
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = "Dropdown Arrow",
@@ -341,7 +341,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         ) {
                             viewModel.games.forEach { game ->
                                 DropdownMenuItem(
-                                    text = { Text(text = game, color = Color.White) },
+                                    text = { Text(text = getLocalizedGameName(game), color = Color.White) },
                                     onClick = {
                                         viewModel.selectGame(game)
                                         dropdownExpanded = false
@@ -1858,7 +1858,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Trình Kiểm Tra Phản Xạ FPS 2D",
+                            text = t("fps_2d_title"),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = NeonCyan
@@ -1871,7 +1871,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 .padding(horizontal = 5.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "MỚI",
+                                text = t("fps_new_badge"),
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NeonPink
@@ -1898,7 +1898,11 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
-                                    text = if (fpsIsZoomed) "Thu Nhỏ" else "Phóng To 🎯",
+                                    text = if (fpsIsZoomed) {
+                                        if (LocaleManager.currentLanguage == AppLanguage.EN) "Minimize" else "Thu Nhỏ"
+                                    } else {
+                                        if (LocaleManager.currentLanguage == AppLanguage.EN) "Maximize 🎯" else "Phóng To 🎯"
+                                    },
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (fpsIsZoomed) NeonCyan else Color.White
@@ -1915,7 +1919,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 }
 
                 Text(
-                    text = "Thử thách bắn súng 2D FPS vào bia tập bắn giúp kiểm nghiệm chính xác mức độ ảnh hưởng của lag mạng (Ping cao, biến động Jitter, hoặc mất gói đạn hoàn toàn).",
+                    text = t("fps_2d_desc"),
                     fontSize = 12.sp,
                     color = Color.LightGray
                 )
@@ -1926,7 +1930,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Chọn Màn Chơi (Game Mode):",
+                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Select Game Mode:" else "Chọn Màn Chơi (Game Mode):",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -3436,13 +3440,13 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "MÔ PHỎNG QUẢ CẦU NHÂN ĐÔI",
+                                t("sphere_sim_title"),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ElegantGold
                             )
                             Text(
-                                "Hãy chạm vào quả cầu để kích hoạt nhân đôi!",
+                                t("sphere_sim_desc"),
                                 fontSize = 11.sp,
                                 color = Color.Gray
                             )
@@ -3476,7 +3480,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    "Số lượng: $sphereCount",
+                                    t("sphere_current_count").format(sphereCount),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = NeonCyan
@@ -3507,7 +3511,11 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("Bắt đầu mô phỏng 🔮", color = Color.Black, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Start Simulation 🔮" else "Bắt đầu mô phỏng 🔮",
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         } else if (sphereGameState == "ended") {
@@ -3519,16 +3527,34 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text("💥 ĐÃ ĐẠT ĐỘ TRỄ CỰC HẠN! 💥", color = Color.Red, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                    Text("Hệ thống quá tải khi FPS giảm còn 5!", color = Color.White, fontSize = 12.sp)
-                                    Text("Tổng số quả cầu tạo ra: $sphereCount", color = ElegantGold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "💥 MAXIMUM LATENCY REACHED! 💥" else "💥 ĐÃ ĐẠT ĐỘ TRỄ CỰC HẠN! 💥",
+                                        color = Color.Red,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "System overloaded as FPS dropped to 5!" else "Hệ thống quá tải khi FPS giảm còn 5!",
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
+                                    Text(
+                                        text = t("sphere_total_created").format(sphereCount),
+                                        color = ElegantGold,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Button(
                                         onClick = { viewModel.startSphereSimulation() },
                                         colors = ButtonDefaults.buttonColors(containerColor = NeonPink),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
-                                        Text("Thử Lại 🔄", color = Color.White, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Try Again 🔄" else "Thử Lại 🔄",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                 }
                             }
@@ -3729,7 +3755,7 @@ fun MobaGameAreaContent(
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Liên Quân 2D Arena",
+                        text = t("moba_2d_title"),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = NeonCyan
@@ -3749,7 +3775,7 @@ fun MobaGameAreaContent(
                     }
                 }
                 Text(
-                    text = "Luyện né chiêu, hit-and-run chuẩn xác dưới các mức ping cực đỏ!",
+                    text = t("moba_2d_desc"),
                     fontSize = 11.sp,
                     color = Color.LightGray
                 )
@@ -7227,21 +7253,21 @@ fun MobaDiagnosticView(
             val list = mutableListOf<Triple<String, String, Color>>()
             val isWin = report.turretStatus.contains("Chiến Thắng")
             if (isWin) {
-                list.add(Triple("🏆 CHIẾN THẮNG TRỌN VẸN", "Đập sập sào huyệt đối phương!", Color(0xFF34D399)))
+                list.add(Triple(t("medal_victory_perfect"), t("medal_victory_perfect_desc"), Color(0xFF34D399)))
                 if (report.kills >= 5) {
-                    list.add(Triple("🔥 CHIẾN THẦN GANH ĐUA", "Gây áp lực khổng lồ lên Maloch!", Color(0xFFFFD700)))
+                    list.add(Triple(t("medal_warrior_clash"), t("medal_warrior_clash_desc"), Color(0xFFFFD700)))
                 } else {
-                    list.add(Triple("🛡️ KINH VÔ ĐỊCH", "Phá huỷ phòng tuyến kiên cố!", Color(0xFF60A5FA)))
+                    list.add(Triple(t("medal_conqueror"), t("medal_conqueror_desc"), Color(0xFF60A5FA)))
                 }
                 if (report.skillsInterruptedCount == 0) {
-                    list.add(Triple("✨ PHÁP SƯ HOÀN MỸ", "Chuyển chiêu mượt mà như nước chảy!", Color(0xFFA78BFA)))
+                    list.add(Triple(t("medal_perfect_mage"), t("medal_perfect_mage_desc"), Color(0xFFA78BFA)))
                 }
             } else {
-                list.add(Triple("💀 THẤT BẠI TIẾC NUỐI", "Mạng lag ngăn cản đôi bàn tay vàng!", Color(0xFFF87171)))
+                list.add(Triple(t("medal_defeat_regret"), t("medal_defeat_regret_desc"), Color(0xFFF87171)))
                 if (report.skillsInterruptedCount > 2) {
-                    list.add(Triple("📶 NẠN NHÂN MẠNG ĐỎ", "Bị đứt kết nối trong lúc combo!", Color(0xFFF59E0B)))
+                    list.add(Triple(t("medal_red_ping_victim"), t("medal_red_ping_victim_desc"), Color(0xFFF59E0B)))
                 }
-                list.add(Triple("🏋️ NỖ LỰC VƯỢT KHÓ", "Kiên định chiến đấu dù đường truyền nghẽn!", Color(0xFF94A3B8)))
+                list.add(Triple(t("medal_persistence"), t("medal_persistence_desc"), Color(0xFF94A3B8)))
             }
             list
         }

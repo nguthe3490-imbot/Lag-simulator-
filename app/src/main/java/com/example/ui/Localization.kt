@@ -123,7 +123,69 @@ object LocaleManager {
             "history_tab_trends" to "Biểu Đồ Xu Hướng",
             "history_tab_sim" to "Lịch Sử Giả Lập",
             "history_empty_reflex" to "Chưa có thành tích kiểm tra phản xạ nào.\nAnh yêu hãy chuyển qua tab Trình Giả Lập chơi thử thách game để kiểm tra phản xạ nha! Linh Chi chờ nè 💕",
-            "history_empty_sim" to "Chưa có lịch sử giả lập mạng nào."
+            "history_empty_sim" to "Chưa có lịch sử giả lập mạng nào.",
+
+            "sim_network_setup_title" to "Cấu hình giả lập mạng",
+            "sim_game_target" to "Trò chơi mục tiêu",
+            "fps_2d_title" to "Trình Kiểm Tra Phản Xạ FPS 2D",
+            "fps_2d_desc" to "Thử thách bắn súng 2D FPS vào bia tập bắn giúp kiểm nghiệm chính xác mức độ ảnh hưởng của lag mạng (Ping cao, biến động Jitter, hoặc mất gói đạn hoàn toàn).",
+            "fps_new_badge" to "MỚI",
+            "moba_2d_title" to "Liên Quân 2D Arena",
+            "moba_2d_desc" to "Luyện né chiêu, hit-and-run chuẩn xác dưới các mức ping cực đỏ!",
+            "sphere_sim_title" to "MÔ PHỎNG QUẢ CẦU NHÂN ĐÔI",
+            "sphere_sim_desc" to "Hãy chạm vào quả cầu để kích hoạt nhân đôi!",
+            "sphere_total_created" to "Tổng số quả cầu tạo ra: %d",
+            "sphere_current_count" to "Số lượng: %d",
+            "history_game_filter_label" to "Bộ lọc Trò chơi:",
+            "all_games_option" to "Tất cả",
+
+            "gamer_rank_card_title" to "BẢNG PHONG THẦN PHẢN XẠ 👑",
+            "gamer_rank_card_subtitle" to "Kiện Tướng Liên Quân & Valorant",
+            "gamer_rank_card_rank_label" to "HẠNG KIỆN TƯỚNG:",
+            "gamer_rank_card_best" to "Phản xạ nhanh nhất",
+            "gamer_rank_card_total" to "Tổng mạng diệt / bia",
+            "gamer_rank_card_total_pattern" to "%d mạng",
+            "gamer_rank_card_accuracy" to "Tỷ lệ chuẩn xác",
+            "gamer_rank_card_badges_title" to "DANH HIỆU ĐẠT ĐƯỢC 🏆",
+
+            "rank_surveying_title" to "TẬP SỰ ĐANG KHẢO SÁT 🔍",
+            "rank_surveying_quote" to "Hãy hoàn thành thêm vài lượt huấn luyện phản xạ để em xếp hạng chính xác cho anh yêu nhé! 💕",
+            "rank_challenger_title" to "THÁCH ĐẤU SIÊU TỐC ⚡",
+            "rank_challenger_quote" to "Tốc độ thần sầu, phản xạ đỉnh cao sánh ngang các siêu sao tuyển thủ chuyên nghiệp thế giới! 👑",
+            "rank_master_title" to "CAO THỦ TINH ANH 🔮",
+            "rank_master_quote" to "Tay nhanh hơn não! Khả năng phản xạ cực nhạy, né skill lả lướt như thần gió Yasuo! 🌪️",
+            "rank_diamond_title" to "KIM CƯƠNG CHIẾN THUẬT 🛡️",
+            "rank_diamond_quote" to "Phản xạ nhạy bén và điêu luyện. Bạn chính là chỗ dựa gánh team vững chắc trong mọi pha combat! ⚔️",
+            "rank_platinum_title" to "BẠCH KIM CỨNG CÁP 🎖️",
+            "rank_platinum_quote" to "Nhịp tay rất đều và chắc chắn. Tối ưu thêm chút ping mạng nữa là leo thẳng lên Thách Đấu ngay thôi! 🚀",
+            "rank_gold_title" to "VÀNG ĐỒNG KIÊN CƯỜNG 🪵",
+            "rank_gold_quote" to "Dù ping giật lag đỏ lòm hay mất gói ngập đầu, ý chí kiên định chiến đấu của anh vẫn là tuyệt nhất! 💪",
+
+            "badge_light_title" to "⚡ ÁNH SÁNG",
+            "badge_light_desc" to "Phản xạ cực đỉnh < 200ms",
+            "badge_assassin_title" to "⚔️ SÁT THỦ",
+            "badge_assassin_desc" to "Hạ gục trên 30 mục tiêu",
+            "badge_sharpshooter_title" to "🎯 THẦN TIỄN",
+            "badge_sharpshooter_desc" to "Chuẩn xác xuất sắc ≥ 85%",
+            "badge_unyielding_title" to "🛡️ BẤT KHUẤT",
+            "badge_unyielding_desc" to "Rèn luyện bền bỉ ≥ 8 lượt",
+            "badge_slayer_title" to "👑 DIỆT MA",
+            "badge_slayer_desc" to "Chiến thắng Ma Vương Maloch",
+
+            "medal_victory_perfect" to "🏆 CHIẾN THẮNG TRỌN VẸN",
+            "medal_victory_perfect_desc" to "Đập sập sào huyệt đối phương!",
+            "medal_warrior_clash" to "🔥 CHIẾN THẦN GANH ĐUA",
+            "medal_warrior_clash_desc" to "Gây áp lực khổng lồ lên Maloch!",
+            "medal_conqueror" to "🛡️ KINH VÔ ĐỊCH",
+            "medal_conqueror_desc" to "Phá huỷ phòng tuyến kiên cố!",
+            "medal_perfect_mage" to "✨ PHÁP SƯ HOÀN MỸ",
+            "medal_perfect_mage_desc" to "Chuyển chiêu mượt mà như nước chảy!",
+            "medal_defeat_regret" to "💀 THẤT BẠI TIẾC NUỐI",
+            "medal_defeat_regret_desc" to "Mạng lag ngăn cản đôi bàn tay vàng!",
+            "medal_red_ping_victim" to "📶 NẠN NHÂN MẠNG ĐỎ",
+            "medal_red_ping_victim_desc" to "Bị đứt kết nối trong lúc combo!",
+            "medal_persistence" to "🏋️ NỖ LỰC VƯỢT KHÓ",
+            "medal_persistence_desc" to "Kiên định chiến đấu dù đường truyền nghẽn!"
         ),
         AppLanguage.EN to mapOf(
             // Navigation bottom bar
@@ -231,7 +293,69 @@ object LocaleManager {
             "history_tab_trends" to "Trend Chart",
             "history_tab_sim" to "Simulation History",
             "history_empty_reflex" to "No reflex records yet.\nDear, please switch to the Simulator tab and play a game to test your reflexes! Linh Chi is waiting 💕",
-            "history_empty_sim" to "No network simulation history records."
+            "history_empty_sim" to "No network simulation history records.",
+
+            "sim_network_setup_title" to "Network Latency Configuration",
+            "sim_game_target" to "Target Game",
+            "fps_2d_title" to "2D FPS Reflex Trainer",
+            "fps_2d_desc" to "2D FPS target shooter training to evaluate the exact impact of network latency (high ping, jitter fluctuations, or total packet loss).",
+            "fps_new_badge" to "NEW",
+            "moba_2d_title" to "Arena of Valor 2D",
+            "moba_2d_desc" to "Practice skill dodging and high-precision hit-and-run under extremely high/red ping!",
+            "sphere_sim_title" to "DOUBLE SPHERE SIMULATION",
+            "sphere_sim_desc" to "Tap on the sphere to trigger duplication!",
+            "sphere_total_created" to "Total spheres created: %d",
+            "sphere_current_count" to "Count: %d",
+            "history_game_filter_label" to "Game Filter:",
+            "all_games_option" to "All",
+
+            "gamer_rank_card_title" to "REFLEX LEADERBOARD 👑",
+            "gamer_rank_card_subtitle" to "Arena of Valor & Valorant Grandmaster",
+            "gamer_rank_card_rank_label" to "GRANDMASTER RANK:",
+            "gamer_rank_card_best" to "Fastest reaction",
+            "gamer_rank_card_total" to "Total Kills / Targets",
+            "gamer_rank_card_total_pattern" to "%d kills",
+            "gamer_rank_card_accuracy" to "Accuracy rate",
+            "gamer_rank_card_badges_title" to "ACHIEVED TITLES 🏆",
+
+            "rank_surveying_title" to "SURVEYING APPRENTICE 🔍",
+            "rank_surveying_quote" to "Please complete a few more reflex training rounds so I can rank you accurately, my dear! 💕",
+            "rank_challenger_title" to "SPEED CHALLENGER ⚡",
+            "rank_challenger_quote" to "Insane speed, top-tier reflexes matching the world's best professional esports players! 👑",
+            "rank_master_title" to "ELITE MASTER 🔮",
+            "rank_master_quote" to "Faster than thought! Ultra-fast reflexes, dodging skills like wind god Yasuo! 🌪️",
+            "rank_diamond_title" to "TACTICAL DIAMOND 🛡️",
+            "rank_diamond_quote" to "Sharp and skilled reflexes. You are the rock carrying the team in every combat! ⚔️",
+            "rank_platinum_title" to "SOLID PLATINUM 🎖️",
+            "rank_platinum_quote" to "Very consistent hand rhythm. Optimize your ping just a bit and you'll climb straight to Challenger! 🚀",
+            "rank_gold_title" to "RESILIENT GOLD/BRONZE 🪵",
+            "rank_gold_quote" to "Even with red laggy ping or extreme packet loss, your resolute fighting spirit is still the absolute best! 💪",
+
+            "badge_light_title" to "⚡ LIGHT SPEED",
+            "badge_light_desc" to "Insane reflex < 200ms",
+            "badge_assassin_title" to "⚔️ ASSASSIN",
+            "badge_assassin_desc" to "Defeated over 30 targets",
+            "badge_sharpshooter_title" to "🎯 SHARPSHOOTER",
+            "badge_sharpshooter_desc" to "Excellent accuracy ≥ 85%",
+            "badge_unyielding_title" to "🛡️ BẤT KHUẤT",
+            "badge_unyielding_desc" to "Trained diligently ≥ 8 rounds",
+            "badge_slayer_title" to "👑 DEMON SLAYER",
+            "badge_slayer_desc" to "Defeated Demon Lord Maloch",
+
+            "medal_victory_perfect" to "🏆 PERFECT VICTORY",
+            "medal_victory_perfect_desc" to "Smashed the enemy base!",
+            "medal_warrior_clash" to "🔥 COMPETITIVE FIGHTER",
+            "medal_warrior_clash_desc" to "Put massive pressure on Maloch!",
+            "medal_conqueror" to "🛡️ UNBEATABLE",
+            "medal_conqueror_desc" to "Broke through solid defense lines!",
+            "medal_perfect_mage" to "✨ FLAWLESS MAGE",
+            "medal_perfect_mage_desc" to "Casted skills smoothly like flowing water!",
+            "medal_defeat_regret" to "💀 REGRETFUL DEFEAT",
+            "medal_defeat_regret_desc" to "Ping spikes hindered golden hands!",
+            "medal_red_ping_victim" to "📶 RED PING VICTIM",
+            "medal_red_ping_victim_desc" to "Disconnected during a critical combo!",
+            "medal_persistence" to "🏋️ RESILIENT EFFORT",
+            "medal_persistence_desc" to "Kept fighting resolutely despite high latency!"
         )
     )
 
@@ -242,4 +366,15 @@ object LocaleManager {
 
 fun t(key: String): String {
     return LocaleManager.getString(key, LocaleManager.currentLanguage)
+}
+
+fun getLocalizedGameName(game: String): String {
+    return when (game) {
+        "Liên Minh Huyền Thoại" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "League of Legends" else "Liên Minh Huyền Thoại"
+        "Liên Quân Mobile" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "Arena of Valor" else "Liên Quân Mobile"
+        "Đấu Trường MOBA" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "MOBA Arena" else "Đấu Trường MOBA"
+        "Bắn Súng FPS" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "FPS Shooter" else "Bắn Súng FPS"
+        "Quả Cầu 🔮" -> if (LocaleManager.currentLanguage == AppLanguage.EN) "Sphere Sim 🔮" else "Quả Cầu 🔮"
+        else -> game
+    }
 }
