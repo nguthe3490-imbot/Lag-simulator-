@@ -647,14 +647,14 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                                 ) {
                                     Text(text = "• Ping: ${selectedRun.pingMs}ms", color = NeonPink, fontSize = 11.sp)
                                     Text(text = "• Jitter: ±${selectedRun.jitterMs}ms", color = NeonCyan, fontSize = 11.sp)
-                                    Text(text = "• Mất gói: ${selectedRun.packetLossPercent}%", color = Color.Yellow, fontSize = 11.sp)
-                                    Text(text = "• Độ ổn định: $runStability%", color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text(text = if (LocaleManager.currentLanguage == AppLanguage.EN) "• Loss: ${selectedRun.packetLossPercent}%" else "• Mất gói: ${selectedRun.packetLossPercent}%", color = Color.Yellow, fontSize = 11.sp)
+                                    Text(text = if (LocaleManager.currentLanguage == AppLanguage.EN) "• Stability: $runStability%" else "• Độ ổn định: $runStability%", color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     } else {
                         Text(
-                            text = "👉 Chạm vào các mốc điểm trên biểu đồ để xem thông số chi tiết (Recharts interactive tooltip).",
+                            text = if (LocaleManager.currentLanguage == AppLanguage.EN) "👉 Tap node points on the chart to view detailed stats (interactive tooltip)." else "👉 Chạm vào các mốc điểm trên biểu đồ để xem thông số chi tiết (Recharts interactive tooltip).",
                             fontSize = 11.sp,
                             color = Color.Gray,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -667,9 +667,21 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
             
             // --- Linh Chi's Evaluation Bubble ---
             val evaluationText = when {
-                stabilityScore >= 90 -> "Đường truyền của anh siêu ổn định luôn á! 😍 Linh Chi chấm điểm tuyệt đối 10/10 nha! Cùng em vào game làm vài trận thắng tưng bừng thui nào! 💕"
-                stabilityScore >= 75 -> "Kết nối mạng ở mức Khá Tốt nè anh yêu. 😉 Có gợn sóng hay mất gói nhẹ nhưng không quá nghiêm trọng. Anh nên hạn chế download ngầm để tránh ping nhảy nhé!"
-                else -> "Mạng giật lag đỏ lòm rùi anh yêu ơi! 🥺 Linh Chi khuyên anh nên cắm dây mạng trực tiếp hoặc thử khởi động lại router xem sao nhé. Em thương anh ghê, lag thế này chơi game bực lắm á! 🌸"
+                stabilityScore >= 90 -> if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                    "Your connection is super stable! 😍 Linh Chi rates it 10/10! Let's jump into a match with me and win big! 💕"
+                } else {
+                    "Đường truyền của anh siêu ổn định luôn á! 😍 Linh Chi chấm điểm tuyệt đối 10/10 nha! Cùng em vào game làm vài trận thắng tưng bừng thui nào! 💕"
+                }
+                stabilityScore >= 75 -> if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                    "The connection is quite good, my dear. 😉 There is minor jitter or packet loss but nothing serious. Try to avoid background downloads!"
+                } else {
+                    "Kết nối mạng ở mức Khá Tốt nè anh yêu. 😉 Có gợn sóng hay mất gói nhẹ nhưng không quá nghiêm trọng. Anh nên hạn chế download ngầm để tránh ping nhảy nhé!"
+                }
+                else -> if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                    "The connection is lagging badly, my love! 🥺 Linh Chi suggests plugging in an Ethernet cable or restarting your router. I feel so bad for you, lag is so frustrating! 🌸"
+                } else {
+                    "Mạng giật lag đỏ lòm rùi anh yêu ơi! 🥺 Linh Chi khuyên anh nên cắm dây mạng trực tiếp hoặc thử khởi động lại router xem sao nhé. Em thương anh ghê, lag thế này chơi game bực lắm á! 🌸"
+                }
             }
             
             Box(
@@ -683,7 +695,7 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Linh Chi Đánh Giá 🌸",
+                            text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Linh Chi Assessment 🌸" else "Linh Chi Đánh Giá 🌸",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = NeonPink
@@ -694,6 +706,70 @@ fun LatencyTrendsDashboard(viewModel: MainViewModel) {
                         fontSize = 12.sp,
                         color = ElegantTextPrimary,
                         lineHeight = 18.sp
+                    )
+                }
+            }
+
+            // --- Pro-Gamer Coaching & Tactical Card ---
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF131124)),
+                border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.OfflineBolt,
+                                contentDescription = "Coaching Icon",
+                                tint = NeonCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Gamer Anti-Lag Tactics 🎯" else "Góc Huấn Luyện Đấu Pháp Chống Lag 🎯",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonCyan
+                            )
+                        }
+                    }
+
+                    val advice = when {
+                        avgPing > 100 -> if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                            "🌐 High Ping (Compensation Shooting):\nWhen latency exceeds 100ms, use predictive aiming (shoot slightly in front of the moving target's path) to offset the delay."
+                        } else {
+                            "🌐 Ping Cao (Bắn Đón Đầu):\nKhi độ trễ vượt 100ms, hãy tập thói quen ngắm bắn đón đầu (ngắm trước hướng di chuyển của địch một khoảng nhỏ) để bù lại thời gian lag."
+                        }
+                        avgLoss > 3.0 -> if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                            "⚠️ Packet Loss (Virtual Bullets):\nPacket loss causes bullets to disappear. Focus on short burst fires or tapping instead of continuous spray to ensure hit registration."
+                        } else {
+                            "⚠️ Mất Gói (Đạn Ảo):\nMất gói khiến đạn biến mất vô cơ. Hãy bắn nhấp từng viên (tapping) hoặc loạt ngắn (burst fire) thay vì sấy liên tục để game nhận diện hồng tâm tốt hơn."
+                        }
+                        maxJitter > 30 -> if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                            "⚡ High Jitter (Inconsistent Lag):\nJitter causes sudden teleportation. Avoid close-quarter combat where timing is key; play defensively and hold angles."
+                        } else {
+                            "⚡ Jitter Cao (Lag Giật Cục):\nBiến động mạng làm địch biến hình giật cục. Hãy hạn chế cận chiến đòi hỏi phản xạ nhanh; nên chọn lối chơi phòng thủ và kê góc sẵn."
+                        }
+                        else -> if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                            "🔥 Elite Connection (Ultimate Agility):\nYour network is flawless! Capitalize on this advantage by playing aggressively, rush corners, and take active duels."
+                        } else {
+                            "🔥 Mạng Hoàn Hảo (Tốc Độ Tối Thượng):\nĐường truyền siêu mượt! Hãy tận dụng lợi thế tuyệt đối này để chủ động đi săn, đẩy góc nhanh và tự tin solo tay đôi."
+                        }
+                    }
+
+                    Text(
+                        text = advice,
+                        fontSize = 11.sp,
+                        color = ElegantTextPrimary,
+                        lineHeight = 16.sp
                     )
                 }
             }
@@ -742,13 +818,17 @@ fun ReflexScoreCard(score: ReflexScore) {
         
         isSuccess = hits.startsWith("5/") || hits.startsWith("4/") || hits.startsWith("3/")
         isLost = hits.startsWith("0/")
-        subtitleText = "Độ chính xác: $accuracy | Tay: $response"
-        hitsText = "Trúng: $hits"
+        subtitleText = if (LocaleManager.currentLanguage == AppLanguage.EN) "Accuracy: $accuracy | Hand: $response" else "Độ chính xác: $accuracy | Tay: $response"
+        hitsText = if (LocaleManager.currentLanguage == AppLanguage.EN) "Hits: $hits" else "Trúng: $hits"
         diagnosisText = diagnosis
     } else {
         isSuccess = score.result == "SUCCESS"
         isLost = score.result == "LOST"
-        subtitleText = if (isSuccess) "Thời gian click: ${score.responseTimeMs}ms" else if (isLost) "Thất bại: Mất gói mạng!" else "Bấm sai mục tiêu!"
+        subtitleText = if (LocaleManager.currentLanguage == AppLanguage.EN) {
+            if (isSuccess) "Click response: ${score.responseTimeMs}ms" else if (isLost) "Failed: Packet Loss!" else "Clicked wrong target!"
+        } else {
+            if (isSuccess) "Thời gian click: ${score.responseTimeMs}ms" else if (isLost) "Thất bại: Mất gói mạng!" else "Bấm sai mục tiêu!"
+        }
         hitsText = null
         diagnosisText = null
     }
@@ -802,7 +882,7 @@ fun ReflexScoreCard(score: ReflexScore) {
                     if (!diagnosisText.isNullOrEmpty()) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Chẩn đoán: $diagnosisText",
+                            text = "${if (LocaleManager.currentLanguage == AppLanguage.EN) "Diagnosis" else "Chẩn đoán"}: ${getLocalizedText(diagnosisText ?: "")}",
                             fontSize = 11.sp,
                             color = ElegantGold,
                             fontWeight = FontWeight.Medium
@@ -875,15 +955,15 @@ fun SimulationHistoryCard(history: SimulationHistory) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column {
-                    Text(text = "Độ trễ (Ping)", fontSize = 10.sp, color = Color.Gray)
+                    Text(text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Latency (Ping)" else "Độ trễ (Ping)", fontSize = 10.sp, color = Color.Gray)
                     Text(text = "${history.pingMs}ms", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NeonPink)
                 }
                 Column {
-                    Text(text = "Biến động (Jitter)", fontSize = 10.sp, color = Color.Gray)
+                    Text(text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Jitter" else "Biến động (Jitter)", fontSize = 10.sp, color = Color.Gray)
                     Text(text = "${history.jitterMs}ms", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NeonCyan)
                 }
                 Column {
-                    Text(text = "Mất gói (Loss)", fontSize = 10.sp, color = Color.Gray)
+                    Text(text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Packet Loss" else "Mất gói (Loss)", fontSize = 10.sp, color = Color.Gray)
                     Text(text = "${history.packetLossPercent}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Yellow)
                 }
             }

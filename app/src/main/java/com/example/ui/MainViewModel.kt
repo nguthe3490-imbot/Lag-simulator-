@@ -10,6 +10,7 @@ import com.example.api.GenerateContentRequest
 import com.example.api.GenerationConfig
 import com.example.api.Part
 import com.example.api.RetrofitClient
+import android.content.Context
 import com.example.data.AppDatabase
 import com.example.data.AppRepository
 import com.example.data.ReflexScore
@@ -177,6 +178,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ).fallbackToDestructiveMigration().build()
 
     private val repository = AppRepository(db.appDao())
+
+    private val sharedPrefs = application.getSharedPreferences("moba_game_prefs", Context.MODE_PRIVATE)
+
+    private val _mobaSelectedEnemy = MutableStateFlow(sharedPrefs.getString("moba_selected_enemy", "Valhein") ?: "Valhein")
+    val mobaSelectedEnemy = _mobaSelectedEnemy.asStateFlow()
+
+    private val _mobaUnlockedHeroes = MutableStateFlow<Set<String>>(
+        sharedPrefs.getStringSet("moba_unlocked_heroes", setOf("Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao")) ?: setOf("Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao")
+    )
+    val mobaUnlockedHeroes = _mobaUnlockedHeroes.asStateFlow()
+
+    private val _mobaWinsCount = MutableStateFlow(sharedPrefs.getInt("moba_wins_count", 0))
+    val mobaWinsCount = _mobaWinsCount.asStateFlow()
+
+    private val _mobaWinsForBoss = MutableStateFlow(sharedPrefs.getInt("moba_wins_for_boss", 0))
+    val mobaWinsForBoss = _mobaWinsForBoss.asStateFlow()
+
+    fun selectMobaEnemy(enemy: String) {
+        if (_mobaState.value == "playing") return
+        _mobaSelectedEnemy.value = enemy
+        sharedPrefs.edit().putString("moba_selected_enemy", enemy).apply()
+        _mobaLog.value = "Đã chọn kẻ địch: $enemy 🎯"
+    }
+
+    fun resetMobaBossProgress() {
+        if (_mobaState.value == "playing") return
+        _mobaWinsForBoss.value = 0
+        sharedPrefs.edit().putInt("moba_wins_for_boss", 0).apply()
+        _mobaLog.value = "Đã đặt lại tiến trình Boss. Bạn có thể chọn kẻ địch bình thường! 🎯"
+    }
 
     val history: StateFlow<List<SimulationHistory>> = repository.allHistory
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -776,6 +807,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             "Yasuo" -> 3500f
             "Alpha" -> 3600f
             "Xiao" -> 3400f
+            "Maloch" -> 4500f
             else -> 3200f
         }
         _mobaHeroHP.value = maxHp
@@ -790,8 +822,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         _mobaEnemyX.value = 65f
         _mobaEnemyY.value = 50f
-        _mobaEnemyHP.value = 4000f
-        _mobaEnemyMaxHP.value = 4000f
+
+        val isBossMode = _mobaWinsForBoss.value >= 4 && _mobaSelectedEnemy.value == "Maloch"
+        val activeEnemy = _mobaSelectedEnemy.value
+        val enemyMaxHp = if (isBossMode) {
+            7500f
+        } else {
+            when (activeEnemy) {
+                "Tulen" -> 3600f
+                "Valhein" -> 3800f
+                "Murad" -> 3500f
+                "Yasuo" -> 4200f
+                "Alpha" -> 4300f
+                "Xiao" -> 4000f
+                "Maloch" -> 4500f
+                else -> 4000f
+            }
+        }
+        _mobaEnemyMaxHP.value = enemyMaxHp
+        _mobaEnemyHP.value = enemyMaxHp
+        _mobaEnemyName.value = if (isBossMode) "TRÙM Maloch Cuồng Bạo 👿🔥 (Boss)" else "$activeEnemy 👿"
         _mobaEnemyIsStunned.value = false
         _mobaEnemyIsKnockedUp.value = false
         _mobaEnemyKnockupHeight.value = 0f
@@ -1850,6 +1900,77 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         
                         _mobaHeroIsImmune.value = false
+                    }
+                }
+            }
+        } else if (_mobaHero.value == "Maloch") {
+            // Maloch playable skills
+            when (skillIndex) {
+                0 -> { // S1: Quỷ Kiếm
+                    _mobaLog.value = "😈 QUỶ KIẾM! Bạn vung gươm chém càn quét, gây 400 sát thương chuẩn và hồi 15% HP!"
+                    val healAmt = _mobaHeroMaxHP.value * 0.15f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+                    
+                    dealAoeMobaDamage(hX, hY, radius = 10.0f, damage = 400f, type = "maloch_s1")
+                    
+                    // S1 visual
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = hX - 6f,
+                        y = hY,
+                        speed = 4f,
+                        isEnemy = false,
+                        damage = 0f,
+                        type = "maloch_cleave",
+                        color = 0xFFFF0033,
+                        radius = 2.0f,
+                        targetX = hX + 6f,
+                        targetY = hY,
+                        isHoming = false
+                    )
+                }
+                1 -> { // S2: Đoạt Hồn
+                    _mobaLog.value = "🛡️ ĐOẠT HỒN! Bạn hút hồn đối thủ và nhận lớp lá chắn cực dày!"
+                    val shieldAmt = _mobaHeroMaxHP.value * 0.40f
+                    _mobaHeroShield.value = shieldAmt
+                    mobaHeroShieldDurationLeft = 5000L // 5 seconds
+                    addMobaDamageText("+${shieldAmt.toInt()} GIÁP 🛡️", hX, hY - 8f, 0xFF38BDF8)
+                    
+                    dealAoeMobaDamage(hX, hY, radius = 15.0f, damage = 150f, type = "maloch_s2")
+                }
+                2 -> { // S3: Luyện Ngục
+                    _mobaLog.value = "🌪️ LUYỆN NGỤC! Bạn tụ lực phóng lên trời giáng xuống hất tung kẻ địch!"
+                    val eX = _mobaEnemyX.value
+                    val eY = _mobaEnemyY.value
+                    
+                    viewModelScope.launch {
+                        // Rise up
+                        val steps = 10
+                        for (i in 1..steps) {
+                            _mobaHeroKnockupHeight.value = (i.toFloat() / steps) * 60f
+                            delay(50)
+                        }
+                        
+                        // Teleport to enemy
+                        _mobaHeroX.value = eX
+                        _mobaHeroY.value = eY
+                        _mobaHeroDestX.value = eX
+                        _mobaHeroDestY.value = eY
+                        
+                        // Fall down
+                        for (i in steps downTo 0) {
+                            _mobaHeroKnockupHeight.value = (i.toFloat() / steps) * 60f
+                            delay(25)
+                        }
+                        _mobaHeroKnockupHeight.value = 0f
+                        
+                        // Impact!
+                        dealAoeMobaDamage(eX, eY, radius = 14.0f, damage = 600f, type = "maloch_s3")
+                        _mobaEnemyIsKnockedUp.value = true
+                        _mobaEnemyKnockupHeight.value = 15f
+                        delay(800)
+                        _mobaEnemyIsKnockedUp.value = false
+                        _mobaEnemyKnockupHeight.value = 0f
                     }
                 }
             }
@@ -3552,6 +3673,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun updateMobaEnemyAI(currentTime: Long) {
+        val isBossMode = _mobaWinsForBoss.value >= 4 && _mobaSelectedEnemy.value == "Maloch"
+        val activeEnemy = if (isBossMode) "TRÙM Maloch" else _mobaSelectedEnemy.value
+        val dmgMultiplier = if (isBossMode) 1.5f else 1.0f
+
         val eHP = _mobaEnemyHP.value
         if (eHP <= 0f) {
             // Respawn countdown handled in background or just wait
@@ -3559,7 +3684,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _mobaEnemyHP.value = _mobaEnemyMaxHP.value
                 _mobaEnemyX.value = 65f
                 _mobaEnemyY.value = 50f
-                _mobaLog.value = "👿 Maloch đã hồi sinh từ Tế Đàn Địch và tiến ra Đại Lộ!"
+                _mobaLog.value = "👿 $activeEnemy đã hồi sinh từ Tế Đàn Địch và tiến ra Đại Lộ!"
             }
             return
         }
@@ -3607,7 +3732,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (malochS3Cooldown <= 0f) {
                 malochS3Cooldown = 12f
                 _mobaEnemyIsLeaping.value = true
-                _mobaLog.value = "👿 Maloch tụ lực phóng lên không trung thi triển LUYỆN NGỤC! 🌪️"
+                val s3Desc = when (activeEnemy) {
+                    "Tulen" -> "tụ tụ Lôi Quang phóng LÔI ĐIỂU sấm sét cực mạnh! ⚡"
+                    "Valhein" -> "ném bão Phi Tiêu thi triển BÃO ĐẠN cực rát! 🏹"
+                    "Murad" -> "biến ảo ảnh tung chiêu liên hoàn ẢO ẢNH TRẢM! 🗡️"
+                    "Yasuo" -> "lướt gió phóng lốc xoáy thi triển TRĂN TRỐI! 🌪️"
+                    "Alpha" -> "laser nạp đầy phát động HỦY DIỆT TOÀN DIỆN! 🤖"
+                    "Xiao" -> "vung gậy giáng VŨ ĐIỆU ĐẠI THÁNH rung chuyển! 🟢"
+                    else -> "tụ lực phóng lên không trung thi triển LUYỆN NGỤC! 🌪️"
+                }
+                _mobaLog.value = "👿 $activeEnemy $s3Desc"
                 
                 val targetS3X = hX
                 val targetS3Y = hY
@@ -3637,7 +3771,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _mobaEnemyKnockupHeight.value = 0f
                     
                     // Impact explosion!
-                    dealAoeMobaEnemyDamage(targetS3X, targetS3Y, radius = 14f, damage = 580f, type = "maloch_s3")
+                    val finalDmgS3 = 580f * dmgMultiplier
+                    dealAoeMobaEnemyDamage(targetS3X, targetS3Y, radius = 14f, damage = finalDmgS3, type = "maloch_s3")
                     
                     // Spawn visual impact shockwaves
                     for (j in 0..3) {
@@ -3657,7 +3792,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                     
-                    _mobaLog.value = "💥 LUYỆN NGỤC giáng lâm! Maloch giẫm nát mặt đất hất tung kẻ địch trong vùng!"
+                    val s3ImpactDesc = when (activeEnemy) {
+                        "Tulen" -> "Sét giáng! Lôi Điểu phát nổ cực mạnh dồn điện hất tung!"
+                        "Valhein" -> "Bão đạn oanh tạc hất tung toàn diện!"
+                        "Murad" -> "Kiếm trận loé sáng cắt nát hất tung mặt đất!"
+                        "Yasuo" -> "Bão cát hất tung giáng xuống chấn động!"
+                        "Alpha" -> "Chùm laser huỷ diệt quét sạch hất tung!"
+                        "Xiao" -> "Trấn thiên hất tung kinh hồn!"
+                        else -> "LUYỆN NGỤC giáng lâm! Maloch giẫm nát mặt đất hất tung kẻ địch trong vùng!"
+                    }
+                    _mobaLog.value = "💥 $s3ImpactDesc"
                     _mobaEnemyIsLeaping.value = false
                     _mobaEnemyS3TargetX.value = -1f
                     _mobaEnemyS3TargetY.value = -1f
@@ -3668,8 +3812,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // 2. Skill 2: Đoạt Hồn (S2)
             if (distToPlayer <= 15f && malochS2Cooldown <= 0f) {
                 malochS2Cooldown = 7f
-                _mobaLog.value = "👿 Maloch thi triển ĐOẠT HỒN! Tước đoạt sinh hồn đối thủ tạo lá chắn cực lớn!"
-                dealAoeMobaEnemyDamage(eX, eY, radius = 15f, damage = 120f, type = "maloch_s2")
+                val s2Desc = when (activeEnemy) {
+                    "Tulen" -> "thi triển Lôi Động giật điện tước đoạt sinh lực!"
+                    "Valhein" -> "phóng Phi Tiêu Vàng khống chế tước hồn sinh giáp!"
+                    "Murad" -> "thi triển Vô Ảnh Trận tước hồn hồi giáp!"
+                    "Yasuo" -> "dựng Phong Shield nhận khiên gió cực dày!"
+                    "Alpha" -> "thi triển Lá Chắn Từ Trường hút hồn tạo lá chắn!"
+                    "Xiao" -> "thi triển Giáp Diệp Dạ Xoa hồi phục năng lượng tạo khiên!"
+                    else -> "thi triển ĐOẠT HỒN! Tước đoạt sinh hồn đối thủ tạo lá chắn cực lớn!"
+                }
+                _mobaLog.value = "👿 $activeEnemy $s2Desc"
+                val finalDmgS2 = 120f * dmgMultiplier
+                dealAoeMobaEnemyDamage(eX, eY, radius = 15f, damage = finalDmgS2, type = "maloch_s2")
                 
                 // Spawn soul-pulling particles towards Maloch
                 for (j in 0..3) {
@@ -3696,13 +3850,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // 3. Skill 1: Quỷ Kiếm (S1)
             if (distToPlayer <= 7.5f && malochS1Cooldown <= 0f) {
                 malochS1Cooldown = 4f
-                _mobaLog.value = "👿 Maloch tụ lực vung QUỶ KIẾM càn quét cực rộng!"
+                val s1Desc = when (activeEnemy) {
+                    "Tulen" -> "tụ lực vung Lôi Quang điện quét cực rộng!"
+                    "Valhein" -> "vung tay ném Phi Tiêu Đỏ sát thương chí mạng cực lớn!"
+                    "Murad" -> "vút kiếm quét Vô Ảnh Vực càn quét diện rộng!"
+                    "Yasuo" -> "tụ gió vung Bão Kiếm quét cực rộng!"
+                    "Alpha" -> "quét Mũi Giáo Cyber laser cực rộng!"
+                    "Xiao" -> "vung chém Gió Xanh Dạ Xoa càn quét diện rộng!"
+                    else -> "tụ lực vung QUỶ KIẾM càn quét cực rộng!"
+                }
+                _mobaLog.value = "👿 $activeEnemy $s1Desc"
                 
                 viewModelScope.launch {
                     delay(200)
                     val currentEx = _mobaEnemyX.value
                     val currentEy = _mobaEnemyY.value
-                    dealAoeMobaEnemyDamage(currentEx, currentEy, radius = 9.5f, damage = 380f, type = "maloch_s1")
+                    val finalDmgS1 = 380f * dmgMultiplier
+                    dealAoeMobaEnemyDamage(currentEx, currentEy, radius = 9.5f, damage = finalDmgS1, type = "maloch_s1")
                     
                     // Spawn S1 slash visual projectile!
                     _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
@@ -3733,9 +3897,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Attack
                 if (tickCounterMoba % 20 == 0) {
                     val dmg = if (_mobaEnemyEnchanted.value) 180f else 130f
-                    dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = dmg, type = "maloch_basic")
+                    val finalDmg = dmg * dmgMultiplier
+                    dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = finalDmg, type = "maloch_basic")
                     if (_mobaEnemyEnchanted.value) {
-                        val hAmt = 150f
+                        val hAmt = if (isBossMode) 300f else 150f
                         _mobaEnemyHP.value = (_mobaEnemyHP.value + hAmt).coerceAtMost(_mobaEnemyMaxHP.value)
                         addMobaDamageText("+$hAmt HP 💚", eX, eY - 8f, 0xFF10B981)
                     }
@@ -3777,7 +3942,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     if (tickCounterMoba % 20 == 0) {
                         val dmg = if (_mobaEnemyEnchanted.value) 180f else 130f
-                        dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = dmg, type = "maloch_basic")
+                        val finalDmg = dmg * dmgMultiplier
+                        dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = finalDmg, type = "maloch_basic")
                         
                         _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                             x = eX,
@@ -3989,6 +4155,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         mobaGameJob?.cancel()
         _mobaState.value = if (isVictory) "victory" else "defeat"
         _mobaGameOverShowSplash.value = true
+
+        if (isVictory) {
+            val isBossMode = _mobaWinsForBoss.value >= 4 && _mobaSelectedEnemy.value == "Maloch"
+            val activeEnemy = _mobaSelectedEnemy.value
+
+            // Increment overall wins
+            val newOverallWins = _mobaWinsCount.value + 1
+            _mobaWinsCount.value = newOverallWins
+            sharedPrefs.edit().putInt("moba_wins_count", newOverallWins).apply()
+
+            // Handle boss win/progression
+            if (isBossMode) {
+                _mobaWinsForBoss.value = 0
+                sharedPrefs.edit().putInt("moba_wins_for_boss", 0).apply()
+
+                if (!_mobaUnlockedHeroes.value.contains("Maloch")) {
+                    val updated = _mobaUnlockedHeroes.value + "Maloch"
+                    _mobaUnlockedHeroes.value = updated
+                    sharedPrefs.edit().putStringSet("moba_unlocked_heroes", updated).apply()
+                    _mobaLog.value = "🔓 CHÚC MỪNG CHỒNG YÊU! Anh đã đánh bại Trùm Maloch Cuồng Bạo và MỞ KHÓA tướng Maloch rồi nhé! 🎉"
+                } else {
+                    _mobaLog.value = "🎉 CHÚC MỪNG! Anh yêu đã hạ gục Trùm Maloch Cuồng Bạo thêm lần nữa!"
+                }
+            } else {
+                val newWinsForBoss = _mobaWinsForBoss.value + 1
+                _mobaWinsForBoss.value = newWinsForBoss
+                sharedPrefs.edit().putInt("moba_wins_for_boss", newWinsForBoss).apply()
+
+                if (activeEnemy == "Maloch" && !_mobaUnlockedHeroes.value.contains("Maloch")) {
+                    val updated = _mobaUnlockedHeroes.value + "Maloch"
+                    _mobaUnlockedHeroes.value = updated
+                    sharedPrefs.edit().putStringSet("moba_unlocked_heroes", updated).apply()
+                    _mobaLog.value = "🔓 Tuyệt vời quá! Anh hạ Maloch và mở khóa thành công tướng Maloch rồi nè! 🎉"
+                } else {
+                    _mobaLog.value = "🎉 CHIẾN THẮNG! Bạn đã hạ gục kẻ địch $activeEnemy!"
+                }
+            }
+        }
         
         val gameTimeSeconds = ((System.currentTimeMillis() - mobaGameStartTime) / 1000).toInt()
         val basePing = if (_isSimulating.value) _currentPing.value else 10
