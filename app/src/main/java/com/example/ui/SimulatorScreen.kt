@@ -3720,6 +3720,12 @@ fun MobaGameAreaContent(
     val mobaTulenOrbs by viewModel.mobaTulenOrbs.collectAsState()
     val mobaTulenUltLaserTargetId by viewModel.mobaTulenUltLaserTargetId.collectAsState()
 
+    val mobaEnemyMuradS2Active by viewModel.mobaEnemyMuradS2Active.collectAsState()
+    val mobaEnemyMuradS2X by viewModel.mobaEnemyMuradS2X.collectAsState()
+    val mobaEnemyMuradS2Y by viewModel.mobaEnemyMuradS2Y.collectAsState()
+    val mobaEnemyTulenUltLaserActive by viewModel.mobaEnemyTulenUltLaserActive.collectAsState()
+    val mobaEnemyClones by viewModel.mobaEnemyClones.collectAsState()
+
     val comboScale = remember { Animatable(1.0f) }
     val comboFlash = remember { Animatable(0.0f) }
 
@@ -4133,10 +4139,26 @@ fun MobaGameAreaContent(
                         )
                     }
 
-                    // 5. Enemy Champion (Maloch)
+                    // 5. Enemy Champion
                     if (mobaEnemyHP > 0f) {
+                        val enemyColor = when (mobaSelectedEnemy) {
+                            "Tulen" -> Color(0xFF06B6D4)
+                            "Tulen hắc pháp sư" -> Color(0xFF8B5CF6)
+                            "Valhein" -> Color(0xFFEAB308)
+                            "Valhein ma cà rồng" -> Color(0xFFEF4444)
+                            "Murad" -> Color(0xFF3B82F6)
+                            "Murad hoàng tử suy tàn" -> Color(0xFFD97706)
+                            "Yasuo" -> Color(0xFFCBD5E1)
+                            "Yasuo cơn gió cuồng ma" -> Color(0xFF475569)
+                            "Alpha" -> Color(0xFF22D3EE)
+                            "Alpha kẻ kí sinh" -> Color(0xFFEC4899)
+                            "Xiao" -> Color(0xFF10B981)
+                            "Xiao nghiệp chướng" -> Color(0xFF065F46)
+                            "Maloch" -> Color(0xFFA21CAF)
+                            else -> Color(0xFFA21CAF)
+                        }
                         MobaChampionView(
-                            name = if (mobaEnemyIsKnockedUp) "HẤT TUNG 🌪️" else if (mobaEnemyIsStunned) "CHOÁNG 🌀" else "Maloch",
+                            name = if (mobaEnemyIsKnockedUp) "HẤT TUNG 🌪️" else if (mobaEnemyIsStunned) "CHOÁNG 🌀" else mobaSelectedEnemy,
                             isEnemy = true,
                             hp = mobaEnemyHP,
                             maxHp = mobaEnemyMaxHP,
@@ -4144,7 +4166,7 @@ fun MobaGameAreaContent(
                                 x = boardWidth * (mobaEnemyX / 100f) - 18.dp,
                                 y = boardHeight * (mobaEnemyY / 100f) - 18.dp - mobaEnemyKnockupHeight.dp
                             ),
-                            color = Color(0xFFA21CAF),
+                            color = enemyColor,
                             shield = mobaEnemyShield,
                             isEnchanted = mobaEnemyEnchanted
                         )
@@ -4163,6 +4185,22 @@ fun MobaGameAreaContent(
                             ),
                             color = Color(0xFFF59E0B).copy(alpha = 0.55f), // semi-transparent golden
                             hasGlow = false
+                        )
+                    }
+
+                    // 5b2. Enemy Murad's Shadow Clones (Phân Thân Địch)
+                    mobaEnemyClones.forEach { clone ->
+                        MobaChampionView(
+                            name = "Phân thân 👥",
+                            isEnemy = true,
+                            hp = 0f,
+                            maxHp = 0f,
+                            modifier = Modifier.offset(
+                                x = boardWidth * (clone.x / 100f) - 18.dp,
+                                y = boardHeight * (clone.y / 100f) - 18.dp
+                            ),
+                            color = Color(0xFF8B5CF6).copy(alpha = 0.6f), // semi-transparent purple shadow
+                            hasGlow = true
                         )
                     }
 
@@ -4453,6 +4491,114 @@ fun MobaGameAreaContent(
                         }
                     }
 
+                    // Enemy Murad's S2: Vô Ảnh Trận (Red/Orange Dark Sandstorm Circle)
+                    if (mobaEnemyMuradS2Active && mobaEnemyMuradS2X > 0f) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "enemyMuradS2")
+                        val rotateAngle by infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(3000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "rotateAngle"
+                        )
+                        val pulseScale by infiniteTransition.animateFloat(
+                            initialValue = 0.96f,
+                            targetValue = 1.04f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1200, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "pulseScale"
+                        )
+                        val sandAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.15f,
+                            targetValue = 0.35f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "sandAlpha"
+                        )
+
+                        val s2CenterX = boardWidth * (mobaEnemyMuradS2X / 100f)
+                        val s2CenterY = boardHeight * (mobaEnemyMuradS2Y / 100f)
+                        val s2Diameter = boardWidth * 0.20f * pulseScale
+
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = s2CenterX - (s2Diameter / 2),
+                                    y = s2CenterY - (s2Diameter / 2)
+                                )
+                                .size(s2Diameter)
+                        ) {
+                            Canvas(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(rotationZ = rotateAngle)
+                            ) {
+                                val radius = size.width / 2f
+                                
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFEF4444).copy(alpha = 0.8f),
+                                            Color(0xFFD97706).copy(alpha = 0.4f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    radius = radius,
+                                    center = center
+                                )
+
+                                drawCircle(
+                                    color = Color(0xFFEF4444),
+                                    radius = radius - 4f,
+                                    center = center,
+                                    style = Stroke(
+                                        width = 4.5f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 15f), 0f)
+                                    )
+                                )
+
+                                drawCircle(
+                                    color = Color(0xFFF59E0B).copy(alpha = 0.6f),
+                                    radius = radius - 15f,
+                                    center = center,
+                                    style = Stroke(
+                                        width = 1.5f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(30f, 20f), 0f)
+                                    )
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp)
+                                    .background(
+                                        Brush.radialGradient(
+                                            colors = listOf(
+                                                Color(0xFFFEE2E2).copy(alpha = sandAlpha),
+                                                Color(0xFFFCA5A5).copy(alpha = sandAlpha * 0.5f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    )
+                                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f), CircleShape)
+                            )
+
+                            Text("😈", modifier = Modifier.align(Alignment.Center), fontSize = 14.sp)
+                            Text("🩸", modifier = Modifier.align(Alignment.TopCenter).offset(y = (-4).dp), fontSize = 10.sp)
+                            Text("🩸", modifier = Modifier.align(Alignment.BottomCenter).offset(y = 4.dp), fontSize = 10.sp)
+                            Text("🩸", modifier = Modifier.align(Alignment.CenterStart).offset(x = (-4).dp), fontSize = 10.sp)
+                            Text("🩸", modifier = Modifier.align(Alignment.CenterEnd).offset(x = 4.dp), fontSize = 10.sp)
+                        }
+                    }
+
                     // 5e. Alpha's Beta Drone (Robot Companion)
                     if (mobaAlphaBetaActive && mobaAlphaBetaX > 0f) {
                         val infiniteTransition = rememberInfiniteTransition(label = "betaDrone")
@@ -4661,6 +4807,29 @@ fun MobaGameAreaContent(
                                         strokeWidth = 2f
                                     )
                                 }
+                            }
+                        }
+
+                        // Enemy Tulen Ult Laser Targeting Beam (Purple for Hắc pháp sư, Gold for normal Tulen)
+                        if (mobaEnemyTulenUltLaserActive && mobaEnemyHP > 0f) {
+                            val startX = boardWidth * (mobaEnemyX / 100f)
+                            val startY = boardHeight * (mobaEnemyY / 100f)
+                            val endX = boardWidth * (mobaHeroX / 100f)
+                            val endY = boardHeight * (mobaHeroY / 100f)
+                            val laserColor = if (mobaSelectedEnemy == "Tulen hắc pháp sư") Color(0xFF8B5CF6) else Color(0xFFEAB308)
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawLine(
+                                    color = laserColor.copy(alpha = 0.7f),
+                                    start = Offset(startX.toPx(), startY.toPx()),
+                                    end = Offset(endX.toPx(), endY.toPx()),
+                                    strokeWidth = 7f
+                                )
+                                drawLine(
+                                    color = Color.White,
+                                    start = Offset(startX.toPx(), startY.toPx()),
+                                    end = Offset(endX.toPx(), endY.toPx()),
+                                    strokeWidth = 2.5f
+                                )
                             }
                         }
                     }
@@ -6566,24 +6735,15 @@ fun MobaGameAreaContent(
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .fillMaxWidth(0.8f)
-                                    .height(48.dp)
+                                    .height(44.dp)
                             ) {
                                 Text(
-                                    text = t("moba_view_summary"),
-                                    fontWeight = FontWeight.ExtraBold,
+                                    text = t("moba_confirm_action") ?: "Xác nhận",
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
                             }
                         }
-                    }
-                } else {
-                    if (mobaDiagnosticReport != null) {
-                        MobaDiagnosticView(
-                            report = mobaDiagnosticReport,
-                            onRestart = { viewModel.startMobaGame() },
-                            onBack = { viewModel.stopMobaGame() },
-                            viewModel = viewModel
-                        )
                     }
                 }
             }
@@ -6625,421 +6785,220 @@ fun MobaHeroSelection(
         )
     }
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.padding(vertical = 8.dp)
-    ) {
-        Text(
-            text = t("moba_select_champion_for_battle"),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = ElegantGold
+    fun getHeroColor(name: String): Color {
+        return when (name) {
+            "Tulen" -> Color(0xFF06B6D4)
+            "Tulen hắc pháp sư" -> Color(0xFF8B5CF6)
+            "Valhein" -> Color(0xFFF59E0B)
+            "Valhein ma cà rồng" -> Color(0xFFEF4444)
+            "Murad" -> Color(0xFFF59E0B)
+            "Murad hoàng tử suy tàn" -> Color(0xFFA855F7)
+            "Yasuo" -> Color(0xFF38BDF8)
+            "Yasuo cơn gió cuồng ma" -> Color(0xFF64748B)
+            "Alpha" -> Color(0xFF22D3EE)
+            "Alpha kẻ kí sinh" -> Color(0xFFEC4899)
+            "Xiao" -> Color(0xFF10B981)
+            "Xiao nghiệp chướng" -> Color(0xFF059669)
+            "Maloch" -> Color(0xFFDC2626)
+            else -> Color.Gray
+        }
+    }
+
+    fun getHeroIcon(name: String): String {
+        return when (name) {
+            "Tulen" -> "⚡"
+            "Tulen hắc pháp sư" -> "🔮"
+            "Valhein" -> "🏹"
+            "Valhein ma cà rồng" -> "🧛"
+            "Murad" -> "⚔️"
+            "Murad hoàng tử suy tàn" -> "⏳"
+            "Yasuo" -> "🌪️"
+            "Yasuo cơn gió cuồng ma" -> "💀"
+            "Alpha" -> "🤖"
+            "Alpha kẻ kí sinh" -> "👾"
+            "Xiao" -> "🟢"
+            "Xiao nghiệp chướng" -> "👹"
+            "Maloch" -> "👿"
+            else -> "👤"
+        }
+    }
+
+    val playableHeroes = listOf(
+        Triple("Tulen", "⚡", "Pháp Sư"),
+        Triple("Valhein", "🏹", "Xạ Thủ"),
+        Triple("Murad", "⚔️", "Sát Thủ"),
+        Triple("Yasuo", "🌪️", "Đấu Sĩ"),
+        Triple("Alpha", "🤖", "Đấu Sĩ"),
+        Triple("Xiao", "🟢", "Sát Thủ"),
+        Triple("Maloch", "👿", "Đỡ Đòn")
+    )
+
+    val enemiesList = listOf(
+        "Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Maloch",
+        "Tulen hắc pháp sư", "Valhein ma cà rồng", "Murad hoàng tử suy tàn",
+        "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng"
+    )
+
+    var enemyTab by remember { mutableStateOf(0) } // 0 = Thường, 1 = Boss
+
+    val filteredEnemies = if (enemyTab == 0) {
+        listOf("Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Maloch")
+    } else {
+        listOf(
+            "Tulen hắc pháp sư", "Valhein ma cà rồng", "Murad hoàng tử suy tàn",
+            "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng"
         )
+    }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
+        // --- MY CHAMPION SECTION ---
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Tulen Card
-            Card(
+            Text(
+                text = t("moba_select_champion_for_battle") ?: "Chọn Tướng Thi Đấu",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = ElegantGold
+            )
+
+            Row(
                 modifier = Modifier
-                    .width(142.dp)
-                    .clickable {
-                        detailedHeroName = "Tulen"
-                        isViewDetailsForEnemy = false
-                    }
-                    .border(
-                        width = if (mobaHero == "Tulen") 2.dp else 1.dp,
-                        color = if (mobaHero == "Tulen") NeonCyan else Color.DarkGray,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (mobaHero == "Tulen") Color(0xFF0B1B2B) else Color(0xFF0F172A)
-                )
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color(0xFF06B6D4).copy(alpha = 0.2f), CircleShape)
-                            .border(2.dp, Color(0xFF06B6D4), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("⚡", fontSize = 28.sp)
-                    }
-                    Text("Tulen", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(getLocalizedText("Lôi Điện Pháp Sư"), fontSize = 11.sp, color = NeonCyan)
+                playableHeroes.forEach { (heroName, icon, role) ->
+                    val isSelected = mobaHero == heroName
+                    val isUnlocked = heroName != "Maloch" || mobaUnlockedHeroes.contains("Maloch")
                     
-                    Spacer(modifier = Modifier.height(4.dp))
                     Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(getLocalizedText("• Nội tại sét quay quanh sát thương tự động"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Cơ động cực cao, có kĩ năng dịch chuyển"), fontSize = 9.sp, color = Color.LightGray)
-                    }
-                }
-            }
-
-            // Valhein Card
-            Card(
-                modifier = Modifier
-                    .width(142.dp)
-                    .clickable {
-                        detailedHeroName = "Valhein"
-                        isViewDetailsForEnemy = false
-                    }
-                    .border(
-                        width = if (mobaHero == "Valhein") 2.dp else 1.dp,
-                        color = if (mobaHero == "Valhein") Color(0xFFF59E0B) else Color.DarkGray,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (mobaHero == "Valhein") Color(0xFF24180A) else Color(0xFF0F172A)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
                         modifier = Modifier
-                            .size(54.dp)
-                            .background(Color(0xFFF59E0B).copy(alpha = 0.2f), CircleShape)
-                            .border(2.dp, Color(0xFFF59E0B), CircleShape),
-                        contentAlignment = Alignment.Center
+                            .width(60.dp)
+                            .clickable(enabled = isUnlocked) { onSelectHero(heroName) }
+                            .padding(vertical = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("🏹", fontSize = 28.sp)
-                    }
-                    Text("Valhein", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(getLocalizedText("Xạ Thủ Ám Khí"), fontSize = 11.sp, color = Color(0xFFF59E0B))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(getLocalizedText("• Đòn đánh thường 3 đổi phi tiêu ngẫu nhiên"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Đòn khống chế choáng cực mạnh từ phi tiêu vàng"), fontSize = 9.sp, color = Color.LightGray)
-                    }
-                }
-            }
-
-            // Murad Card
-            Card(
-                modifier = Modifier
-                    .width(142.dp)
-                    .clickable {
-                        detailedHeroName = "Murad"
-                        isViewDetailsForEnemy = false
-                    }
-                    .border(
-                        width = if (mobaHero == "Murad") 2.dp else 1.dp,
-                        color = if (mobaHero == "Murad") Color(0xFFF59E0B) else Color.DarkGray,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (mobaHero == "Murad") Color(0xFF2C1B02) else Color(0xFF0F172A)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color(0xFFF59E0B).copy(alpha = 0.2f), CircleShape)
-                            .border(2.dp, Color(0xFFF59E0B), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("⚔️", fontSize = 28.sp)
-                    }
-                    Text("Murad", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(getLocalizedText("Sát Thủ Lãng Khách"), fontSize = 11.sp, color = Color(0xFFF59E0B))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(getLocalizedText("• Đòn đánh thường đủ 4 lần giải phong ấn"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Lước ảo ảnh giật bóng và vô ảnh trận né đòn cực ảo"), fontSize = 9.sp, color = Color.LightGray)
-                    }
-                }
-            }
-
-            // Yasuo Card
-            Card(
-                modifier = Modifier
-                    .width(142.dp)
-                    .clickable {
-                        detailedHeroName = "Yasuo"
-                        isViewDetailsForEnemy = false
-                    }
-                    .border(
-                        width = if (mobaHero == "Yasuo") 2.dp else 1.dp,
-                        color = if (mobaHero == "Yasuo") Color(0xFF38BDF8) else Color.DarkGray,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (mobaHero == "Yasuo") Color(0xFF0F172A) else Color(0xFF020617)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color(0xFF38BDF8).copy(alpha = 0.2f), CircleShape)
-                            .border(2.dp, Color(0xFF38BDF8), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🌪️", fontSize = 28.sp)
-                    }
-                    Text("Yasuo", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(getLocalizedText("Kiếm Sĩ Gió Phương Bắc"), fontSize = 10.sp, color = Color(0xFF38BDF8))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(getLocalizedText("• Đâm kiếm tích lũy Bão Kiếm và phóng Lốc Xoáy"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Không dùng mana, dựng Tường Gió chặn mọi chiêu thức"), fontSize = 9.sp, color = Color.LightGray)
-                    }
-                }
-            }
-
-            // Alpha Card
-            Card(
-                modifier = Modifier
-                    .width(142.dp)
-                    .clickable {
-                        detailedHeroName = "Alpha"
-                        isViewDetailsForEnemy = false
-                    }
-                    .border(
-                        width = if (mobaHero == "Alpha") 2.dp else 1.dp,
-                        color = if (mobaHero == "Alpha") Color(0xFF22D3EE) else Color.DarkGray,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (mobaHero == "Alpha") Color(0xFF0F2D37) else Color(0xFF0F172A)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color(0xFF22D3EE).copy(alpha = 0.2f), CircleShape)
-                            .border(2.dp, Color(0xFF22D3EE), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🤖", fontSize = 28.sp)
-                    }
-                    Text("Alpha", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(getLocalizedText("Kẻ Đi Săn Tương Lai"), fontSize = 10.sp, color = Color(0xFF22D3EE))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(getLocalizedText("• Sát thương công nghệ cybernetic chân thật từ drone Beta"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Phóng Mũi Giáo Alpha cực đại quét laser hủy diệt"), fontSize = 9.sp, color = Color.LightGray)
-                    }
-                }
-            }
-
-            // Xiao Card
-            Card(
-                modifier = Modifier
-                    .width(142.dp)
-                    .clickable {
-                        detailedHeroName = "Xiao"
-                        isViewDetailsForEnemy = false
-                    }
-                    .border(
-                        width = if (mobaHero == "Xiao") 2.dp else 1.dp,
-                        color = if (mobaHero == "Xiao") Color(0xFF10B981) else Color.DarkGray,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (mobaHero == "Xiao") Color(0xFF064E3B) else Color(0xFF020617)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color(0xFF10B981).copy(alpha = 0.2f), CircleShape)
-                            .border(2.dp, Color(0xFF10B981), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🟢", fontSize = 28.sp)
-                    }
-                    Text("Xiao", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(getLocalizedText("Hộ Pháp Dạ Xoa"), fontSize = 10.sp, color = Color(0xFF10B981))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(getLocalizedText("• Gió Xanh chém phong ấn hồi phục 10% HP"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Lướt dạ xoa liên tục hai lần né tránh và đột kích"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Vũ Điệu Đại Thánh nhảy cao plunged liên tục hai lần"), fontSize = 9.sp, color = Color.LightGray)
-                    }
-                }
-            }
-
-            // Maloch Playable Card (Locked/Unlocked)
-            val isMalochUnlocked = mobaUnlockedHeroes.contains("Maloch")
-            Card(
-                modifier = Modifier
-                    .width(142.dp)
-                    .clickable {
-                        detailedHeroName = "Maloch"
-                        isViewDetailsForEnemy = false
-                    }
-                    .border(
-                        width = if (mobaHero == "Maloch") 2.dp else 1.dp,
-                        color = if (mobaHero == "Maloch") Color(0xFFDC2626) else if (isMalochUnlocked) Color.DarkGray else Color.Red.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (mobaHero == "Maloch") Color(0xFF450A0A) else if (isMalochUnlocked) Color(0xFF0F172A) else Color(0xFF1E1B1B)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color(0xFFDC2626).copy(alpha = 0.2f), CircleShape)
-                            .border(2.dp, Color(0xFFDC2626), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(if (isMalochUnlocked) "👿" else "🔒", fontSize = 28.sp)
-                    }
-                    Text("Maloch", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (isMalochUnlocked) Color.White else Color.Gray)
-                    Text(
-                        text = if (isMalochUnlocked) getLocalizedText("Ma Vương Hủy Diệt") else t("moba_locked"),
-                        fontSize = 10.sp,
-                        color = if (isMalochUnlocked) Color(0xFFDC2626) else Color.Red,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Column(
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(getLocalizedText("• Sát thương chuẩn cực rát từ chiêu Quỷ Kiếm"), fontSize = 9.sp, color = Color.LightGray)
-                        Text(getLocalizedText("• Luyện Ngục giáng xuống chấn động hất tung diện rộng"), fontSize = 9.sp, color = Color.LightGray)
+                        Box(
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        if (isSelected) getHeroColor(heroName).copy(alpha = 0.2f)
+                                        else Color(0xFF0F172A),
+                                        CircleShape
+                                    )
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) getHeroColor(heroName) else Color.DarkGray.copy(alpha = 0.6f),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(if (isUnlocked) icon else "🔒", fontSize = 18.sp)
+                            }
+                            
+                            // Tiny top-right 'i' button for details
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 2.dp, y = (-2).dp)
+                                    .size(14.dp)
+                                    .background(Color(0xFF1E293B), CircleShape)
+                                    .border(1.dp, Color.Gray.copy(alpha = 0.5f), CircleShape)
+                                    .clickable {
+                                        detailedHeroName = heroName
+                                        isViewDetailsForEnemy = false
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "i",
+                                    color = Color.LightGray,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        
+                        Text(
+                            text = heroName,
+                            fontSize = 10.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) getHeroColor(heroName) else if (isUnlocked) Color.White else Color.Gray,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
         }
 
-        // Enemy Section
+        // --- ENEMY SECTION ---
         val hasBossChallenge = mobaWinsForBoss >= 4
         
         if (hasBossChallenge) {
-            // Display a beautiful Boss alert banner!
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFF450A0A)
                 ),
                 border = BorderStroke(1.dp, Color.Red)
             ) {
                 Column(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = t("moba_boss_warning"),
-                        fontSize = 14.sp,
+                        text = t("moba_boss_warning") ?: "CẢNH BÁO BOSS",
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Red
                     )
                     Text(
-                        text = t("moba_boss_mode_desc"),
-                        fontSize = 11.sp,
+                        text = t("moba_boss_mode_desc") ?: "Boss hắc ám đang đợi bạn khiêu chiến!",
+                        fontSize = 9.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center
                     )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(6.dp)
-                            .background(Color.DarkGray, RoundedCornerShape(3.dp))
+                            .height(4.dp)
+                            .background(Color.DarkGray, RoundedCornerShape(2.dp))
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .fillMaxHeight()
-                                .background(Color.Red, RoundedCornerShape(3.dp))
+                                .background(Color.Red, RoundedCornerShape(2.dp))
                         )
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Button(
                         onClick = onResetBossProgress,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(38.dp)
+                            .height(28.dp)
                             .testTag("reset_boss_progress_button"),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.DarkGray.copy(alpha = 0.6f),
                             contentColor = Color.White
                         ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(vertical = 4.dp)
+                        shape = RoundedCornerShape(4.dp),
+                        contentPadding = PaddingValues(vertical = 2.dp)
                     ) {
                         Text(
-                            text = t("moba_reset_boss"),
-                            fontSize = 11.sp,
+                            text = t("moba_reset_boss") ?: "Đặt lại Boss",
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -7050,7 +7009,7 @@ fun MobaHeroSelection(
 
         // Always show normal enemy selector!
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -7058,89 +7017,160 @@ fun MobaHeroSelection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = t("moba_select_enemy_for_battle"),
-                    fontSize = 13.sp,
+                    text = t("moba_select_enemy_for_battle") ?: "Chọn Đối Thủ Quyết Đấu",
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = ElegantGold
                 )
                 Text(
                     text = t("moba_wins_towards_boss").format(mobaWinsForBoss),
-                    fontSize = 11.sp,
+                    fontSize = 9.sp,
                     color = Color.LightGray
                 )
+            }
+
+            // High-tech Selector Tab Bar for Enemies
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0F172A), RoundedCornerShape(8.dp))
+                    .border(1.dp, Color.DarkGray.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                    .padding(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf("Thường", "Boss Cường Hóa 🔥").forEachIndexed { index, title ->
+                    val isTabSelected = enemyTab == index
+                    val tabColor = if (index == 1) Color(0xFFEF4444) else ElegantGold
+                    
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(30.dp)
+                            .background(
+                                if (isTabSelected) tabColor.copy(alpha = 0.15f) else Color.Transparent,
+                                RoundedCornerShape(6.dp)
+                            )
+                            .clickable { enemyTab = index }
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = title,
+                            fontSize = 11.sp,
+                            fontWeight = if (isTabSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isTabSelected) tabColor else Color.Gray
+                        )
+                    }
+                }
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // All standard enemies can be selected
-                listOf(
-                    "Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Maloch",
-                    "Tulen hắc pháp sư", "Valhein ma cà rồng", "Murad hoàng tử suy tàn",
-                    "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng"
-                ).forEach { enemyName ->
+                filteredEnemies.forEach { enemyName ->
                     val isEnemySelected = mobaSelectedEnemy == enemyName
+                    val color = getHeroColor(enemyName)
+                    val icon = getHeroIcon(enemyName)
                     
-                    Card(
+                    val displayName = when (enemyName) {
+                        "Tulen hắc pháp sư" -> "Tulen Hắc"
+                        "Valhein ma cà rồng" -> "Valhein MCR"
+                        "Murad hoàng tử suy tàn" -> "Murad HTS"
+                        "Yasuo cơn gió cuồng ma" -> "Yasuo CG"
+                        "Alpha kẻ kí sinh" -> "Alpha KS"
+                        "Xiao nghiệp chướng" -> "Xiao NC"
+                        else -> enemyName
+                    }
+                    
+                    val isEnhanced = enemyName.length > 7
+
+                    Column(
                         modifier = Modifier
-                            .width(110.dp)
-                            .clickable {
-                                detailedHeroName = enemyName
-                                isViewDetailsForEnemy = true
-                            }
-                            .border(
-                                width = if (isEnemySelected) 2.dp else 1.dp,
-                                color = if (isEnemySelected) ElegantGold else Color.DarkGray,
-                                shape = RoundedCornerShape(10.dp)
-                            ),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isEnemySelected) Color(0xFF1E1F22) else Color(0xFF0F172A)
-                        )
+                            .width(60.dp)
+                            .clickable { onSelectEnemy(enemyName) }
+                            .padding(vertical = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        Box(
+                            modifier = Modifier.size(44.dp)
                         ) {
-                            val icon = when (enemyName) {
-                                "Tulen", "Tulen hắc pháp sư" -> "⚡"
-                                "Valhein", "Valhein ma cà rồng" -> "🏹"
-                                "Murad", "Murad hoàng tử suy tàn" -> "⚔️"
-                                "Yasuo", "Yasuo cơn gió cuồng ma" -> "🌪️"
-                                "Alpha", "Alpha kẻ kí sinh" -> "🤖"
-                                "Xiao", "Xiao nghiệp chướng" -> "🟢"
-                                else -> "👿"
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        if (isEnemySelected) color.copy(alpha = 0.2f)
+                                        else Color(0xFF0F172A),
+                                        CircleShape
+                                    )
+                                    .border(
+                                        width = if (isEnemySelected) 2.dp else 1.dp,
+                                        color = if (isEnemySelected) color else Color.DarkGray.copy(alpha = 0.6f),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(icon, fontSize = 18.sp)
                             }
-                            Text(icon, fontSize = 22.sp)
-                            Text(enemyName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            
+                            // Tiny top-right 'i' button for details
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 2.dp, y = (-2).dp)
+                                    .size(14.dp)
+                                    .background(Color(0xFF1E293B), CircleShape)
+                                    .border(1.dp, Color.Gray.copy(alpha = 0.5f), CircleShape)
+                                    .clickable {
+                                        detailedHeroName = enemyName
+                                        isViewDetailsForEnemy = true
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "i",
+                                    color = Color.LightGray,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
+                        
+                        Text(
+                            text = displayName,
+                            fontSize = 10.sp,
+                            fontWeight = if (isEnemySelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isEnemySelected) color else Color.White,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Play Button
         Button(
             onClick = onStartGame,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(46.dp)
+                .height(44.dp)
                 .testTag("start_moba_game_button"),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (mobaHero == "Tulen") Color(0xFF06B6D4) else Color(0xFFF59E0B),
-                contentColor = Color.Black
+                containerColor = getHeroColor(mobaHero),
+                contentColor = if (getHeroColor(mobaHero) == Color(0xFF06B6D4) || getHeroColor(mobaHero) == Color(0xFF38BDF8) || getHeroColor(mobaHero) == Color(0xFF22D3EE)) Color.Black else Color.White
             ),
             shape = RoundedCornerShape(8.dp)
         ) {
             Text(
                 text = t("moba_launch_combat").format(mobaHero),
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 13.sp
+                fontSize = 12.sp
             )
         }
     }
@@ -7373,15 +7403,16 @@ fun MobaChampionView(
         ) {
             val avatarEmoji = if (isXiaoMaskActive) {
                 "👺" // Yaksha mask
-            } else if (isEnemy) {
-                "👿"
             } else {
-                when (name) {
-                    "Tulen" -> "⚡"
-                    "Yasuo" -> "⚔️"
-                    "Murad" -> "🗡️"
-                    "Alpha" -> "🤖"
-                    "Xiao" -> "🟢"
+                when {
+                    name.contains("Tulen") -> "⚡"
+                    name.contains("Yasuo") -> "⚔️"
+                    name.contains("Murad") -> "🗡️"
+                    name.contains("Alpha") -> "🤖"
+                    name.contains("Xiao") -> "🟢"
+                    name.contains("Valhein") -> "🏹"
+                    name.contains("Maloch") -> "👿"
+                    isEnemy -> "👿"
                     else -> "🏹"
                 }
             }

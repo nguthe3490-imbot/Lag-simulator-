@@ -124,6 +124,16 @@ data class YasuoArcSlash(
     val durationTicks: Int = 15 // about 0.25 seconds for a fast flash slash
 )
 
+data class MobaEnemyClone(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    var x: Float,
+    var y: Float,
+    var s2Used: Boolean = false,
+    var s3Used: Boolean = false,
+    val initialX: Float,
+    val initialY: Float
+)
+
 data class FpsZombie(
     val id: String = java.util.UUID.randomUUID().toString(),
     var x: Float,
@@ -574,6 +584,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var malochS2Cooldown = 0f
     var malochS3Cooldown = 0f
     var malochShieldDurationLeft = 0L
+
+    // Murad specific combo states
+    var muradOriginalX = 65f
+    var muradOriginalY = 50f
+    var muradComboStep = 0 // 0: Idle, 1: S1 Dash, 2: S2 Vô Ảnh Trận, 3: S3 Ảo Ảnh Trảm
+    var muradComboCooldown = 0f
+    var muradStepDelay = 0f
     var malochEnchantedDurationLeft = 0L
     var mobaHeroShieldDurationLeft = 0L
     var xiaoMaskTickCounter = 0
@@ -622,6 +639,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val mobaMuradS2Active = _mobaMuradS2Active.asStateFlow()
 
     private var mobaMuradS2DurationLeftMs = 0L
+
+    // Enemy specific states
+    private val _mobaEnemyMuradS2X = MutableStateFlow(-1f)
+    val mobaEnemyMuradS2X = _mobaEnemyMuradS2X.asStateFlow()
+
+    private val _mobaEnemyMuradS2Y = MutableStateFlow(-1f)
+    val mobaEnemyMuradS2Y = _mobaEnemyMuradS2Y.asStateFlow()
+
+    private val _mobaEnemyMuradS2Active = MutableStateFlow(false)
+    val mobaEnemyMuradS2Active = _mobaEnemyMuradS2Active.asStateFlow()
+
+    private var mobaEnemyMuradS2DurationLeftMs = 0L
+
+    private val _mobaEnemyTulenUltLaserActive = MutableStateFlow(false)
+    val mobaEnemyTulenUltLaserActive = _mobaEnemyTulenUltLaserActive.asStateFlow()
+
+    private val _mobaEnemyClones = MutableStateFlow<List<MobaEnemyClone>>(emptyList())
+    val mobaEnemyClones = _mobaEnemyClones.asStateFlow()
+
+    private var playerBleedTicksLeft = 0
+    private var playerBleedDamagePerTick = 0f
 
     private val _mobaHeroIsImmune = MutableStateFlow(false)
     val mobaHeroIsImmune = _mobaHeroIsImmune.asStateFlow()
@@ -870,6 +908,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         malochS2Cooldown = 0f
         malochS3Cooldown = 0f
         malochShieldDurationLeft = 0L
+        muradComboStep = 0
+        muradComboCooldown = 0f
+        muradStepDelay = 0f
+        _mobaEnemyMuradS2Active.value = false
+        _mobaEnemyMuradS2X.value = -1f
+        _mobaEnemyMuradS2Y.value = -1f
+        mobaEnemyMuradS2DurationLeftMs = 0L
+        _mobaEnemyTulenUltLaserActive.value = false
         malochEnchantedDurationLeft = 0L
         mobaHeroShieldDurationLeft = 0L
         _mobaHeroShield.value = 0f
@@ -879,6 +925,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         xiaoMaskTickCounter = 0
         _mobaHeroIsStunned.value = false
         _mobaHeroIsKnockedUp.value = false
+        _mobaEnemyClones.value = emptyList()
+        playerBleedTicksLeft = 0
+        playerBleedDamagePerTick = 0f
 
         _mobaCreeps.value = emptyList()
         _mobaProjectiles.value = emptyList()
@@ -2708,6 +2757,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             tickCounter++
             val currentTime = System.currentTimeMillis()
 
+            if (playerBleedTicksLeft > 0 && _mobaHeroHP.value > 0f) {
+                playerBleedTicksLeft--
+                val bleedDmg = playerBleedDamagePerTick
+                damagePlayer(bleedDmg)
+                if (tickCounter % 6 == 0) {
+                    addMobaDamageText("-${bleedDmg.toInt()} 🩸", _mobaHeroX.value, _mobaHeroY.value - 10f, 0xFFEF4444)
+                }
+            }
+
             // Update combo progress & decay
             if (_mobaComboActive.value) {
                 val elapsed = currentTime - lastMobaSkillCastTimeMs
@@ -2748,6 +2806,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             malochS2Cooldown = (malochS2Cooldown - 0.05f).coerceAtLeast(0f)
             malochS3Cooldown = (malochS3Cooldown - 0.05f).coerceAtLeast(0f)
 
+            // Decrement Murad cooldowns
+            muradComboCooldown = (muradComboCooldown - 0.05f).coerceAtLeast(0f)
+            muradStepDelay = (muradStepDelay - 0.05f).coerceAtLeast(0f)
+
             // Decay Maloch active shield
             if (malochShieldDurationLeft > 0L) {
                 malochShieldDurationLeft -= 50L
@@ -2781,6 +2843,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _mobaMuradS2X.value = -1f
                     _mobaMuradS2Y.value = -1f
                     _mobaLog.value = "⚔️ Vô Ảnh Trận của Murad đã kết thúc."
+                }
+            }
+
+            // Decay Enemy Murad S2 (Vô Ảnh Trận)
+            if (mobaEnemyMuradS2DurationLeftMs > 0L) {
+                mobaEnemyMuradS2DurationLeftMs -= 50L
+                if (mobaEnemyMuradS2DurationLeftMs <= 0L) {
+                    _mobaEnemyMuradS2Active.value = false
+                    _mobaEnemyMuradS2X.value = -1f
+                    _mobaEnemyMuradS2Y.value = -1f
                 }
             }
 
@@ -3415,8 +3487,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     damagePlayer(dmg)
                     addMobaDamageText("-${dmg.toInt()}", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFFFF3333)
                     
+                    // Valhein ma cà rồng 35% lifesteal
+                    val activeEnemy = _mobaSelectedEnemy.value
+                    if (activeEnemy == "Valhein ma cà rồng" && _mobaEnemyHP.value > 0f) {
+                        val healAmt = dmg * 0.35f
+                        _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                        addMobaDamageText("+${healAmt.toInt()} HP 🩸", _mobaEnemyX.value, _mobaEnemyY.value - 6f, 0xFFEF4444)
+                    }
+                    
                     // Slow/CC effect based on enemy projectile types
                     val pType = proj.type
+                    if (pType == "valhein_s2") {
+                        _mobaLog.value = "🌀 Bạn bị trúng LỜI NGUYỀN phi tiêu vàng và bị CHOÁNG!"
+                        addMobaDamageText("STUNNED 🌀", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFFFFFF00)
+                        triggerHeroKnockup(1200L)
+                    } else if (pType == "tulen_ult") {
+                        _mobaLog.value = "⚡ SÉT ĐÁNH! Bạn bị trúng LÔI ĐIỂU hắc ám, bị hất tung và rút máu liên tục 15% HP!"
+                        addMobaDamageText("BLEEDING 🩸", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFFEF4444)
+                        triggerHeroKnockup(800L)
+                        playerBleedTicksLeft = 80 // 4 seconds of bleeding (80 * 50ms)
+                        playerBleedDamagePerTick = (_mobaHeroMaxHP.value * 0.15f) / 80f
+                    }
+
                     if (pType.endsWith("_cleave") || pType.contains("_s1") || pType == "yasuo_q_tornado") {
                         val activeEnemy = _mobaSelectedEnemy.value
                         val slowText = when (activeEnemy) {
@@ -3799,6 +3891,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val activeEnemy = if (isBossMode) "TRÙM Maloch" else _mobaSelectedEnemy.value
         val dmgMultiplier = if (isBossMode) 1.5f else 1.0f
 
+        if (activeEnemy.contains("Murad")) {
+            updateMuradEnemyAI(currentTime, dmgMultiplier)
+            return
+        }
+
+        if (activeEnemy.contains("Tulen")) {
+            updateTulenEnemyAI(currentTime, dmgMultiplier)
+            return
+        }
+
+        if (activeEnemy.contains("Valhein")) {
+            updateValheinEnemyAI(currentTime, dmgMultiplier)
+            return
+        }
+
         val eHP = _mobaEnemyHP.value
         if (eHP <= 0f) {
             // Respawn countdown handled in background or just wait
@@ -4176,6 +4283,989 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (dist > 1f) {
                     _mobaEnemyX.value += (dx / dist) * 0.5f
                     _mobaEnemyY.value += (dy / dist) * 0.5f
+                }
+            }
+        }
+    }
+
+    private fun updateMuradEnemyAI(currentTime: Long, dmgMultiplier: Float) {
+        val activeEnemy = _mobaSelectedEnemy.value
+        val eHP = _mobaEnemyHP.value
+        if (eHP <= 0f) {
+            muradComboStep = 0
+            muradComboCooldown = 0f
+            muradStepDelay = 0f
+            _mobaEnemyClones.value = emptyList()
+            if (tickCounterMoba % 200 == 0) { // approx 10s
+                _mobaEnemyHP.value = _mobaEnemyMaxHP.value
+                _mobaEnemyX.value = 65f
+                _mobaEnemyY.value = 50f
+                _mobaLog.value = "👿 $activeEnemy đã hồi sinh từ Tế Đàn Địch và tiến ra Đại Lộ!"
+            }
+            return
+        }
+
+        // Handle stun
+        if (_mobaEnemyIsStunned.value) {
+            if (currentTime >= mobaEnemyStunUntil) {
+                _mobaEnemyIsStunned.value = false
+            } else {
+                return
+            }
+        }
+
+        val eX = _mobaEnemyX.value
+        val eY = _mobaEnemyY.value
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+
+        val distToPlayer = kotlin.math.sqrt((hX - eX) * (hX - eX) + (hY - eY) * (hY - eY))
+
+        // Flee if low HP
+        if (eHP < 900f && _mobaEnemyTurretHP.value > 0f && muradComboStep == 0) {
+            val dx = 75f - eX
+            val dy = 50f - eY
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > 1f) {
+                _mobaEnemyX.value += (dx / dist) * 1.0f
+                _mobaEnemyY.value += (dy / dist) * 1.0f
+            }
+            if (dist <= 5f) {
+                _mobaEnemyHP.value = (eHP + 20f).coerceAtMost(_mobaEnemyMaxHP.value)
+            }
+            return
+        }
+
+        // COMBO STATE MACHINE
+        if (muradComboStep == 0) {
+            // Check if can start combo
+            if (_mobaHeroHP.value > 0f && distToPlayer <= 35f && muradComboCooldown <= 0f) {
+                // START COMBO: Step 1 - S1 Dash
+                muradOriginalX = eX
+                muradOriginalY = eY
+                muradComboStep = 1
+                
+                val isEnhanced = activeEnemy == "Murad hoàng tử suy tàn"
+                val themeColor = if (isEnhanced) 0xFF8B5CF6 else 0xFFEAB308
+                muradStepDelay = if (isEnhanced) 1.5f else 1.0f
+                
+                // Dash to player's position
+                _mobaEnemyX.value = hX
+                _mobaEnemyY.value = hY
+                
+                if (isEnhanced) {
+                    _mobaLog.value = "👿 $activeEnemy lướt Chiêu 1 áp sát người chơi và tạo ra 3 PHÂN THÂN ÁO ẢNH bao vây! ⚔️🌪️"
+                } else {
+                    _mobaLog.value = "👿 $activeEnemy lướt Chiêu 1 áp sát người chơi cực nhanh! ⚔️"
+                }
+                dealAoeMobaEnemyDamage(hX, hY, radius = 6f, damage = 220f * dmgMultiplier, type = "murad_s1")
+                
+                // Spawn S1 dash lines
+                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                    x = eX,
+                    y = eY,
+                    speed = 4f,
+                    isEnemy = true,
+                    damage = 0f,
+                    type = "murad_dash_visual",
+                    color = themeColor,
+                    radius = 1.5f,
+                    targetX = hX,
+                    targetY = hY,
+                    isHoming = false
+                )
+
+                if (isEnhanced) {
+                    // Spawn 3 clones surrounding the user
+                    val clone1 = MobaEnemyClone(
+                        x = hX - 11f,
+                        y = hY - 7f,
+                        s2Used = false,
+                        s3Used = false,
+                        initialX = hX - 11f,
+                        initialY = hY - 7f
+                    )
+                    val clone2 = MobaEnemyClone(
+                        x = hX + 11f,
+                        y = hY - 7f,
+                        s2Used = false,
+                        s3Used = false,
+                        initialX = hX + 11f,
+                        initialY = hY - 7f
+                    )
+                    val clone3 = MobaEnemyClone(
+                        x = hX,
+                        y = hY + 11f,
+                        s2Used = false,
+                        s3Used = false,
+                        initialX = hX,
+                        initialY = hY + 11f
+                    )
+                    _mobaEnemyClones.value = listOf(clone1, clone2, clone3)
+
+                    // Trigger clones' Skill 2 and Skill 3 actions
+                    _mobaEnemyClones.value.forEach { clone ->
+                        viewModelScope.launch {
+                            // Use Skill 2: Vô Ảnh Trận after 300ms
+                            delay(350)
+                            if (_mobaEnemyHP.value > 0f && _mobaState.value == "playing") {
+                                _mobaEnemyClones.value = _mobaEnemyClones.value.map {
+                                    if (it.id == clone.id) it.copy(s2Used = true) else it
+                                }
+                                addMobaDamageText("VÔ ẢNH TRẬN 👥🛡️", clone.x, clone.y - 6f, 0xFF8B5CF6)
+                                dealAoeMobaEnemyDamage(clone.x, clone.y, radius = 8f, damage = 180f * dmgMultiplier, type = "murad_s2")
+                                
+                                // Spawn smaller visual circle projectiles for clone's S2
+                                for (j in 0..3) {
+                                    val angleOffset = j * (2 * kotlin.math.PI / 4)
+                                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                        x = clone.x,
+                                        y = clone.y,
+                                        speed = 2f,
+                                        isEnemy = true,
+                                        damage = 0f,
+                                        type = "murad_s2_visual",
+                                        color = 0xFF8B5CF6,
+                                        radius = 1.2f,
+                                        targetX = clone.x + kotlin.math.cos(angleOffset).toFloat() * 8f,
+                                        targetY = clone.y + kotlin.math.sin(angleOffset).toFloat() * 8f,
+                                        isHoming = false
+                                    )
+                                }
+                            }
+
+                            // Use Skill 3: Ảo Ảnh Trảm after another 800ms
+                            delay(850)
+                            if (_mobaEnemyHP.value > 0f && _mobaState.value == "playing") {
+                                _mobaEnemyClones.value = _mobaEnemyClones.value.map {
+                                    if (it.id == clone.id) it.copy(s3Used = true) else it
+                                }
+                                addMobaDamageText("ẢO ẢNH TRẢM 👥⚔️", clone.x, clone.y - 6f, 0xFFEF4444)
+                                
+                                // 3 quick slashes for clones
+                                for (s in 1..3) {
+                                    if (_mobaEnemyHP.value <= 0f) break
+                                    dealAoeMobaEnemyDamage(clone.x, clone.y, radius = 9f, damage = 100f * dmgMultiplier, type = "murad_s3")
+                                    val angleOffset1 = (s * 60) * (kotlin.math.PI / 180)
+                                    val angleOffset2 = angleOffset1 + kotlin.math.PI
+                                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                        x = clone.x + kotlin.math.cos(angleOffset1).toFloat() * 7f,
+                                        y = clone.y + kotlin.math.sin(angleOffset1).toFloat() * 7f,
+                                        speed = 4f,
+                                        isEnemy = true,
+                                        damage = 0f,
+                                        type = "murad_slash_visual",
+                                        color = 0xFF8B5CF6,
+                                        radius = 1.4f,
+                                        targetX = clone.x + kotlin.math.cos(angleOffset2).toFloat() * 7f,
+                                        targetY = clone.y + kotlin.math.sin(angleOffset2).toFloat() * 7f,
+                                        isHoming = false
+                                    )
+                                    delay(120)
+                                }
+                            }
+
+                            // Short delay and delete
+                            delay(150)
+                            _mobaEnemyClones.value = _mobaEnemyClones.value.filter { it.id != clone.id }
+                        }
+                    }
+                }
+            } else {
+                // Normal Behavior: Chase and basic attack or clear creeps
+                if (_mobaHeroHP.value > 0f && distToPlayer <= 35f) {
+                    if (distToPlayer > 4.5f) {
+                        val dx = hX - eX
+                        val dy = hY - eY
+                        _mobaEnemyX.value += (dx / distToPlayer) * 0.85f
+                        _mobaEnemyY.value += (dy / distToPlayer) * 0.85f
+                    } else {
+                        if (tickCounterMoba % 20 == 0) {
+                            val dmg = 130f * dmgMultiplier
+                            dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = dmg, type = "murad_basic")
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = eX,
+                                y = eY,
+                                speed = 3f,
+                                isEnemy = true,
+                                damage = 0f,
+                                type = "murad_basic_visual",
+                                color = 0xFFEAB308,
+                                radius = 1.2f,
+                                targetX = hX,
+                                targetY = hY,
+                                isHoming = false
+                            )
+                        }
+                    }
+                } else {
+                    // Patrol / clear creeps
+                    var targetCreep: MobaCreep? = null
+                    var minD = 25f
+                    _mobaCreeps.value.filter { !it.isEnemy && it.hp > 0f }.forEach { creep ->
+                        val d = kotlin.math.sqrt((creep.x - eX) * (creep.x - eX) + (creep.y - eY) * (creep.y - eY))
+                        if (d < minD) {
+                            minD = d
+                            targetCreep = creep
+                        }
+                    }
+
+                    if (targetCreep != null) {
+                        val tc = targetCreep!!
+                        val dx = tc.x - eX
+                        val dy = tc.y - eY
+                        if (minD > 4.5f) {
+                            _mobaEnemyX.value += (dx / minD) * 0.7f
+                            _mobaEnemyY.value += (dy / minD) * 0.7f
+                        } else {
+                            if (tickCounterMoba % 20 == 0) {
+                                val dmg = 130f * dmgMultiplier
+                                dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = dmg, type = "murad_basic")
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (muradComboStep == 1 && muradStepDelay <= 0f) {
+            // STEP 2: S2 Vô Ảnh Trận (cooldown delay finished)
+            muradComboStep = 2
+            muradStepDelay = 0.8f // Wait 0.8 seconds before next step
+            
+            _mobaLog.value = "👿 $activeEnemy kích hoạt Chiêu 2: VÔ ẢNH TRẬN làm chậm và cướp giáp! 🛡️"
+            dealAoeMobaEnemyDamage(eX, eY, radius = 10f, damage = 280f * dmgMultiplier, type = "murad_s2")
+            
+            val isEnhanced = activeEnemy == "Murad hoàng tử suy tàn"
+            val themeColor = if (isEnhanced) 0xFF8B5CF6 else 0xFFEAB308
+            
+            // Add a temporary shield to Murad
+            _mobaEnemyShield.value = 400f
+            malochShieldDurationLeft = 4000L // Use existing shield duration decaying variable
+
+            // Activate enemy Murad S2 visual circle
+            _mobaEnemyMuradS2Active.value = true
+            _mobaEnemyMuradS2X.value = eX
+            _mobaEnemyMuradS2Y.value = eY
+            mobaEnemyMuradS2DurationLeftMs = 2500L
+            
+            // Spawn circular shockwave of Vô Ảnh Trận
+            for (j in 0..5) {
+                val angleOffset = j * (2 * kotlin.math.PI / 6)
+                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                    x = eX,
+                    y = eY,
+                    speed = 2f,
+                    isEnemy = true,
+                    damage = 0f,
+                    type = "murad_s2_visual",
+                    color = themeColor,
+                    radius = 1.5f,
+                    targetX = eX + kotlin.math.cos(angleOffset).toFloat() * 10f,
+                    targetY = eY + kotlin.math.sin(angleOffset).toFloat() * 10f,
+                    isHoming = false
+                )
+            }
+        } else if (muradComboStep == 2 && muradStepDelay <= 0f) {
+            // STEP 3: S3 Ảo Ảnh Trảm
+            muradComboStep = 3
+            muradStepDelay = 1.2f // Wait 1.2 seconds for the ult slashes animation before teleporting back
+            
+            _mobaLog.value = "👿 $activeEnemy giải phóng Chiêu cuối: ẢO ẢNH TRẢM chém liên tục cực thảm khốc! 🗡️🌪️"
+            
+            val isEnhanced = activeEnemy == "Murad hoàng tử suy tàn"
+            val themeColor = if (isEnhanced) 0xFF8B5CF6 else 0xFFEAB308
+            
+            // Do ult damage immediately, then trigger visual particles in a coroutine
+            viewModelScope.launch {
+                for (s in 1..5) {
+                    val finalDmgS3 = 180f * dmgMultiplier
+                    dealAoeMobaEnemyDamage(eX, eY, radius = 12f, damage = finalDmgS3, type = "murad_s3")
+                    
+                    // Strong recovery: heals Murad on each slash hit!
+                    val healAmt = _mobaEnemyMaxHP.value * 0.06f
+                    _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", eX, eY - 6f, 0xFF10B981)
+
+                    // Spawn visual slashes crossing Murad
+                    val angleOffset1 = (s * 36) * (kotlin.math.PI / 180)
+                    val angleOffset2 = angleOffset1 + kotlin.math.PI
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX + kotlin.math.cos(angleOffset1).toFloat() * 10f,
+                        y = eY + kotlin.math.sin(angleOffset1).toFloat() * 10f,
+                        speed = 5f,
+                        isEnemy = true,
+                        damage = 0f,
+                        type = "murad_slash_visual",
+                        color = themeColor,
+                        radius = 2.0f,
+                        targetX = eX + kotlin.math.cos(angleOffset2).toFloat() * 10f,
+                        targetY = eY + kotlin.math.sin(angleOffset2).toFloat() * 10f,
+                        isHoming = false
+                    )
+                    delay(150)
+                }
+            }
+        } else if (muradComboStep == 3 && muradStepDelay <= 0f) {
+            // STEP 4: S1 Third Stage - Teleport Back
+            _mobaLog.value = "🌌 $activeEnemy kích hoạt Chiêu 1 lần 3: Dịch chuyển bóng tối quay lại vị trí cũ!"
+            
+            val isEnhanced = activeEnemy == "Murad hoàng tử suy tàn"
+            val themeColor = if (isEnhanced) 0xFF8B5CF6 else 0xFFEAB308
+            
+            // Visual at new position before teleporting
+            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                x = eX,
+                y = eY,
+                speed = 1f,
+                isEnemy = true,
+                damage = 0f,
+                type = "murad_teleport_fade",
+                color = themeColor,
+                radius = 2f,
+                targetX = eX,
+                targetY = eY + 1f,
+                isHoming = false
+            )
+            
+            // Teleport Murad back to original position
+            _mobaEnemyX.value = muradOriginalX
+            _mobaEnemyY.value = muradOriginalY
+            
+            // Visual at original position where he arrived
+            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                x = muradOriginalX,
+                y = muradOriginalY,
+                speed = 1f,
+                isEnemy = true,
+                damage = 0f,
+                type = "murad_teleport_arrive",
+                color = themeColor,
+                radius = 2f,
+                targetX = muradOriginalX,
+                targetY = muradOriginalY + 1f,
+                isHoming = false
+            )
+            
+            // Reset combo and set cooldown
+            muradComboStep = 0
+            muradComboCooldown = 10f // 10 seconds combo cooldown
+        }
+    }
+
+    private fun updateTulenEnemyAI(currentTime: Long, dmgMultiplier: Float) {
+        val activeEnemy = _mobaSelectedEnemy.value
+        val isEnhanced = activeEnemy == "Tulen hắc pháp sư"
+        val themeColor = if (isEnhanced) 0xFF8B5CF6 else 0xFFEAB308
+        val eHP = _mobaEnemyHP.value
+        if (eHP <= 0f) {
+            _mobaEnemyTulenUltLaserActive.value = false
+            if (tickCounterMoba % 200 == 0) { // approx 10s
+                _mobaEnemyHP.value = _mobaEnemyMaxHP.value
+                _mobaEnemyX.value = 65f
+                _mobaEnemyY.value = 50f
+                _mobaLog.value = "👿 $activeEnemy đã hồi sinh từ Tế Đàn Địch và tiến ra Đại Lộ!"
+            }
+            return
+        }
+
+        // Handle stun
+        if (_mobaEnemyIsStunned.value) {
+            if (currentTime >= mobaEnemyStunUntil) {
+                _mobaEnemyIsStunned.value = false
+            } else {
+                _mobaEnemyTulenUltLaserActive.value = false
+                return
+            }
+        }
+
+        val eX = _mobaEnemyX.value
+        val eY = _mobaEnemyY.value
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+
+        val distToPlayer = kotlin.math.sqrt((hX - eX) * (hX - eX) + (hY - eY) * (hY - eY))
+
+        // Flee if low HP
+        if (eHP < 900f && _mobaEnemyTurretHP.value > 0f) {
+            _mobaEnemyTulenUltLaserActive.value = false
+            val dx = 75f - eX
+            val dy = 50f - eY
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > 1f) {
+                _mobaEnemyX.value += (dx / dist) * 1.0f
+                _mobaEnemyY.value += (dy / dist) * 1.0f
+            }
+            if (dist <= 5f) {
+                _mobaEnemyHP.value = (eHP + 20f).coerceAtMost(_mobaEnemyMaxHP.value)
+            }
+            return
+        }
+
+        if (_mobaHeroHP.value > 0f && distToPlayer <= 35f) {
+            val isEnhanced = activeEnemy == "Tulen hắc pháp sư"
+            val themeColor = if (isEnhanced) 0xFF8B5CF6 else 0xFFEAB308
+
+            // Skill 3: Lôi Điểu (Ult laser targeting -> electric bird)
+            if (malochS3Cooldown <= 0f) {
+                malochS3Cooldown = 13f
+                _mobaEnemyTulenUltLaserActive.value = true
+                
+                if (isEnhanced) {
+                    _mobaLog.value = "🎯 $activeEnemy phát tia Laser tím định vị khóa mục tiêu Lôi Điểu hắc pháp sư lên bạn!"
+                } else {
+                    _mobaLog.value = "🎯 $activeEnemy phát tia Laser định vị khóa mục tiêu Lôi Điểu vàng lên bạn!"
+                }
+                
+                viewModelScope.launch {
+                    delay(1000) // 1s targeting
+                    _mobaEnemyTulenUltLaserActive.value = false
+                    
+                    val currentEx = _mobaEnemyX.value
+                    val currentEy = _mobaEnemyY.value
+                    val pX = _mobaHeroX.value
+                    val pY = _mobaHeroY.value
+                    
+                    if (_mobaEnemyHP.value > 0f && _mobaHeroHP.value > 0f) {
+                        if (isEnhanced) {
+                            _mobaLog.value = "⚡ SIÊU PHẨM LÔI ĐIỂU HẮC ÁM! $activeEnemy phóng đại điểu sấm sét hắc ám truy sát gây sát thương lớn và làm mất máu liên tục!"
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = currentEx,
+                                y = currentEy,
+                                speed = 2.4f,
+                                isEnemy = true,
+                                damage = 1300f * dmgMultiplier, // heavy damage
+                                type = "tulen_ult",
+                                color = 0xFF8B5CF6, // dark purple lightning for hắc pháp sư
+                                radius = 4.5f,
+                                targetX = pX,
+                                targetY = pY,
+                                isHoming = true,
+                                homingTargetId = "player" // to hit player
+                            )
+                        } else {
+                            _mobaLog.value = "⚡ LÔI ĐIỂU VÀNG! $activeEnemy phóng đại điểu lôi quang vàng truy sát cực mạnh!"
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = currentEx,
+                                y = currentEy,
+                                speed = 2.4f,
+                                isEnemy = true,
+                                damage = 900f * dmgMultiplier, // standard damage
+                                type = "tulen_ult_normal", // normal tulen ult!
+                                color = 0xFFEAB308, // gold lightning for normal tulen
+                                radius = 3.5f,
+                                targetX = pX,
+                                targetY = pY,
+                                isHoming = true,
+                                homingTargetId = "player"
+                            )
+                        }
+                    }
+                }
+                return
+            }
+
+            // Skill 2: Lôi Động (Dash continuously 4 times for hắc pháp sư, 1 time for normal Tulen)
+            if (distToPlayer in 10f..25f && malochS2Cooldown <= 0f) {
+                malochS2Cooldown = 7.5f
+                
+                if (isEnhanced) {
+                    _mobaLog.value = "⚡ $activeEnemy lướt LÔI ĐỘNG LIÊN TỤC 4 LẦN, oanh tạc sấm sét hắc ám cực ảo!"
+                    viewModelScope.launch {
+                        for (dash in 1..4) {
+                            if (_mobaEnemyHP.value <= 0f) break
+                            val cx = _mobaEnemyX.value
+                            val cy = _mobaEnemyY.value
+                            val px = _mobaHeroX.value
+                            val py = _mobaHeroY.value
+                            val bAng = kotlin.math.atan2(py - cy, px - cx)
+                            val dashDist = 12f
+                            val nextX = (cx + kotlin.math.cos(bAng) * dashDist).coerceIn(10f, 90f)
+                            val nextY = (cy + kotlin.math.sin(bAng) * dashDist).coerceIn(20f, 80f)
+
+                            dealAoeMobaEnemyDamage(cx, cy, radius = 7.5f, damage = 180f * dmgMultiplier, type = "tulen_s2")
+
+                            val steps = 3
+                            val stepX = (nextX - cx) / steps
+                            val stepY = (nextY - cy) / steps
+                            for (i in 1..steps) {
+                                _mobaEnemyX.value = cx + stepX * i
+                                _mobaEnemyY.value = cy + stepY * i
+                                delay(15)
+                            }
+                            _mobaEnemyX.value = nextX
+                            _mobaEnemyY.value = nextY
+
+                            dealAoeMobaEnemyDamage(nextX, nextY, radius = 7.5f, damage = 180f * dmgMultiplier, type = "tulen_s2")
+                            addMobaDamageText("LÔI ĐỘNG ⚡", nextX, nextY - 6f, 0xFF8B5CF6)
+                            delay(250)
+                        }
+                    }
+                } else {
+                    _mobaLog.value = "⚡ $activeEnemy lướt LÔI ĐỘNG lôi quang áp sát!"
+                    val cx = _mobaEnemyX.value
+                    val cy = _mobaEnemyY.value
+                    val px = _mobaHeroX.value
+                    val py = _mobaHeroY.value
+                    val bAng = kotlin.math.atan2(py - cy, px - cx)
+                    val dashDist = 12f
+                    val nextX = (cx + kotlin.math.cos(bAng) * dashDist).coerceIn(10f, 90f)
+                    val nextY = (cy + kotlin.math.sin(bAng) * dashDist).coerceIn(20f, 80f)
+
+                    dealAoeMobaEnemyDamage(cx, cy, radius = 7.5f, damage = 180f * dmgMultiplier, type = "tulen_s2")
+
+                    viewModelScope.launch {
+                        val steps = 3
+                        val stepX = (nextX - cx) / steps
+                        val stepY = (nextY - cy) / steps
+                        for (i in 1..steps) {
+                            _mobaEnemyX.value = cx + stepX * i
+                            _mobaEnemyY.value = cy + stepY * i
+                            delay(15)
+                        }
+                        _mobaEnemyX.value = nextX
+                        _mobaEnemyY.value = nextY
+
+                        dealAoeMobaEnemyDamage(nextX, nextY, radius = 7.5f, damage = 180f * dmgMultiplier, type = "tulen_s2")
+                        addMobaDamageText("LÔI ĐỘNG ⚡", nextX, nextY - 6f, 0xFFEAB308)
+                    }
+                }
+                return
+            }
+
+            // Skill 1: Lôi Quang (5 fan-shaped hắc ám rays vs 3 gold spheres)
+            if (distToPlayer <= 16f && malochS1Cooldown <= 0f) {
+                malochS1Cooldown = 4.5f
+                
+                if (isEnhanced) {
+                    _mobaLog.value = "⚡ $activeEnemy tung LÔI QUANG CƯỜNG HÓA! Phóng 5 quả cầu hắc ám càn quét cực rộng!"
+                    val baseAngle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val angles = listOf(baseAngle - 0.4f, baseAngle - 0.2f, baseAngle, baseAngle + 0.2f, baseAngle + 0.4f)
+                    angles.forEach { ang ->
+                        val destX = eX + kotlin.math.cos(ang) * 40f
+                        val destY = eY + kotlin.math.sin(ang) * 40f
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 2.2f,
+                            isEnemy = true,
+                            damage = 320f * dmgMultiplier,
+                            type = "tulen_s1",
+                            color = 0xFF8B5CF6,
+                            radius = 2.2f,
+                            targetX = destX,
+                            targetY = destY,
+                            isHoming = false
+                        )
+                    }
+                } else {
+                    _mobaLog.value = "⚡ $activeEnemy tung LÔI QUANG CỔ ĐIỂN! Phóng 3 quả cầu điện càn quét!"
+                    val baseAngle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val angles = listOf(baseAngle - 0.2f, baseAngle, baseAngle + 0.2f)
+                    angles.forEach { ang ->
+                        val destX = eX + kotlin.math.cos(ang) * 40f
+                        val destY = eY + kotlin.math.sin(ang) * 40f
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 2.2f,
+                            isEnemy = true,
+                            damage = 220f * dmgMultiplier, // standard damage
+                            type = "tulen_s1",
+                            color = 0xFFEAB308, // Gold
+                            radius = 2.2f,
+                            targetX = destX,
+                            targetY = destY,
+                            isHoming = false
+                        )
+                    }
+                }
+                return
+            }
+
+            // Chase and Basic Attack
+            if (distToPlayer > 15f) {
+                val dx = hX - eX
+                val dy = hY - eY
+                _mobaEnemyX.value += (dx / distToPlayer) * 0.85f
+                _mobaEnemyY.value += (dy / distToPlayer) * 0.85f
+            } else {
+                if (tickCounterMoba % 24 == 0) {
+                    _mobaLog.value = "⚡ $activeEnemy tung đòn đánh thường sấm sét!"
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX,
+                        y = eY,
+                        speed = 2.8f,
+                        isEnemy = true,
+                        damage = 130f * dmgMultiplier,
+                        type = "tulen_basic",
+                        color = themeColor,
+                        radius = 1.6f,
+                        targetX = hX,
+                        targetY = hY,
+                        isHoming = true,
+                        homingTargetId = "player"
+                    )
+                }
+            }
+        } else {
+            // Clear creeps
+            var targetCreep: MobaCreep? = null
+            var minD = 25f
+            _mobaCreeps.value.filter { !it.isEnemy && it.hp > 0f }.forEach { creep ->
+                val d = kotlin.math.sqrt((creep.x - eX) * (creep.x - eX) + (creep.y - eY) * (creep.y - eY))
+                if (d < minD) {
+                    minD = d
+                    targetCreep = creep
+                }
+            }
+
+            if (targetCreep != null) {
+                val tc = targetCreep!!
+                val dx = tc.x - eX
+                val dy = tc.y - eY
+                if (minD > 15f) {
+                    _mobaEnemyX.value += (dx / minD) * 0.7f
+                    _mobaEnemyY.value += (dy / minD) * 0.7f
+                } else {
+                    if (tickCounterMoba % 24 == 0) {
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 2.8f,
+                            isEnemy = true,
+                            damage = 130f * dmgMultiplier,
+                            type = "tulen_basic",
+                            color = themeColor,
+                            radius = 1.6f,
+                            targetX = tc.x,
+                            targetY = tc.y,
+                            isHoming = true,
+                            homingTargetId = tc.id
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateValheinEnemyAI(currentTime: Long, dmgMultiplier: Float) {
+        val activeEnemy = _mobaSelectedEnemy.value
+        val eHP = _mobaEnemyHP.value
+        if (eHP <= 0f) {
+            if (tickCounterMoba % 200 == 0) { // approx 10s
+                _mobaEnemyHP.value = _mobaEnemyMaxHP.value
+                _mobaEnemyX.value = 65f
+                _mobaEnemyY.value = 50f
+                _mobaLog.value = "👿 $activeEnemy đã hồi sinh từ Tế Đàn Địch và tiến ra Đại Lộ!"
+            }
+            return
+        }
+
+        // Handle stun
+        if (_mobaEnemyIsStunned.value) {
+            if (currentTime >= mobaEnemyStunUntil) {
+                _mobaEnemyIsStunned.value = false
+            } else {
+                return
+            }
+        }
+
+        val eX = _mobaEnemyX.value
+        val eY = _mobaEnemyY.value
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+
+        val distToPlayer = kotlin.math.sqrt((hX - eX) * (hX - eX) + (hY - eY) * (hY - eY))
+
+        // Flee if low HP
+        if (eHP < 900f && _mobaEnemyTurretHP.value > 0f) {
+            val dx = 75f - eX
+            val dy = 50f - eY
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > 1f) {
+                _mobaEnemyX.value += (dx / dist) * 1.0f
+                _mobaEnemyY.value += (dy / dist) * 1.0f
+            }
+            if (dist <= 5f) {
+                _mobaEnemyHP.value = (eHP + 20f).coerceAtMost(_mobaEnemyMaxHP.value)
+            }
+            return
+        }
+
+        if (_mobaHeroHP.value > 0f && distToPlayer <= 35f) {
+            val isEnhanced = activeEnemy == "Valhein ma cà rồng"
+
+            // Skill 3: Thần Ma Cà Rồng (Vampire form, leap to player, heal continuously 35%, shoot 10 red bullets) 
+            // vs Normal Valhein Shotgun
+            if (isEnhanced) {
+                if (distToPlayer <= 25f && malochS3Cooldown <= 0f) {
+                    malochS3Cooldown = 12f
+                    _mobaLog.value = "👿 $activeEnemy hóa thân thành THẦN MA CÀ RỒNG! Lao thẳng vào bạn hút máu và hồi sinh lực cực mạnh 35% HP!"
+                    
+                    viewModelScope.launch {
+                        val pX = _mobaHeroX.value
+                        val pY = _mobaHeroY.value
+                        val startX = _mobaEnemyX.value
+                        val startY = _mobaEnemyY.value
+                        
+                        // Leap/Dash smoothly to player position over 400ms
+                        val steps = 8
+                        val stepX = (pX - startX) / steps
+                        val stepY = (pY - startY) / steps
+                        for (i in 1..steps) {
+                            if (_mobaEnemyHP.value <= 0f) break
+                            _mobaEnemyX.value = startX + stepX * i
+                            _mobaEnemyY.value = startY + stepY * i
+                            
+                            // Heal continuously during leap (35% total, so 4.375% per step)
+                            val healAmt = _mobaEnemyMaxHP.value * 0.04375f
+                            _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                            addMobaDamageText("+${healAmt.toInt()} HP 🩸💚", _mobaEnemyX.value, _mobaEnemyY.value - 6f, 0xFFEF4444)
+                            
+                            delay(60)
+                        }
+                        
+                        if (_mobaEnemyHP.value > 0f && _mobaHeroHP.value > 0f) {
+                            val finalX = _mobaEnemyX.value
+                            val finalY = _mobaEnemyY.value
+                            
+                            // Splash damage on impact
+                            dealAoeMobaEnemyDamage(finalX, finalY, radius = 9f, damage = 600f * dmgMultiplier, type = "valhein_ult_leap")
+                            addMobaDamageText("MA CÀ RỒNG ĐÁP 🩸", finalX, finalY - 8f, 0xFFEF4444)
+                            
+                            // Shoot 10 blood-red bullets in a 360-degree circle
+                            for (j in 0 until 10) {
+                                val angle = (j * 36) * (kotlin.math.PI / 180)
+                                val tX = finalX + kotlin.math.cos(angle).toFloat() * 35f
+                                val tY = finalY + kotlin.math.sin(angle).toFloat() * 35f
+                                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                    x = finalX,
+                                    y = finalY,
+                                    speed = 2.6f,
+                                    isEnemy = true,
+                                    damage = 420f * dmgMultiplier,
+                                    type = "valhein_ult",
+                                    color = 0xFFEF4444, // Blood Red
+                                    radius = 2.0f,
+                                    targetX = tX,
+                                    targetY = tY,
+                                    isHoming = false
+                                )
+                            }
+                        }
+                    }
+                    return
+                }
+            } else {
+                // Skill 3: Normal Valhein Bão Đạn (6 bullets shotgun fan)
+                if (distToPlayer <= 14f && malochS3Cooldown <= 0f) {
+                    malochS3Cooldown = 11f
+                    _mobaLog.value = "🏹 $activeEnemy kích hoạt BÃO ĐẠN HUYẾS SẮC! Phóng ra 6 phi tiêu bão táp cực thốn!"
+                    
+                    val baseAngle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val bulletAngles = listOf(
+                        baseAngle - 0.4f, baseAngle - 0.24f, baseAngle - 0.08f,
+                        baseAngle + 0.08f, baseAngle + 0.24f, baseAngle + 0.4f
+                    )
+                    bulletAngles.forEach { bAng ->
+                        val destX = eX + kotlin.math.cos(bAng) * 35f
+                        val destY = eY + kotlin.math.sin(bAng) * 35f
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 2.5f,
+                            isEnemy = true,
+                            damage = 250f * dmgMultiplier,
+                            type = "valhein_ult_normal", // normal Valhein ult
+                            color = 0xFFFF2222, // bright red
+                            radius = 2.0f,
+                            targetX = destX,
+                            targetY = destY,
+                            isHoming = false
+                        )
+                    }
+                    return
+                }
+            }
+
+            // Skill 2: Lời Nguyền Tử Vong (5 blood-red stun phi tiêu for Ma Cà Rồng vs 1 yellow stun phi tiêu for normal Valhein)
+            if (distToPlayer <= 22f && malochS2Cooldown <= 0f) {
+                malochS2Cooldown = 7.5f
+                
+                if (isEnhanced) {
+                    _mobaLog.value = "🏹 $activeEnemy tung ngũ liên phi tiêu đỏ LỜI NGUYỀN TỬ VONG khống chế diện rộng!"
+                    val baseAngle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val angles = listOf(baseAngle - 0.4f, baseAngle - 0.2f, baseAngle, baseAngle + 0.2f, baseAngle + 0.4f)
+                    angles.forEach { ang ->
+                        val tX = eX + kotlin.math.cos(ang) * 35f
+                        val tY = eY + kotlin.math.sin(ang) * 35f
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 2.4f,
+                            isEnemy = true,
+                            damage = 320f * dmgMultiplier,
+                            type = "valhein_s2",
+                            color = 0xFFEF4444, // Blood Red
+                            radius = 2.2f,
+                            targetX = tX,
+                            targetY = tY,
+                            isHoming = false
+                        )
+                    }
+                } else {
+                    _mobaLog.value = "🏹 $activeEnemy tung phi tiêu vàng LỜI NGUYỀN TỬ VONG khống chế!"
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX,
+                        y = eY,
+                        speed = 2.4f,
+                        isEnemy = true,
+                        damage = 180f * dmgMultiplier,
+                        type = "valhein_s2",
+                        color = 0xFFFFFF00, // yellow
+                        radius = 2.5f,
+                        targetX = hX,
+                        targetY = hY,
+                        isHoming = true,
+                        homingTargetId = "player"
+                    )
+                }
+                return
+            }
+
+            // Skill 1: Chuyến Săn Ám Ảnh (5 blood-red explosive phi tiêu for Ma Cà Rồng vs 1 red explosive phi tiêu for normal Valhein)
+            if (distToPlayer <= 22f && malochS1Cooldown <= 0f) {
+                malochS1Cooldown = 4.5f
+                
+                if (isEnhanced) {
+                    _mobaLog.value = "🏹 $activeEnemy tung ngũ liên phi tiêu đỏ CHUYẾN SĂN ÁM ẢNH phát nổ diện rộng!"
+                    val baseAngle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val angles = listOf(baseAngle - 0.4f, baseAngle - 0.2f, baseAngle, baseAngle + 0.2f, baseAngle + 0.4f)
+                    angles.forEach { ang ->
+                        val tX = eX + kotlin.math.cos(ang) * 35f
+                        val tY = eY + kotlin.math.sin(ang) * 35f
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 2.4f,
+                            isEnemy = true,
+                            damage = 380f * dmgMultiplier,
+                            type = "valhein_s1",
+                            color = 0xFFEF4444, // Blood Red
+                            radius = 2.2f,
+                            targetX = tX,
+                            targetY = tY,
+                            isHoming = false
+                        )
+                    }
+                } else {
+                    _mobaLog.value = "🏹 $activeEnemy tung phi tiêu đỏ CHUYẾN SĂN ÁM ẢNH phát nổ!"
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX,
+                        y = eY,
+                        speed = 2.4f,
+                        isEnemy = true,
+                        damage = 220f * dmgMultiplier,
+                        type = "valhein_s1",
+                        color = 0xFFFF2222, // red
+                        radius = 2.5f,
+                        targetX = hX,
+                        targetY = hY,
+                        isHoming = true,
+                        homingTargetId = "player"
+                    )
+                }
+                return
+            }
+
+            // Chase and Basic Attack
+            if (distToPlayer > 18f) {
+                val dx = hX - eX
+                val dy = hY - eY
+                _mobaEnemyX.value += (dx / distToPlayer) * 0.9f
+                _mobaEnemyY.value += (dy / distToPlayer) * 0.9f
+            } else {
+                if (tickCounterMoba % 20 == 0) {
+                    val projColor: Long
+                    val projType: String
+                    val dmgText: String
+                    
+                    if (isEnhanced) {
+                        projColor = 0xFFEF4444L // Blood Red
+                        projType = "valhein_basic"
+                        dmgText = "HÚT MÁU CÀ RỒNG 🩸"
+                    } else {
+                        val rand = Random.nextInt(3)
+                        projColor = when (rand) {
+                            0 -> 0xFFFF3333L // Red
+                            1 -> 0xFFFFFF33L // Yellow
+                            else -> 0xFF3333FFL // Blue
+                        }
+                        projType = when (rand) {
+                            0 -> "valhein_s1"
+                            1 -> "valhein_s2"
+                            else -> "valhein_basic"
+                        }
+                        dmgText = when (rand) {
+                            0 -> "ĐÁNH THƯỜNG [ĐỎ] 💥"
+                            1 -> "ĐÁNH THƯỜNG [VÀNG] 🌀"
+                            else -> "ĐÁNH THƯỜNG [XANH] 💨"
+                        }
+                    }
+                    
+                    _mobaLog.value = "🏹 $activeEnemy bắn phi tiêu cường hóa $dmgText!"
+                    
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX,
+                        y = eY,
+                        speed = 2.8f,
+                        isEnemy = true,
+                        damage = (if (isEnhanced) 280f else 140f) * dmgMultiplier,
+                        type = projType,
+                        color = projColor.toLong(),
+                        radius = 1.8f,
+                        targetX = hX,
+                        targetY = hY,
+                        isHoming = true,
+                        homingTargetId = "player"
+                    )
+                }
+            }
+        } else {
+            // Clear creeps
+            var targetCreep: MobaCreep? = null
+            var minD = 25f
+            _mobaCreeps.value.filter { !it.isEnemy && it.hp > 0f }.forEach { creep ->
+                val d = kotlin.math.sqrt((creep.x - eX) * (creep.x - eX) + (creep.y - eY) * (creep.y - eY))
+                if (d < minD) {
+                    minD = d
+                    targetCreep = creep
+                }
+            }
+
+            if (targetCreep != null) {
+                val tc = targetCreep!!
+                val dx = tc.x - eX
+                val dy = tc.y - eY
+                if (minD > 18f) {
+                    _mobaEnemyX.value += (dx / minD) * 0.7f
+                    _mobaEnemyY.value += (dy / minD) * 0.7f
+                } else {
+                    if (tickCounterMoba % 20 == 0) {
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX,
+                            y = eY,
+                            speed = 2.8f,
+                            isEnemy = true,
+                            damage = 140f * dmgMultiplier,
+                            type = "valhein_basic",
+                            color = 0xFFEEEEEE,
+                            radius = 1.8f,
+                            targetX = tc.x,
+                            targetY = tc.y,
+                            isHoming = true,
+                            homingTargetId = tc.id
+                        )
+                    }
                 }
             }
         }
