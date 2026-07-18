@@ -119,6 +119,10 @@ import com.example.ui.theme.NeonPink
 import com.example.ui.theme.ElegantGold
 import com.example.ui.theme.ElegantTextPrimary
 import com.example.ui.theme.ElegantTextSecondary
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.animateContentSize
 
 @Composable
 fun SimulatorScreen(viewModel: MainViewModel) {
@@ -7074,7 +7078,11 @@ fun MobaHeroSelection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // All standard enemies can be selected
-                listOf("Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Maloch").forEach { enemyName ->
+                listOf(
+                    "Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Maloch",
+                    "Tulen hắc pháp sư", "Valhein ma cà rồng", "Murad hoàng tử suy tàn",
+                    "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng"
+                ).forEach { enemyName ->
                     val isEnemySelected = mobaSelectedEnemy == enemyName
                     
                     Card(
@@ -7100,12 +7108,12 @@ fun MobaHeroSelection(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             val icon = when (enemyName) {
-                                "Tulen" -> "⚡"
-                                "Valhein" -> "🏹"
-                                "Murad" -> "⚔️"
-                                "Yasuo" -> "🌪️"
-                                "Alpha" -> "🤖"
-                                "Xiao" -> "🟢"
+                                "Tulen", "Tulen hắc pháp sư" -> "⚡"
+                                "Valhein", "Valhein ma cà rồng" -> "🏹"
+                                "Murad", "Murad hoàng tử suy tàn" -> "⚔️"
+                                "Yasuo", "Yasuo cơn gió cuồng ma" -> "🌪️"
+                                "Alpha", "Alpha kẻ kí sinh" -> "🤖"
+                                "Xiao", "Xiao nghiệp chướng" -> "🟢"
                                 else -> "👿"
                             }
                             Text(icon, fontSize = 22.sp)
@@ -7655,6 +7663,20 @@ fun MobaHeroDetailsDialog(
             ultName = getLocalizedText("Ult: Lôi Điểu"),
             ultDesc = getLocalizedText("🔥 Triệu hồi chú chim lôi điểu khổng lồ dồn sát thương kết liễu cực đau.")
         )
+        "Tulen hắc pháp sư" -> MobaHeroDetails(
+            name = "Tulen hắc pháp sư",
+            title = getLocalizedText("Pháp Sư Hắc Ám"),
+            icon = "⚡",
+            color = Color(0xFF8B5CF6),
+            passiveName = getLocalizedText("Nội Tại: Lôi Điện Hắc Ám"),
+            passiveDesc = getLocalizedText("Tích lũy lôi ấn bóng tối. Đạt 5 tầng sẽ oanh tạc sấm sét bóng tối liên tục vào kẻ địch xung quanh."),
+            s1Name = getLocalizedText("Chiêu 1: Lôi Quang Tối"),
+            s1Desc = getLocalizedText("⚡ Bắn 3 tia điện đen hình quạt cực mạnh."),
+            s2Name = getLocalizedText("Chiêu 2: Lôi Động Quỷ"),
+            s2Desc = getLocalizedText("✨ Dịch chuyển hắc ám né chiêu và gây sát thương sấm sét tối."),
+            ultName = getLocalizedText("Ult: Lôi Điểu Vong Hồn"),
+            ultDesc = getLocalizedText("🔥 Phóng lôi điểu vong hồn hắc ám kết liễu tàn bạo.")
+        )
         "Valhein" -> MobaHeroDetails(
             name = "Valhein",
             title = getLocalizedText("Xạ Thủ Ám Khí"),
@@ -7668,6 +7690,20 @@ fun MobaHeroDetailsDialog(
             s2Desc = getLocalizedText("🌀 Ném phi tiêu vàng làm choáng mục tiêu chắc chắn."),
             ultName = getLocalizedText("Ult: Bão Đạn"),
             ultDesc = getLocalizedText("🔥 Xả cơn bão đạn gồm 6 viên đạn bạc gây sát thương phép khổng lồ tầm gần.")
+        )
+        "Valhein ma cà rồng" -> MobaHeroDetails(
+            name = "Valhein ma cà rồng",
+            title = getLocalizedText("Thợ Săn Huyết Tộc"),
+            icon = "🏹",
+            color = Color(0xFFEF4444),
+            passiveName = getLocalizedText("Nội Tại: Ám Khí Huyết Tộc"),
+            passiveDesc = getLocalizedText("Phi tiêu đỏ hồi máu cho bản thân, phi tiêu vàng gây choáng và tước giáp."),
+            s1Name = getLocalizedText("Chiêu 1: Chuyến Săn Đêm"),
+            s1Desc = getLocalizedText("🏹 Ném phi tiêu huyết sắc phát nổ diện rộng."),
+            s2Name = getLocalizedText("Chiêu 2: Lời Nguyền Ác Quỷ"),
+            s2Desc = getLocalizedText("🌀 Phi tiêu vàng làm choáng chắc chắn và hút máu."),
+            ultName = getLocalizedText("Ult: Bão Đạn Huyết Sắc"),
+            ultDesc = getLocalizedText("🔥 Xả cơn bão đạn huyết tộc tầm gần gây sát thương bùng nổ cực rát.")
         )
         "Murad" -> MobaHeroDetails(
             name = "Murad",
@@ -7683,6 +7719,20 @@ fun MobaHeroDetailsDialog(
             ultName = getLocalizedText("Ult: Ảo Ảnh Trảm"),
             ultDesc = getLocalizedText("🔥 Giải phóng ảo ảnh chém liên tục 5 lần cực mạnh, bản thân không thể bị chọn làm mục tiêu.")
         )
+        "Murad hoàng tử suy tàn" -> MobaHeroDetails(
+            name = "Murad hoàng tử suy tàn",
+            title = getLocalizedText("Kẻ Lãng Quên Thời Gian"),
+            icon = "⚔️",
+            color = Color(0xFFD97706),
+            passiveName = getLocalizedText("Nội Tại: Ảnh Hồn Đọa Lạc"),
+            passiveDesc = getLocalizedText("Chém thường đủ 4 lần mở phong ấn Ảo Ảnh Trảm hắc ám tước đoạt sinh lực."),
+            s1Name = getLocalizedText("Chiêu 1: Tàn Ảnh Vô Hình"),
+            s1Desc = getLocalizedText("⚔️ Lướt chém ảo ảnh 2 lần, lần thứ 3 biến ảo giật bóng về vị trí cũ."),
+            s2Name = getLocalizedText("Chiêu 2: Vô Ảnh Trận Đọa"),
+            s2Desc = getLocalizedText("🛡️ Dựng cấm trận làm chậm tột độ và tước hồn tạo lá chắn dày."),
+            ultName = getLocalizedText("Ult: Ảo Ảnh Trảm Hắc Ám"),
+            ultDesc = getLocalizedText("🔥 Giải phóng bóng tối chém liên tiếp 5 lần vô địch, càn quét diện rộng.")
+        )
         "Yasuo" -> MobaHeroDetails(
             name = "Yasuo",
             title = getLocalizedText("Kiếm Sĩ Gió Phương Bắc"),
@@ -7696,6 +7746,20 @@ fun MobaHeroDetailsDialog(
             s2Desc = getLocalizedText("🌪️ Dựng tường gió ngăn chặn toàn bộ đạn và chiêu thức tầm xa của đối phương."),
             ultName = getLocalizedText("Ult: Trăn Trối"),
             ultDesc = getLocalizedText("⚡ Bay lên không trung chém liên hoàn kẻ địch bị hất tung, tăng mạnh sát thương chí mạng.")
+        )
+        "Yasuo cơn gió cuồng ma" -> MobaHeroDetails(
+            name = "Yasuo cơn gió cuồng ma",
+            title = getLocalizedText("Kiếm Khách Quỷ Phong"),
+            icon = "🌪️",
+            color = Color(0xFF475569),
+            passiveName = getLocalizedText("Nội Tại: Đạo Của Quỷ Phong"),
+            passiveDesc = getLocalizedText("Di chuyển tích lũy nộ phong kiếm nhận khiên ma cực dày khi đầy thanh."),
+            s1Name = getLocalizedText("Chiêu 1: Bão Kiếm Ma"),
+            s1Desc = getLocalizedText("⚔️ Đâm kiếm ma quái tích tụ phong lốc. Tầng 3 phóng Lốc Xoáy Cuồng Ma hất tung đối thủ cực cao."),
+            s2Name = getLocalizedText("Chiêu 2: Tường Gió Quỷ"),
+            s2Desc = getLocalizedText("🌪️ Dựng bức tường phong ma hóa giải mọi luồng đạn tấn công."),
+            ultName = getLocalizedText("Ult: Trăn Trối Cuồng Ma"),
+            ultDesc = getLocalizedText("⚡ Bay lên chém xé xác đối thủ bị hất tung tàn nhẫn, tăng cực mạnh chí mạng.")
         )
         "Alpha" -> MobaHeroDetails(
             name = "Alpha",
@@ -7711,6 +7775,20 @@ fun MobaHeroDetailsDialog(
             ultName = getLocalizedText("Ult: Mũi Giáo Alpha"),
             ultDesc = getLocalizedText("🔥 Lao thẳng hất tung mục tiêu và Drone Beta xả siêu la-zer Orbital hủy diệt diện rộng.")
         )
+        "Alpha kẻ kí sinh" -> MobaHeroDetails(
+            name = "Alpha kẻ kí sinh",
+            title = getLocalizedText("Sinh Vật Cyber Ký Sinh"),
+            icon = "🤖",
+            color = Color(0xFFEC4899),
+            passiveName = getLocalizedText("Nội Tại: Ký Sinh Công Nghệ"),
+            passiveDesc = getLocalizedText("Gây dấu ấn sinh học ký sinh, kích hoạt Beta laser phụ kích liên tục gây sát thương chuẩn rát buốt."),
+            s1Name = getLocalizedText("Chiêu 1: Đao Quét Ký Sinh"),
+            s1Desc = getLocalizedText("🤖 Quét đao cơ khí đột biến bám dính lấy mục tiêu."),
+            s2Name = getLocalizedText("Chiêu 2: Lá Chắn Ký Sinh"),
+            s2Desc = getLocalizedText("🛡️ Quét đao hình tròn hút HP cực mạnh mẽ để sinh trưởng lá chắn giáp dày."),
+            ultName = getLocalizedText("Ult: Mũi Giáo Ký Sinh"),
+            ultDesc = getLocalizedText("🔥 Lao thẳng hất tung giam giữ mục tiêu và Beta dội bão la-zer ký sinh hủy diệt.")
+        )
         "Xiao" -> MobaHeroDetails(
             name = "Xiao",
             title = getLocalizedText("Hộ Pháp Dạ Xoa"),
@@ -7724,6 +7802,20 @@ fun MobaHeroDetailsDialog(
             s2Desc = getLocalizedText("💨 Lướt dạ xoa liên tiếp 2 lần cực kỳ cơ động để né tránh và đột kích."),
             ultName = getLocalizedText("Ult: Vũ Điệu Đại Thánh"),
             ultDesc = getLocalizedText("🔥 Nhảy cao lên không trung hóa Dạ Xoa gầm thét, đâm plunge 2 lần hất tung diện rộng.")
+        )
+        "Xiao nghiệp chướng" -> MobaHeroDetails(
+            name = "Xiao nghiệp chướng",
+            title = getLocalizedText("Dạ Xoa Sa Đọa"),
+            icon = "🟢",
+            color = Color(0xFF065F46),
+            passiveName = getLocalizedText("Nội Tại: Mặt Nạ Nghiệp Chướng"),
+            passiveDesc = getLocalizedText("Cường hóa sức mạnh dạ xoa khiêu chiến tăng tốc độ lướt lách và hất tung Plunge tàn khốc."),
+            s1Name = getLocalizedText("Chiêu 1: Vũ Điệu Chinh Phục Hắc"),
+            s1Desc = getLocalizedText("🟢 Chém gió độc 3 lần cực rộng, hút cạn sinh khí đối thủ hồi phục HP."),
+            s2Name = getLocalizedText("Chiêu 2: Gió Độc Tung Hoành"),
+            s2Desc = getLocalizedText("💨 Lướt chớp nhoáng liên tục 2 lần cực linh hoạt để tập kích mục tiêu."),
+            ultName = getLocalizedText("Ult: Vũ Điệu Đại Thánh Hắc"),
+            ultDesc = getLocalizedText("🔥 Đâm plunge chấn động 2 lần hất tung diện rộng dẫm nát trận địa kẻ thù.")
         )
         else -> MobaHeroDetails(
             name = "Maloch",
@@ -7807,18 +7899,18 @@ fun MobaHeroDetailsDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 240.dp)
+                        .heightIn(max = 280.dp)
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Passive
-                    SkillItem(name = details.passiveName, desc = details.passiveDesc, color = details.color)
+                    SkillItem(index = 0, name = details.passiveName, desc = details.passiveDesc, color = details.color)
                     // Skill 1
-                    SkillItem(name = details.s1Name, desc = details.s1Desc, color = details.color)
+                    SkillItem(index = 1, name = details.s1Name, desc = details.s1Desc, color = details.color)
                     // Skill 2
-                    SkillItem(name = details.s2Name, desc = details.s2Desc, color = details.color)
+                    SkillItem(index = 2, name = details.s2Name, desc = details.s2Desc, color = details.color)
                     // Ult
-                    SkillItem(name = details.ultName, desc = details.ultDesc, color = details.color)
+                    SkillItem(index = 3, name = details.ultName, desc = details.ultDesc, color = details.color)
                 }
 
                 // Divider replacement
@@ -7906,25 +7998,214 @@ fun MobaHeroDetailsDialog(
     }
 }
 
+data class SkillTips(
+    val difficulty: String,
+    val cooldown: String,
+    val tip: String
+)
+
+fun getStatsAndTipsForSkill(name: String): SkillTips {
+    return when {
+        name.contains("Nội Tại") || name.contains("Passive") -> {
+            SkillTips(
+                difficulty = "★★☆☆☆",
+                cooldown = "Không tốn hồi chiêu / Thụ động",
+                tip = "Kích hoạt tự động khi đạt đủ số đòn đánh hoặc tầng dấu ấn kỹ năng. Tận dụng để tối ưu hóa sát thương đột biến liên tục."
+            )
+        }
+        name.contains("Chiêu 1") -> {
+            SkillTips(
+                difficulty = "★★★☆☆",
+                cooldown = "4.5s - 6s / Sát thương chính",
+                tip = "Kỹ năng dọn lính và cấu rỉa chủ đạo. Sử dụng liên tục để quấy rối kẻ địch từ khoảng cách an toàn và tích lũy nộ phong/lôi ấn."
+            )
+        }
+        name.contains("Chiêu 2") -> {
+            SkillTips(
+                difficulty = "★★★★☆",
+                cooldown = "8.0s - 12.0s / Cơ động & Khống chế",
+                tip = "Tạo bất ngờ bằng cách lướt đột kích, dịch chuyển tức thời hoặc tạo tường gió hóa giải đòn đánh nguy hiểm để outplay đối thủ."
+            )
+        }
+        name.contains("Ult") || name.contains("Chiêu cuối") -> {
+            SkillTips(
+                difficulty = "★★★★★",
+                cooldown = "30s - 45s / Sát thương hủy diệt",
+                tip = "Dồn sát thương dứt điểm tàn bạo lên các mục tiêu thấp máu hoặc phối hợp khống chế diện rộng cùng đồng đội để lật kèo."
+            )
+        }
+        else -> {
+            SkillTips(
+                difficulty = "★★★☆☆",
+                cooldown = "Thời gian hồi trung bình",
+                tip = "Nghiên cứu kỹ bộ kỹ năng độc quyền của vị tướng này để tạo ra chuỗi combo kết liễu trơn tru nhất."
+            )
+        }
+    }
+}
+
 @Composable
-fun SkillItem(name: String, desc: String, color: Color) {
+fun SkillItem(index: Int, name: String, desc: String, color: Color) {
+    var isExpanded by remember { mutableStateOf(false) }
+    
+    // Staggered layout animation sequence (similar to Framer Motion stagger)
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(index * 110L) // Beautiful staggered delay for each list item
+        isVisible = true
+    }
+    
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 400, easing = LinearOutSlowInEasing),
+        label = "alpha"
+    )
+    
+    val translationY by animateFloatAsState(
+        targetValue = if (isVisible) 0f else 35f, // Smooth slide up from 35dp
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "translationY"
+    )
+
+    val rotationAngle by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy),
+        label = "rotation"
+    )
+    
+    val borderColor by animateColorAsState(
+        targetValue = if (isExpanded) color.copy(alpha = 0.5f) else Color.Transparent,
+        animationSpec = tween(300),
+        label = "borderColor"
+    )
+    
+    val cardBgColor by animateColorAsState(
+        targetValue = if (isExpanded) color.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.03f),
+        animationSpec = tween(300),
+        label = "bgColor"
+    )
+
     Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.03f), RoundedCornerShape(6.dp))
-            .padding(8.dp)
+            .graphicsLayer(
+                alpha = alpha,
+                translationY = translationY
+            )
+            .background(cardBgColor, RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .clickable { isExpanded = !isExpanded }
+            .padding(10.dp)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
     ) {
-        Text(
-            text = name,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = name,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+            }
+            
+            // Rotating Chevron Indicator
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Expand Skill Details",
+                tint = color.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer(rotationZ = rotationAngle)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
         Text(
             text = desc,
             fontSize = 11.sp,
             color = Color.LightGray
         )
+        
+        if (isExpanded) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(color.copy(alpha = 0.2f))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            val tips = getStatsAndTipsForSkill(name)
+            
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "⭐ Đánh giá độ khó:",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = tips.difficulty,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = color
+                    )
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "⏱️ Cooldown & Loại Chiêu:",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = tips.cooldown,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.LightGray
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = "💡 Mẹo & Chiến thuật combo:",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                
+                Text(
+                    text = tips.tip,
+                    fontSize = 10.sp,
+                    color = Color.LightGray,
+                    lineHeight = 13.sp
+                )
+            }
+        }
     }
 }

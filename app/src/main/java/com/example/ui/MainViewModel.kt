@@ -771,7 +771,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun selectMobaHero(hero: String) {
         if (_mobaState.value == "playing") return
         _mobaHero.value = hero
-        _mobaLog.value = "Đã chọn tướng: $hero 🌟"
+        
+        // Auto-select matching enemy based on the selected player champion with dark skins
+        val matchingEnemy = when (hero) {
+            "Tulen" -> "Tulen hắc pháp sư"
+            "Valhein" -> "Valhein ma cà rồng"
+            "Murad" -> "Murad hoàng tử suy tàn"
+            "Yasuo" -> "Yasuo cơn gió cuồng ma"
+            "Alpha" -> "Alpha kẻ kí sinh"
+            "Xiao" -> "Xiao nghiệp chướng"
+            else -> "Maloch"
+        }
+        _mobaSelectedEnemy.value = matchingEnemy
+        sharedPrefs.edit().putString("moba_selected_enemy", matchingEnemy).apply()
+        
+        _mobaLog.value = "Đã chọn tướng: $hero 🌟 (Tự động chọn đối thủ duyên nợ: $matchingEnemy 🎯)"
         _mobaMuradCloneX.value = -1f
         _mobaMuradCloneY.value = -1f
         _mobaMuradCastCount.value = 0
@@ -828,14 +842,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val enemyMaxHp = if (isBossMode) {
             7500f
         } else {
-            when (activeEnemy) {
-                "Tulen" -> 3600f
-                "Valhein" -> 3800f
-                "Murad" -> 3500f
-                "Yasuo" -> 4200f
-                "Alpha" -> 4300f
-                "Xiao" -> 4000f
-                "Maloch" -> 4500f
+            when {
+                activeEnemy.contains("Tulen") -> 3600f
+                activeEnemy.contains("Valhein") -> 3800f
+                activeEnemy.contains("Murad") -> 3500f
+                activeEnemy.contains("Yasuo") -> 4200f
+                activeEnemy.contains("Alpha") -> 4300f
+                activeEnemy.contains("Xiao") -> 4000f
+                activeEnemy.contains("Maloch") -> 4500f
                 else -> 4000f
             }
         }
@@ -2401,6 +2415,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun dealAoeMobaEnemyDamage(centerX: Float, centerY: Float, radius: Float, damage: Float, type: String) {
         var hitHero = false
+        val activeEnemy = _mobaSelectedEnemy.value
 
         // Player Hero
         if (_mobaHeroHP.value > 0f) {
@@ -2416,14 +2431,76 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val dmgColor = if (_mobaEnemyEnchanted.value) 0xFFFF1155 else 0xFFFF3333 // Pink/True damage for enchanted, red otherwise
                     addMobaDamageText("-${finalDamage.toInt()}${if (_mobaEnemyEnchanted.value) " TRUE" else ""}", _mobaHeroX.value, _mobaHeroY.value - 6f, dmgColor)
 
-                    if (type == "maloch_s1") {
-                        // Slow effect
-                        _mobaLog.value = "⚠️ Bạn bị trúng QUỶ KIẾM của Maloch! Bị Chậm di chuyển 50%!"
-                        addMobaDamageText("SLOWED ❄️", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF33CCFF)
-                    } else if (type == "maloch_s3") {
-                        // Knock up!
-                        _mobaLog.value = "🌪️ LUYỆN NGỤC! Maloch hất tung bạn lên không trung!"
-                        triggerHeroKnockup(1200L)
+                    when {
+                        activeEnemy.contains("Tulen") -> {
+                            if (type.contains("_s1")) {
+                                _mobaLog.value = "⚠️ Bạn bị trúng LÔI QUANG của $activeEnemy! Tốc độ giảm sút!"
+                                addMobaDamageText("SLOWED ⚡", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF33FFFF)
+                            } else if (type.contains("_s3")) {
+                                _mobaLog.value = "⚡ SÉT ĐÁNH! Bạn bị trúng chiêu cuối LÔI ĐIỂU của $activeEnemy!"
+                                triggerHeroKnockup(600L)
+                            }
+                        }
+                        activeEnemy.contains("Valhein") -> {
+                            if (type.contains("_s1")) {
+                                _mobaLog.value = "🏹 Bạn bị trúng CHUYẾN SĂN phi tiêu đỏ của $activeEnemy!"
+                            } else if (type.contains("_s2")) {
+                                _mobaLog.value = "🌀 Bạn bị trúng LỜI NGUYỀN phi tiêu vàng và bị CHOÁNG!"
+                                addMobaDamageText("STUNNED 🌀", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFFF59E0B)
+                                triggerHeroKnockup(1000L)
+                            } else if (type.contains("_s3")) {
+                                _mobaLog.value = "💥 Bạn bị trúng BÃO ĐẠN pháo kích cực thốn của $activeEnemy!"
+                            }
+                        }
+                        activeEnemy.contains("Murad") -> {
+                            if (type.contains("_s1")) {
+                                _mobaLog.value = "⚔️ Bạn bị trúng VÔ ẢNH VỰC của $activeEnemy và bị làm chậm!"
+                            } else if (type.contains("_s2")) {
+                                _mobaLog.value = "🛡️ Bạn chạm vào VÔ ẢNH TRẬN của $activeEnemy, bị giảm giáp!"
+                            } else if (type.contains("_s3")) {
+                                _mobaLog.value = "💥 Bạn bị cắt nát bởi chiêu cuối ẢO ẢNH TRẢM của $activeEnemy!"
+                            }
+                        }
+                        activeEnemy.contains("Yasuo") -> {
+                            if (type.contains("tornado") || type.contains("_s1_tornado")) {
+                                _mobaLog.value = "🌪️ HASAGI! Bạn bị trúng lốc xoáy BÃO KIẾM của $activeEnemy và bị hất tung!"
+                                triggerHeroKnockup(1200L)
+                            } else if (type.contains("_s1")) {
+                                _mobaLog.value = "⚔️ Bạn bị trúng đòn đâm BÃO KIẾM chí mạng của $activeEnemy!"
+                            } else if (type.contains("_s3")) {
+                                _mobaLog.value = "⚡ SOYEGEDON! Bạn bị trúng TRĂN TRỐI liên hoàn kiếm của $activeEnemy!"
+                                triggerHeroKnockup(1500L)
+                            }
+                        }
+                        activeEnemy.contains("Alpha") -> {
+                            if (type.contains("_s1")) {
+                                _mobaLog.value = "🤖 Bạn bị trúng ĐAO QUÉT THĂNG HOA của $activeEnemy!"
+                            } else if (type.contains("_s2")) {
+                                _mobaLog.value = "🛡️ Bạn bị trúng ĐAO QUÉT NĂNG LƯỢNG của $activeEnemy!"
+                            } else if (type.contains("_s3")) {
+                                _mobaLog.value = "🔥 Bạn bị trúng MŨI GIÁO ALPHA hất tung cực mạnh!"
+                                triggerHeroKnockup(1200L)
+                            }
+                        }
+                        activeEnemy.contains("Xiao") -> {
+                            if (type.contains("_s1")) {
+                                _mobaLog.value = "🟢 Bạn bị trúng VŨ ĐIỆU CHINH PHỤC của Dạ Xoa $activeEnemy!"
+                            } else if (type.contains("_s2")) {
+                                _mobaLog.value = "💨 Bạn bị trúng GIÓ TUNG HOÀNH lướt quét của $activeEnemy!"
+                            } else if (type.contains("_s3")) {
+                                _mobaLog.value = "🔥 PHÁ ĐỊA! Bạn bị $activeEnemy nhảy giẫm VŨ ĐIỆU ĐẠI THÁNH hất tung!"
+                                triggerHeroKnockup(1200L)
+                            }
+                        }
+                        else -> { // Maloch
+                            if (type.contains("_s1")) {
+                                _mobaLog.value = "⚠️ Bạn bị trúng QUỶ KIẾM của $activeEnemy! Bị Chậm di chuyển 50%!"
+                                addMobaDamageText("SLOWED ❄️", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF33CCFF)
+                            } else if (type.contains("_s3")) {
+                                _mobaLog.value = "🌪️ LUYỆN NGỤC! $activeEnemy hất tung bạn lên không trung!"
+                                triggerHeroKnockup(1200L)
+                            }
+                        }
                     }
                 }
             }
@@ -2442,7 +2519,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     addMobaDamageText("-${finalDamage.toInt()}", creep.x, creep.y - 4f, 0xFFFF3333)
                     updated = true
                     hitCreepCount++
-                    if (type == "maloch_s3") {
+                    if (type == "${activeEnemy.lowercase()}_s3") {
                         creep.isStunned = true
                         creep.stunEndTime = System.currentTimeMillis() + 1200L
                     }
@@ -2469,31 +2546,60 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         // S1 effects if hitting hero
-        if (type == "maloch_s1") {
+        if (type == "${activeEnemy.lowercase()}_s1") {
             if (hitHero) {
-                if (!_mobaEnemyEnchanted.value) {
-                    _mobaEnemyEnchanted.value = true
-                    _mobaLog.value = "😈 QUYẾT ĐỊNH QUỶ KIẾM! Kiếm của Maloch được LUYỆN KIẾM (Sát Thương Chuẩn & Hồi HP)!"
-                    addMobaDamageText("LUYỆN KIẾM! 🔥", _mobaEnemyX.value, _mobaEnemyY.value - 12f, 0xFFFF1155)
+                when {
+                    activeEnemy.contains("Maloch") -> {
+                        if (!_mobaEnemyEnchanted.value) {
+                            _mobaEnemyEnchanted.value = true
+                            _mobaLog.value = "😈 QUYẾT ĐỊNH QUỶ KIẾM! Kiếm của Maloch được LUYỆN KIẾM (Sát Thương Chuẩn & Hồi HP)!"
+                            addMobaDamageText("LUYỆN KIẾM! 🔥", _mobaEnemyX.value, _mobaEnemyY.value - 12f, 0xFFFF1155)
+                        }
+                        malochEnchantedDurationLeft = 8000L // 8s enchanted
+                        // Heal Maloch
+                        val healAmount = 400f
+                        _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmount).coerceAtMost(_mobaEnemyMaxHP.value)
+                        addMobaDamageText("+${healAmount.toInt()} HP 💚", _mobaEnemyX.value, _mobaEnemyY.value - 8f, 0xFF10B981)
+                    }
+                    activeEnemy.contains("Xiao") -> {
+                        val healAmt = _mobaEnemyMaxHP.value * 0.10f
+                        _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                        addMobaDamageText("+${healAmt.toInt()} HP 💚", _mobaEnemyX.value, _mobaEnemyY.value - 8f, 0xFF10B981)
+                    }
+                    activeEnemy.contains("Tulen") -> {
+                        _mobaEnemyEnchanted.value = true
+                        malochEnchantedDurationLeft = 5000L
+                    }
+                    activeEnemy.contains("Yasuo") -> {
+                        _mobaEnemyEnchanted.value = true
+                        malochEnchantedDurationLeft = 6000L
+                    }
                 }
-                malochEnchantedDurationLeft = 8000L // 8s enchanted
-                // Heal Maloch
-                val healAmount = 400f
-                _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmount).coerceAtMost(_mobaEnemyMaxHP.value)
-                addMobaDamageText("+${healAmount.toInt()} HP 💚", _mobaEnemyX.value, _mobaEnemyY.value - 8f, 0xFF10B981)
             }
         }
 
         // S2 Soul Shield calculation
-        if (type == "maloch_s2") {
+        if (type == "${activeEnemy.lowercase()}_s2") {
             var targetsHit = 0
             if (hitHero) targetsHit++
             targetsHit += hitCreepCount.coerceAtMost(4) // capped creep count
             if (targetsHit > 0) {
-                val shieldVal = targetsHit * 450f
+                val shieldVal = when {
+                    activeEnemy.contains("Maloch") -> targetsHit * 450f
+                    activeEnemy.contains("Alpha") -> targetsHit * 400f
+                    activeEnemy.contains("Yasuo") -> targetsHit * 350f
+                    activeEnemy.contains("Murad") -> targetsHit * 300f
+                    else -> targetsHit * 250f
+                }
                 _mobaEnemyShield.value = (_mobaEnemyShield.value + shieldVal).coerceAtMost(1800f)
                 malochShieldDurationLeft = 5000L // 5s shield duration
-                _mobaLog.value = "🛡️ ĐOẠT HỒN! Maloch hút hồn $targetsHit mục tiêu và nhận lớp lá chắn cực dày!"
+                val shieldText = when {
+                    activeEnemy.contains("Yasuo") -> "KHIÊN GIÓ 🌪️"
+                    activeEnemy.contains("Alpha") -> "LÁ CHẮN TỪ TRƯỜNG 🤖"
+                    activeEnemy.contains("Murad") -> "VÔ ẢNH KHIÊN ⚔️"
+                    else -> "LÁ CHẮN 🛡️"
+                }
+                _mobaLog.value = "🛡️ $shieldText! $activeEnemy nhận lớp lá chắn hấp thụ sát thương!"
                 addMobaDamageText("+${shieldVal.toInt()} GIÁP 🛡️", _mobaEnemyX.value, _mobaEnemyY.value - 10f, 0xFF38BDF8)
             }
         }
@@ -3152,7 +3258,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             addMobaDamageText("TỤ BÃO! 🌪️", _mobaHeroX.value, _mobaHeroY.value - 10f, 0xFFCBD5E1)
                         }
                     } else if (proj.type == "yasuo_q_tornado") {
-                        _mobaLog.value = "🌪️ Lốc Xoáy hất tung Maloch cực mạnh!"
+                        val activeEnemy = _mobaSelectedEnemy.value
+                        _mobaLog.value = "🌪️ Lốc Xoáy hất tung $activeEnemy cực mạnh!"
                         triggerMobaEnemyKnockup(1500L) // Knock up and stun them for 1.5s
                     }
                     
@@ -3308,10 +3415,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     damagePlayer(dmg)
                     addMobaDamageText("-${dmg.toInt()}", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFFFF3333)
                     
-                    // Slow effect if Maloch's cleaver
-                    if (proj.type == "maloch_cleave") {
-                        _mobaLog.value = "⚠️ Bạn bị Maloch chém rìu gây trì hoãn di chuyển (Chậm 50%!)"
+                    // Slow/CC effect based on enemy projectile types
+                    val pType = proj.type
+                    if (pType.endsWith("_cleave") || pType.contains("_s1") || pType == "yasuo_q_tornado") {
+                        val activeEnemy = _mobaSelectedEnemy.value
+                        val slowText = when (activeEnemy) {
+                            "Tulen" -> "⚡ Bạn bị Tulen giật điện tê liệt gây Chậm 35%!"
+                            "Valhein" -> "🎯 Bạn bị Phi Tiêu Đỏ của Valhein thiêu đốt gây Chậm 30%!"
+                            "Murad" -> "⚔️ Bạn bị Murad chém Vô Ảnh Kiếm cực rát!"
+                            "Yasuo" -> "🌪️ Bạn bị dính Lốc Xoáy của Yasuo hất tung nhẹ!"
+                            "Alpha" -> "🤖 Bạn bị Alpha oanh tạc đao laser Chậm 40%!"
+                            "Xiao" -> "🟢 Bạn bị Xiao vung kiếm chém quét làm Chậm 30%!"
+                            else -> "⚠️ Bạn bị Maloch chém rìu Quỷ Kiếm làm Chậm 50%!"
+                        }
+                        _mobaLog.value = slowText
                         addMobaDamageText("SLOWED ❄️", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF33CCFF)
+                        if (pType == "yasuo_q_tornado") {
+                            triggerHeroKnockup(600L)
+                        }
                     }
                 }
             } else if (proj.homingTargetId == "ally_turret") {
@@ -3344,13 +3465,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 mobaSkillHitsCount++
 
                 // Handle skill effect
+                val activeEnemy = _mobaSelectedEnemy.value
                 if (proj.type == "valhein_s2") { // Yellow stun
-                    _mobaLog.value = "🎯 Choáng! Maloch bị Valhein hóa đá găm phi tiêu vàng (Choáng 2s)!"
+                    _mobaLog.value = "🎯 Choáng! $activeEnemy bị Valhein hóa đá găm phi tiêu vàng (Choáng 2s)!"
                     triggerMobaEnemyStun(2000L)
                 } else if (proj.type == "valhein_s1") { // Red AoE explode
                     dealAoeMobaDamage(_mobaEnemyX.value, _mobaEnemyY.value, radius = 9f, damage = dmg * 0.4f, type = "valhein_s1_aoe")
                 } else if (proj.type == "tulen_ult") {
-                    _mobaLog.value = "⚡ SIÊU PHẨM LÔI ĐIỂU! Oanh tạc dứt điểm cực đau lên Maloch!"
+                    _mobaLog.value = "⚡ SIÊU PHẨM LÔI ĐIỂU! Oanh tạc dứt điểm cực đau lên $activeEnemy!"
                     // gain stacks on hit
                     incrementTulenPassive()
                 } else if (proj.type.startsWith("tulen")) {
@@ -3728,17 +3850,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         if (_mobaHeroHP.value > 0f && distToPlayer <= 35f) {
-            // 1. Skill 3: Luyện Ngục (S3)
+            // 1. Skill 3: Luyện Ngục / Chiêu cuối (S3)
             if (malochS3Cooldown <= 0f) {
                 malochS3Cooldown = 12f
                 _mobaEnemyIsLeaping.value = true
                 val s3Desc = when (activeEnemy) {
                     "Tulen" -> "tụ tụ Lôi Quang phóng LÔI ĐIỂU sấm sét cực mạnh! ⚡"
+                    "Tulen hắc pháp sư" -> "vận hắc ám ma pháp gọi LÔI ĐIỂU VONG HỒN sấm sét quỷ dị! ⚡🌌"
                     "Valhein" -> "ném bão Phi Tiêu thi triển BÃO ĐẠN cực rát! 🏹"
+                    "Valhein ma cà rồng" -> "kích hoạt huyết thuật thi triển BÃO ĐẠN HUYẾS SẮC cực kì khát máu! 🧛‍♂️🩸"
                     "Murad" -> "biến ảo ảnh tung chiêu liên hoàn ẢO ẢNH TRẢM! 🗡️"
+                    "Murad hoàng tử suy tàn" -> "giải phóng bóng tối đọa lạc tung ẢO ẢNH TRẢM HẮC ÁM cực tàn khốc! 🗡️🖤"
                     "Yasuo" -> "lướt gió phóng lốc xoáy thi triển TRĂN TRỐI! 🌪️"
+                    "Yasuo cơn gió cuồng ma" -> "lướt ma phong phóng cuồng lốc thi triển TRĂN TRỐI CUỒNG MA kinh hoàng! 🌪️👿"
                     "Alpha" -> "laser nạp đầy phát động HỦY DIỆT TOÀN DIỆN! 🤖"
+                    "Alpha kẻ kí sinh" -> "ký sinh đột biến phát động BÃO LASER KÝ SINH hủy diệt hàng loạt! 🤖🧬"
                     "Xiao" -> "vung gậy giáng VŨ ĐIỆU ĐẠI THÁNH rung chuyển! 🟢"
+                    "Xiao nghiệp chướng" -> "đeo mặt nạ hắc ám giáng VŨ ĐIỆU ĐẠI THÁNH HẮC tàn bạo rung chuyển! 🟢☣️"
                     else -> "tụ lực phóng lên không trung thi triển LUYỆN NGỤC! 🌪️"
                 }
                 _mobaLog.value = "👿 $activeEnemy $s3Desc"
@@ -3772,19 +3900,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     
                     // Impact explosion!
                     val finalDmgS3 = 580f * dmgMultiplier
-                    dealAoeMobaEnemyDamage(targetS3X, targetS3Y, radius = 14f, damage = finalDmgS3, type = "maloch_s3")
+                    dealAoeMobaEnemyDamage(targetS3X, targetS3Y, radius = 14f, damage = finalDmgS3, type = "${activeEnemy.lowercase()}_s3")
                     
                     // Spawn visual impact shockwaves
                     for (j in 0..3) {
                         val angleOffset = j * (kotlin.math.PI / 2)
+                        val effectColor = when (activeEnemy) {
+                            "Tulen" -> 0xFF33FFFF
+                            "Tulen hắc pháp sư" -> 0xFF8B5CF6
+                            "Valhein" -> 0xFFF59E0B
+                            "Valhein ma cà rồng" -> 0xFFEF4444
+                            "Murad" -> 0xFFEAB308
+                            "Murad hoàng tử suy tàn" -> 0xFFD97706
+                            "Yasuo" -> 0xFFCBD5E1
+                            "Yasuo cơn gió cuồng ma" -> 0xFF475569
+                            "Alpha" -> 0xFF22D3EE
+                            "Alpha kẻ kí sinh" -> 0xFFEC4899
+                            "Xiao" -> 0xFF10B981
+                            "Xiao nghiệp chướng" -> 0xFF065F46
+                            else -> 0xFFDC2626
+                        }
                         _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                             x = targetS3X,
                             y = targetS3Y,
                             speed = 3.5f,
                             isEnemy = true,
                             damage = 0f,
-                            type = "maloch_s3_visual",
-                            color = 0xFFDC2626,
+                            type = "${activeEnemy.lowercase()}_s3_visual",
+                            color = effectColor,
                             radius = 2.5f,
                             targetX = targetS3X + kotlin.math.cos(angleOffset).toFloat() * 12f,
                             targetY = targetS3Y + kotlin.math.sin(angleOffset).toFloat() * 12f,
@@ -3794,11 +3937,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     
                     val s3ImpactDesc = when (activeEnemy) {
                         "Tulen" -> "Sét giáng! Lôi Điểu phát nổ cực mạnh dồn điện hất tung!"
+                        "Tulen hắc pháp sư" -> "Hắc lôi giáng thế! Lôi điểu vong hồn phát nổ làm tê liệt và hất tung!"
                         "Valhein" -> "Bão đạn oanh tạc hất tung toàn diện!"
+                        "Valhein ma cà rồng" -> "Cơn mưa phi tiêu huyết sắc phát nổ hất tung dã man!"
                         "Murad" -> "Kiếm trận loé sáng cắt nát hất tung mặt đất!"
+                        "Murad hoàng tử suy tàn" -> "Bóng tối loé sáng chém xé tàn ảnh hất tung mặt đất!"
                         "Yasuo" -> "Bão cát hất tung giáng xuống chấn động!"
+                        "Yasuo cơn gió cuồng ma" -> "Lốc quỷ cuồng bạo hất tung giáng xuống nghẹt thở!"
                         "Alpha" -> "Chùm laser huỷ diệt quét sạch hất tung!"
+                        "Alpha kẻ kí sinh" -> "Chùm laser ký sinh bùng nổ ăn mòn hất tung hủy diệt!"
                         "Xiao" -> "Trấn thiên hất tung kinh hồn!"
+                        "Xiao nghiệp chướng" -> "Nghiệp chướng trỗi dậy giáng Plunge hất tung kinh hồn!"
                         else -> "LUYỆN NGỤC giáng lâm! Maloch giẫm nát mặt đất hất tung kẻ địch trong vùng!"
                     }
                     _mobaLog.value = "💥 $s3ImpactDesc"
@@ -3809,23 +3958,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return
             }
 
-            // 2. Skill 2: Đoạt Hồn (S2)
+            // 2. Skill 2: Đoạt Hồn / Chiêu 2 (S2)
             if (distToPlayer <= 15f && malochS2Cooldown <= 0f) {
                 malochS2Cooldown = 7f
                 val s2Desc = when (activeEnemy) {
                     "Tulen" -> "thi triển Lôi Động giật điện tước đoạt sinh lực!"
+                    "Tulen hắc pháp sư" -> "thi triển Lôi Động Hắc giật điện hắc ám tước hồn hồi giáp!"
                     "Valhein" -> "phóng Phi Tiêu Vàng khống chế tước hồn sinh giáp!"
+                    "Valhein ma cà rồng" -> "phóng Phi Tiêu Vàng Huyết Tộc khống chế hút máu cực bạo!"
                     "Murad" -> "thi triển Vô Ảnh Trận tước hồn hồi giáp!"
+                    "Murad hoàng tử suy tàn" -> "thi triển Vô Ảnh Trận Đọa tước hồn cướp giáp bóng tối!"
                     "Yasuo" -> "dựng Phong Shield nhận khiên gió cực dày!"
+                    "Yasuo cơn gió cuồng ma" -> "thi triển Phong Tường Quỷ dựng khiên ma hắc ám siêu dày!"
                     "Alpha" -> "thi triển Lá Chắn Từ Trường hút hồn tạo lá chắn!"
+                    "Alpha kẻ kí sinh" -> "thi triển Lá Chắn Ký Sinh hút hồn tạo khiên cyber đột biến!"
                     "Xiao" -> "thi triển Giáp Diệp Dạ Xoa hồi phục năng lượng tạo khiên!"
+                    "Xiao nghiệp chướng" -> "thi triển Giáp Diệp Dạ Xoa Hắc hồi phục năng lượng và máu tạo khiên dịch bệnh!"
                     else -> "thi triển ĐOẠT HỒN! Tước đoạt sinh hồn đối thủ tạo lá chắn cực lớn!"
                 }
                 _mobaLog.value = "👿 $activeEnemy $s2Desc"
                 val finalDmgS2 = 120f * dmgMultiplier
-                dealAoeMobaEnemyDamage(eX, eY, radius = 15f, damage = finalDmgS2, type = "maloch_s2")
+                dealAoeMobaEnemyDamage(eX, eY, radius = 15f, damage = finalDmgS2, type = "${activeEnemy.lowercase()}_s2")
                 
-                // Spawn soul-pulling particles towards Maloch
+                // Spawn soul-pulling particles towards enemy
                 for (j in 0..3) {
                     val angleOffset = j * (kotlin.math.PI / 2)
                     val startPx = hX + kotlin.math.cos(angleOffset).toFloat() * 6f
@@ -3836,7 +3991,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         speed = 3f,
                         isEnemy = true,
                         damage = 0f,
-                        type = "maloch_basic_visual",
+                        type = "${activeEnemy.lowercase()}_basic_visual",
                         color = 0xFF7C3AED,
                         radius = 1.2f,
                         targetX = eX,
@@ -3847,16 +4002,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return
             }
 
-            // 3. Skill 1: Quỷ Kiếm (S1)
+            // 3. Skill 1: Quỷ Kiếm / Chiêu 1 (S1)
             if (distToPlayer <= 7.5f && malochS1Cooldown <= 0f) {
                 malochS1Cooldown = 4f
                 val s1Desc = when (activeEnemy) {
                     "Tulen" -> "tụ lực vung Lôi Quang điện quét cực rộng!"
+                    "Tulen hắc pháp sư" -> "tụ hắc ám pháp lực vung Lôi Quang Tối càn quét cực rộng!"
                     "Valhein" -> "vung tay ném Phi Tiêu Đỏ sát thương chí mạng cực lớn!"
+                    "Valhein ma cà rồng" -> "ném Phi Tiêu Đỏ Huyết Sắc phát nổ gây sát thương chí mạng cực đau!"
                     "Murad" -> "vút kiếm quét Vô Ảnh Vực càn quét diện rộng!"
+                    "Murad hoàng tử suy tàn" -> "vút kiếm quét Tàn Ảnh Vô Hình bóng tối càn quét cực rát!"
                     "Yasuo" -> "tụ gió vung Bão Kiếm quét cực rộng!"
+                    "Yasuo cơn gió cuồng ma" -> "tụ ma phong vung Bão Kiếm Ma quẹt cực rộng!"
                     "Alpha" -> "quét Mũi Giáo Cyber laser cực rộng!"
+                    "Alpha kẻ kí sinh" -> "quét Mũi Giáo Ký Sinh cyber phát nổ laser cực rộng!"
                     "Xiao" -> "vung chém Gió Xanh Dạ Xoa càn quét diện rộng!"
+                    "Xiao nghiệp chướng" -> "vung chém Gió Độc Dạ Xoa nghiệp chướng càn quét diện rộng!"
                     else -> "tụ lực vung QUỶ KIẾM càn quét cực rộng!"
                 }
                 _mobaLog.value = "👿 $activeEnemy $s1Desc"
@@ -3866,8 +4027,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val currentEx = _mobaEnemyX.value
                     val currentEy = _mobaEnemyY.value
                     val finalDmgS1 = 380f * dmgMultiplier
-                    dealAoeMobaEnemyDamage(currentEx, currentEy, radius = 9.5f, damage = finalDmgS1, type = "maloch_s1")
+                    dealAoeMobaEnemyDamage(currentEx, currentEy, radius = 9.5f, damage = finalDmgS1, type = "${activeEnemy.lowercase()}_s1")
                     
+                    val slashColor = when (activeEnemy) {
+                        "Tulen" -> 0xFF33FFFF
+                        "Tulen hắc pháp sư" -> 0xFF8B5CF6
+                        "Valhein" -> 0xFFF59E0B
+                        "Valhein ma cà rồng" -> 0xFFEF4444
+                        "Murad" -> 0xFFEAB308
+                        "Murad hoàng tử suy tàn" -> 0xFFD97706
+                        "Yasuo" -> 0xFFCBD5E1
+                        "Yasuo cơn gió cuồng ma" -> 0xFF475569
+                        "Alpha" -> 0xFF22D3EE
+                        "Alpha kẻ kí sinh" -> 0xFFEC4899
+                        "Xiao" -> 0xFF10B981
+                        "Xiao nghiệp chướng" -> 0xFF065F46
+                        else -> 0xFFFF0033
+                    }
+                    val slashType = if ((activeEnemy == "Yasuo" || activeEnemy == "Yasuo cơn gió cuồng ma") && _mobaEnemyEnchanted.value) "yasuo_q_tornado" else "${activeEnemy.lowercase()}_cleave"
+
                     // Spawn S1 slash visual projectile!
                     _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                         x = currentEx - 8f,
@@ -3875,8 +4053,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         speed = 4f,
                         isEnemy = true,
                         damage = 0f,
-                        type = "maloch_cleave",
-                        color = 0xFFFF0033,
+                        type = slashType,
+                        color = slashColor,
                         radius = 2.0f,
                         targetX = currentEx + 8f,
                         targetY = currentEy,
@@ -3898,21 +4076,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (tickCounterMoba % 20 == 0) {
                     val dmg = if (_mobaEnemyEnchanted.value) 180f else 130f
                     val finalDmg = dmg * dmgMultiplier
-                    dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = finalDmg, type = "maloch_basic")
+                    dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = finalDmg, type = "${activeEnemy.lowercase()}_basic")
                     if (_mobaEnemyEnchanted.value) {
                         val hAmt = if (isBossMode) 300f else 150f
                         _mobaEnemyHP.value = (_mobaEnemyHP.value + hAmt).coerceAtMost(_mobaEnemyMaxHP.value)
                         addMobaDamageText("+$hAmt HP 💚", eX, eY - 8f, 0xFF10B981)
                     }
                     
+                    val bulletColor = when (activeEnemy) {
+                        "Tulen" -> 0xFF33FFFF
+                        "Tulen hắc pháp sư" -> 0xFF8B5CF6
+                        "Valhein" -> 0xFFF59E0B
+                        "Valhein ma cà rồng" -> 0xFFEF4444
+                        "Murad" -> 0xFFEAB308
+                        "Murad hoàng tử suy tàn" -> 0xFFD97706
+                        "Yasuo" -> 0xFFCBD5E1
+                        "Yasuo cơn gió cuồng ma" -> 0xFF475569
+                        "Alpha" -> 0xFF22D3EE
+                        "Alpha kẻ kí sinh" -> 0xFFEC4899
+                        "Xiao" -> 0xFF10B981
+                        "Xiao nghiệp chướng" -> 0xFF065F46
+                        else -> 0xFFFF3333
+                    }
                     _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                         x = eX,
                         y = eY,
                         speed = 3f,
                         isEnemy = true,
                         damage = 0f,
-                        type = "maloch_basic_visual",
-                        color = 0xFFFF3333,
+                        type = "${activeEnemy.lowercase()}_basic_visual",
+                        color = bulletColor,
                         radius = 1.5f,
                         targetX = hX,
                         targetY = hY,
@@ -3943,16 +4136,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (tickCounterMoba % 20 == 0) {
                         val dmg = if (_mobaEnemyEnchanted.value) 180f else 130f
                         val finalDmg = dmg * dmgMultiplier
-                        dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = finalDmg, type = "maloch_basic")
+                        dealAoeMobaEnemyDamage(eX, eY, radius = 5.0f, damage = finalDmg, type = "${activeEnemy.lowercase()}_basic")
                         
+                        val bulletColor = when (activeEnemy) {
+                            "Tulen" -> 0xFF33FFFF
+                            "Tulen hắc pháp sư" -> 0xFF8B5CF6
+                            "Valhein" -> 0xFFF59E0B
+                            "Valhein ma cà rồng" -> 0xFFEF4444
+                            "Murad" -> 0xFFEAB308
+                            "Murad hoàng tử suy tàn" -> 0xFFD97706
+                            "Yasuo" -> 0xFFCBD5E1
+                            "Yasuo cơn gió cuồng ma" -> 0xFF475569
+                            "Alpha" -> 0xFF22D3EE
+                            "Alpha kẻ kí sinh" -> 0xFFEC4899
+                            "Xiao" -> 0xFF10B981
+                            "Xiao nghiệp chướng" -> 0xFF065F46
+                            else -> 0xFFFF3333
+                        }
                         _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                             x = eX,
                             y = eY,
                             speed = 3f,
                             isEnemy = true,
                             damage = 0f,
-                            type = "maloch_basic_visual",
-                            color = 0xFFFF3333,
+                            type = "${activeEnemy.lowercase()}_basic_visual",
+                            color = bulletColor,
                             radius = 1.5f,
                             targetX = tc.x,
                             targetY = tc.y,
