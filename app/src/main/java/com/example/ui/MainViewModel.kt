@@ -145,6 +145,16 @@ data class FpsZombie(
     val sizeMultiplier: Float = 1.0f
 )
 
+data class FpsContinuousTarget(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    var x: Float,
+    var y: Float,
+    var vx: Float,
+    var vy: Float,
+    val radius: Float = 0.05f,
+    val color: Long = 0xFFFF0000
+)
+
 data class SimSphere(
     val id: String = java.util.UUID.randomUUID().toString(),
     var x: Float,
@@ -152,7 +162,12 @@ data class SimSphere(
     var vx: Float,
     var vy: Float,
     val radius: Float = 3f,
-    val color: Long = 0xFF3B82F6
+    val color: Long = 0xFF3B82F6,
+    var t: Float = 0f,
+    var speedMultiplier: Float = 1f,
+    val phaseOffset: Float = 0f,
+    val scaleX: Float = 1f,
+    val scaleY: Float = 1f
 )
 
 data class MobaDamageText(
@@ -715,6 +730,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _fpsZombies = MutableStateFlow<List<FpsZombie>>(emptyList())
     val fpsZombies = _fpsZombies.asStateFlow()
 
+    // FPS Continuous Targets States
+    private val _fpsContinuousTargets = MutableStateFlow<List<FpsContinuousTarget>>(emptyList())
+    val fpsContinuousTargets = _fpsContinuousTargets.asStateFlow()
+
     // Sphere Simulation States
     private val _sphereList = MutableStateFlow<List<SimSphere>>(emptyList())
     val sphereList = _sphereList.asStateFlow()
@@ -727,6 +746,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _sphereCount = MutableStateFlow(0)
     val sphereCount = _sphereCount.asStateFlow()
+
+    private val _spherePlayMode = MutableStateFlow("classic") // "classic", "parabola", "math"
+    val spherePlayMode = _spherePlayMode.asStateFlow()
+
+    private val _sphereMathFormula = MutableStateFlow("lemniscate") // "lemniscate", "heart", "rose", "lissajous"
+    val sphereMathFormula = _sphereMathFormula.asStateFlow()
+
+    fun setSpherePlayMode(mode: String) {
+        _spherePlayMode.value = mode
+        if (_sphereGameState.value == "running") {
+            startSphereSimulation()
+        }
+    }
+
+    fun setSphereMathFormula(formula: String) {
+        _sphereMathFormula.value = formula
+        if (_sphereGameState.value == "running" && _spherePlayMode.value == "math") {
+            startSphereSimulation()
+        }
+    }
 
     // Alpha States
     private val _mobaAlphaBetaX = MutableStateFlow(-1f)
@@ -1311,7 +1350,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (_mobaXiaoMaskActive.value) {
                         0.15f
                     } else {
-                        if (_mobaXiaoS2CastCount.value < 1) 0.4f else 6.0f
+                        6.0f
                     }
                 } else if (isMurad) 7.0f else if (isAlpha) 5.5f else 6.0f
             }
@@ -1868,14 +1907,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
-                1 -> { // S2: Gió Tung Hoành (Aerial Dash doing massive damage)
-                    _mobaLog.value = "🟢 PHONG BÃO HUỶ DIỆT! Xiao lướt trên không trung chém quét gây sát thương siêu khủng!"
-                    if (!_mobaXiaoMaskActive.value) {
-                        _mobaXiaoS2CastCount.value++
-                        if (_mobaXiaoS2CastCount.value >= 2) {
-                            _mobaXiaoS2CastCount.value = 0
-                        }
-                    }
+                1 -> { // S2: Gió Tung Hoành (Aerial Dash doing massive damage and healing 5% Max HP)
+                    val healAmt = _mobaHeroMaxHP.value * 0.05f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+                    
+                    _mobaLog.value = "🟢 PHONG BÃO HUỶ DIỆT! Xiao lướt trên không trung hồi 5% HP và chém quét gây sát thương siêu khủng!"
                     
                     val destX = _mobaHeroDestX.value
                     val destY = _mobaHeroDestY.value
@@ -6664,6 +6701,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val loadingMsg = when (_fpsGameMode.value) {
                 "boss" -> "👹 BOSS TRÙM CUỐI XUẤT HIỆN! Hãy nhắm bắn khi Boss đứng yên chuẩn bị ra chiêu!"
                 "zombie" -> "🧟 ĐẠI DỊCH ZOMBIE! Chuẩn bị vũ khí để chặn đứng bầy xác sống điên cuồng..."
+                "continuous" -> "🔥 LIÊN THANH VÔ HẠN! Đang dọn dẹp bia bắn & chuyển vũ khí sang chế độ sấy..."
                 "bottle" -> "🥤 Đang xếp chai thủy tinh lên kệ gỗ & chuẩn bị đạn..."
                 "fast" -> "⚡ Đang kích hoạt hệ thống đĩa bay siêu tốc & sạc pin laser..."
                 "sniper" -> "🔭 Đang lắp kính ngắm AWM 8x & hiệu chỉnh hướng gió..."
@@ -6687,6 +6725,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             targetMovementJob?.cancel()
             bossGameJob?.cancel()
             zombieGameJob?.cancel()
+            continuousGameJob?.cancel()
+            _fpsContinuousTargets.value = emptyList()
             
             _fpsBossHp.value = 5
             _fpsUserHp.value = if (_fpsGameMode.value == "zombie") 5 else 3
@@ -6699,6 +6739,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 startBossGameLoop()
             } else if (_fpsGameMode.value == "zombie") {
                 startZombieGameLoop()
+            } else if (_fpsGameMode.value == "continuous") {
+                startContinuousGameLoop()
             } else {
                 spawnNextTarget()
             }
@@ -6864,6 +6906,166 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             detailedTips = tips,
             linhChiEvaluation = evaluation
         )
+        
+        val modeName = "Săn Thây Ma 🧟"
+        val hits = _fpsHits.value
+        val accuracy = if (_fpsShots.value > 0) (_fpsHits.value.toFloat() / _fpsShots.value * 100).toInt() else 0
+        val basePing = if (_isSimulating.value) _currentPing.value.toInt() else 10
+        val avgWithNetwork = 280 + basePing
+        val resultString = "FPS|$modeName|${if (victory) "THẮNG" else "THUA"}|Acc: $accuracy%|Kills: $hits"
+        viewModelScope.launch {
+            repository.insertScore(
+                com.example.data.ReflexScore(
+                    gameName = "FPS 2D - $modeName",
+                    delayMs = basePing,
+                    responseTimeMs = avgWithNetwork,
+                    result = resultString,
+                    kills = hits,
+                    deaths = if (victory) 0 else 1,
+                    targetsHit = hits,
+                    latencyMs = basePing
+                )
+            )
+        }
+    }
+
+    private var continuousGameJob: kotlinx.coroutines.Job? = null
+
+    private fun startContinuousGameLoop() {
+        continuousGameJob?.cancel()
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        bossGameJob?.cancel()
+        zombieGameJob?.cancel()
+        
+        _reflexState.value = "spawned"
+        _fpsUserHp.value = 999
+        _fpsHits.value = 0
+        _fpsShots.value = 0
+        _fpsMisses.value = 0
+        _fpsLostShots.value = 0
+        _fpsBulletHoles.value = emptyList()
+        _fpsShotVisuals.value = emptyList()
+        
+        // Spawn 6 initial targets with random positions and velocities
+        val initialTargets = List(6) {
+            val speed = 0.006f + Random.nextFloat() * 0.008f
+            val angle = Random.nextFloat() * 2f * kotlin.math.PI.toFloat()
+            FpsContinuousTarget(
+                x = Random.nextFloat() * 0.6f + 0.2f,
+                y = Random.nextFloat() * 0.6f + 0.2f,
+                vx = speed * kotlin.math.cos(angle),
+                vy = speed * kotlin.math.sin(angle),
+                radius = 0.04f + Random.nextFloat() * 0.03f,
+                color = when (Random.nextInt(4)) {
+                    0 -> 0xFFEF4444 // Red
+                    1 -> 0xFF3B82F6 // Blue
+                    2 -> 0xFF10B981 // Green
+                    else -> 0xFFF59E0B // Orange
+                }
+            )
+        }
+        _fpsContinuousTargets.value = initialTargets
+        
+        _reflexMessage.value = "🔥 CHẾ ĐỘ LIÊN THANH VÔ HẠN! Ấn giữ màn hình để sấy liên thanh tiêu diệt mục tiêu!"
+        _reflexTimerText.value = "Tiêu diệt: ${_fpsHits.value} | Không giới hạn thời gian!"
+        
+        // Target movement job
+        continuousGameJob = viewModelScope.launch {
+            while (_reflexState.value == "spawned") {
+                delay(30)
+                if (_fpsIsPaused.value) continue
+                
+                val currentList = _fpsContinuousTargets.value.map { it.copy() }
+                currentList.forEach { target ->
+                    var nextX = target.x + target.vx
+                    var nextY = target.y + target.vy
+                    
+                    if (nextX < 0.1f) {
+                        nextX = 0.1f
+                        target.vx = -target.vx
+                    } else if (nextX > 0.9f) {
+                        nextX = 0.9f
+                        target.vx = -target.vx
+                    }
+                    
+                    if (nextY < 0.1f) {
+                        nextY = 0.1f
+                        target.vy = -target.vy
+                    } else if (nextY > 0.9f) {
+                        nextY = 0.9f
+                        target.vy = -target.vy
+                    }
+                    
+                    target.x = nextX
+                    target.y = nextY
+                }
+                _fpsContinuousTargets.value = currentList
+            }
+        }
+    }
+
+    fun finishContinuousGame() {
+        if (_reflexState.value != "spawned") return
+        _reflexState.value = "finished"
+        continuousGameJob?.cancel()
+        targetTimeoutJob?.cancel()
+        targetMovementJob?.cancel()
+        
+        val totalShots = _fpsShots.value
+        val hits = _fpsHits.value
+        val accuracy = if (totalShots > 0) (hits.toFloat() / totalShots * 100).toInt() else 0
+        
+        SoundManager.playSound("victory")
+        
+        val avgPhysical = 250
+        val basePing = if (_isSimulating.value) _currentPing.value.toInt() else 10
+        val avgWithNetwork = avgPhysical + basePing
+        
+        val mainIssue = "Chiến Binh Liên Thanh! 🔥"
+        val tips = listOf(
+            "Càng sấy càng trúng" to "Kỹ năng kiểm soát tâm liên thanh vô cùng ấn tượng!",
+            "Giữ vững nhịp bắn" to "Hãy tiếp tục phát huy khả năng sấy đạn dồn dập này."
+        )
+        val evaluation = "Anh sấy đạn dồn dập như mưa làm Linh Chi mê mẩn luôn á! 😍 Hạ gục tận $hits bia bắn, đúng là tay sấy đỉnh cao!"
+
+        val report = FpsDiagnostic(
+            gameName = "MiniGame FPS 2D (Liên Thanh 🔥)",
+            totalTargets = hits + 5,
+            hits = hits,
+            accuracy = accuracy,
+            avgPhysicalResponseMs = avgPhysical,
+            avgWithNetworkResponseMs = avgWithNetwork,
+            lostShotsCount = _fpsLostShots.value,
+            networkPingSimulated = basePing,
+            networkJitterSimulated = if (_isSimulating.value) _targetJitter.value else 0,
+            networkLossSimulated = if (_isSimulating.value) _targetLoss.value else 0,
+            mainIssue = mainIssue,
+            detailedTips = tips,
+            linhChiEvaluation = evaluation
+        )
+        
+        _fpsDiagnosticReport.value = report
+        
+        val modeName = "Liên Thanh 🔥"
+        val resultString = "FPS|$modeName|$hits Kills|Acc: $accuracy%|$avgPhysical ms"
+        viewModelScope.launch {
+            repository.insertScore(
+                com.example.data.ReflexScore(
+                    gameName = "FPS 2D - $modeName",
+                    delayMs = basePing,
+                    responseTimeMs = avgWithNetwork,
+                    result = resultString,
+                    kills = hits,
+                    deaths = 0,
+                    targetsHit = hits,
+                    latencyMs = basePing
+                )
+            )
+        }
+        
+        _reflexMessage.value = "🎉 THỬ THÁCH LIÊN THANH HOÀN THÀNH! Hãy xem bảng điểm số của anh bên dưới!"
+        _reflexTimerText.value = "Hạ gục: $hits | Chính xác: $accuracy%"
     }
 
     private var sphereJob: kotlinx.coroutines.Job? = null
@@ -6874,43 +7076,175 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _sphereFps.value = 60f
         _sphereCount.value = 1
         
-        val initialSpheres = listOf(
-            SimSphere(
-                x = 50f,
-                y = 50f,
-                vx = (Random.nextFloat() * 1.6f - 0.8f).let { if (it == 0f) 0.5f else it },
-                vy = (Random.nextFloat() * 1.6f - 0.8f).let { if (it == 0f) -0.5f else it }
-            )
-        )
+        val mode = _spherePlayMode.value
+        val initialSpheres = when (mode) {
+            "parabola" -> {
+                listOf(
+                    SimSphere(
+                        x = 50f,
+                        y = 10f,
+                        vx = (Random.nextFloat() * 1.6f - 0.8f).let { if (it == 0f) 0.5f else it },
+                        vy = 1f
+                    )
+                )
+            }
+            "math" -> {
+                val startSphere = SimSphere(
+                    x = 50f,
+                    y = 50f,
+                    vx = 0f,
+                    vy = 0f,
+                    t = 0f,
+                    speedMultiplier = 1.0f,
+                    phaseOffset = 0f,
+                    scaleX = 1f,
+                    scaleY = 1f
+                )
+                val tVal = 0f
+                when (_sphereMathFormula.value) {
+                    "lemniscate" -> {
+                        startSphere.x = 50f + 40f
+                        startSphere.y = 50f
+                    }
+                    "heart" -> {
+                        startSphere.x = 50f
+                        startSphere.y = 50f - 1.8f * 5f
+                    }
+                    "rose" -> {
+                        startSphere.x = 50f
+                        startSphere.y = 50f
+                    }
+                    "lissajous" -> {
+                        startSphere.x = 50f + 40f
+                        startSphere.y = 50f
+                    }
+                    "butterfly" -> {
+                        val rVal = kotlin.math.exp(1.0) - 2.0
+                        startSphere.x = 50f
+                        startSphere.y = 50f - (rVal.toFloat() * 7.5f)
+                    }
+                }
+                listOf(startSphere)
+            }
+            else -> {
+                listOf(
+                    SimSphere(
+                        x = 50f,
+                        y = 50f,
+                        vx = (Random.nextFloat() * 1.6f - 0.8f).let { if (it == 0f) 0.5f else it },
+                        vy = (Random.nextFloat() * 1.6f - 0.8f).let { if (it == 0f) -0.5f else it }
+                    )
+                )
+            }
+        }
         _sphereList.value = initialSpheres
 
         sphereJob = viewModelScope.launch {
             while (_sphereGameState.value == "running") {
-                delay(16) // roughly 60 fps simulation
+                delay(16)
                 
                 val currentSpheres = _sphereList.value.map { it.copy() }
                 if (currentSpheres.isEmpty()) continue
 
-                // Update physics
+                val activeMode = _spherePlayMode.value
+                val activeFormula = _sphereMathFormula.value
+
                 currentSpheres.forEach { sphere ->
-                    sphere.x += sphere.vx
-                    sphere.y += sphere.vy
+                    when (activeMode) {
+                        "parabola" -> {
+                            val gravity = 0.08f
+                            sphere.vy += gravity
+                            sphere.x += sphere.vx
+                            sphere.y += sphere.vy
 
-                    // Bound checks & Wall bounces
-                    if (sphere.x <= 3f) {
-                        sphere.x = 3f
-                        sphere.vx = -sphere.vx
-                    } else if (sphere.x >= 97f) {
-                        sphere.x = 97f
-                        sphere.vx = -sphere.vx
-                    }
+                            if (sphere.y >= 97f) {
+                                sphere.y = 97f
+                                sphere.vy = -sphere.vy * 0.85f
+                                if (kotlin.math.abs(sphere.vy) < 0.2f) {
+                                    sphere.vy = -1.5f - Random.nextFloat() * 2f
+                                }
+                            } else if (sphere.y <= 3f) {
+                                sphere.y = 3f
+                                sphere.vy = -sphere.vy * 0.85f
+                            }
 
-                    if (sphere.y <= 3f) {
-                        sphere.y = 3f
-                        sphere.vy = -sphere.vy
-                    } else if (sphere.y >= 97f) {
-                        sphere.y = 97f
-                        sphere.vy = -sphere.vy
+                            if (sphere.x <= 3f) {
+                                sphere.x = 3f
+                                sphere.vx = -sphere.vx * 0.85f
+                            } else if (sphere.x >= 97f) {
+                                sphere.x = 97f
+                                sphere.vx = -sphere.vx * 0.85f
+                            }
+                        }
+                        "math" -> {
+                            sphere.t += 0.03f * sphere.speedMultiplier
+                            val tVal = sphere.t + sphere.phaseOffset
+                            when (activeFormula) {
+                                "lemniscate" -> {
+                                    val sinT = kotlin.math.sin(tVal)
+                                    val cosT = kotlin.math.cos(tVal)
+                                    val denom = 1f + sinT * sinT
+                                    val scale = 40f * sphere.scaleX
+                                    sphere.x = (50f + (scale * cosT) / denom).coerceIn(3f, 97f)
+                                    sphere.y = (50f + (scale * sinT * cosT) / denom).coerceIn(3f, 97f)
+                                }
+                                "heart" -> {
+                                    val sinT = kotlin.math.sin(tVal)
+                                    val cosT = kotlin.math.cos(tVal)
+                                    val cos2T = kotlin.math.cos(2f * tVal)
+                                    val cos3T = kotlin.math.cos(3f * tVal)
+                                    val cos4T = kotlin.math.cos(4f * tVal)
+                                    
+                                    val xOffset = 2.0f * (16f * sinT * sinT * sinT)
+                                    val yOffset = 1.8f * (13f * cosT - 5f * cos2T - 2f * cos3T - cos4T)
+                                    
+                                    sphere.x = (50f + xOffset * sphere.scaleX).coerceIn(3f, 97f)
+                                    sphere.y = (50f - yOffset * sphere.scaleY).coerceIn(3f, 97f)
+                                }
+                                "rose" -> {
+                                    val r = 40f * kotlin.math.sin(5f * tVal) * sphere.scaleX
+                                    sphere.x = (50f + r * kotlin.math.cos(tVal)).coerceIn(3f, 97f)
+                                    sphere.y = (50f + r * kotlin.math.sin(tVal)).coerceIn(3f, 97f)
+                                }
+                                "lissajous" -> {
+                                    sphere.x = (50f + 40f * kotlin.math.sin(3f * tVal + (kotlin.math.PI.toFloat() / 2f)) * sphere.scaleX).coerceIn(3f, 97f)
+                                    sphere.y = (50f + 40f * kotlin.math.sin(4f * tVal) * sphere.scaleY).coerceIn(3f, 97f)
+                                }
+                                "butterfly" -> {
+                                    val sinT = kotlin.math.sin(tVal)
+                                    val cosT = kotlin.math.cos(tVal)
+                                    val cos4T = kotlin.math.cos(4f * tVal)
+                                    val sinT12 = kotlin.math.sin(tVal / 12f)
+                                    val sinT12Pow5 = sinT12 * sinT12 * sinT12 * sinT12 * sinT12
+                                    
+                                    val r = kotlin.math.exp(cosT) - 2f * cos4T + sinT12Pow5
+                                    val scale = 7.5f * sphere.scaleX
+                                    
+                                    sphere.x = (50f + r * sinT * scale).coerceIn(3f, 97f)
+                                    sphere.y = (50f - r * cosT * scale).coerceIn(3f, 97f)
+                                }
+                            }
+                        }
+                        else -> {
+                            sphere.x += sphere.vx
+                            sphere.y += sphere.vy
+
+                            if (sphere.x <= 3f) {
+                                sphere.x = 3f
+                                sphere.vx = -sphere.vx
+                            } else if (sphere.x >= 97f) {
+                                sphere.x = 97f
+                                sphere.vx = -sphere.vx
+                            }
+
+                            if (sphere.y <= 3f) {
+                                sphere.y = 3f
+                                sphere.vy = -sphere.vy
+                            } else if (sphere.y >= 97f) {
+                                sphere.y = 97f
+                                sphere.vy = -sphere.vy
+                            }
+                        }
                     }
                 }
 
@@ -6918,7 +7252,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val count = currentSpheres.size
                 _sphereCount.value = count
 
-                // Non-linear FPS drop simulation
                 val calculatedFps = (60f / (1f + (count - 1) * 0.03f)).coerceIn(5f, 60f)
                 _sphereFps.value = calculatedFps
 
@@ -6939,7 +7272,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val currentSpheres = _sphereList.value.toMutableList()
         var hitSphere: SimSphere? = null
-        var minDistance = 8f // tap threshold in percent
+        var minDistance = 8f
 
         currentSpheres.forEach { sphere ->
             val d = kotlin.math.sqrt((sphere.x - relativeX) * (sphere.x - relativeX) + (sphere.y - relativeY) * (sphere.y - relativeY))
@@ -6951,23 +7284,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (hitSphere != null) {
             SoundManager.playSound("hit")
-            // Double the tapped sphere: keep the original, and add another with randomized opposite velocity!
             val parent = hitSphere!!
-            val newVx = -parent.vx + (Random.nextFloat() * 0.4f - 0.2f)
-            val newVy = -parent.vy + (Random.nextFloat() * 0.4f - 0.2f)
-            val duplicate = SimSphere(
-                x = parent.x,
-                y = parent.y,
-                vx = if (newVx == 0f) 0.6f else newVx,
-                vy = if (newVy == 0f) -0.6f else newVy,
-                color = when (Random.nextInt(5)) {
-                    0 -> 0xFFEF4444 // Red
-                    1 -> 0xFF10B981 // Green
-                    2 -> 0xFFF59E0B // Yellow
-                    3 -> 0xFF8B5CF6 // Purple
-                    else -> 0xFF3B82F6 // Blue
+            val activeMode = _spherePlayMode.value
+            
+            val duplicate = when (activeMode) {
+                "math" -> {
+                    val isButterfly = _sphereMathFormula.value == "butterfly"
+                    val angleOffset = if (isButterfly) 0.002f else (Random.nextFloat() * 2f * kotlin.math.PI.toFloat()) / 6f
+                    val scaleFactor = if (isButterfly) 1.0f else 0.6f + Random.nextFloat() * 0.6f
+                    SimSphere(
+                        x = parent.x,
+                        y = parent.y,
+                        vx = 0f,
+                        vy = 0f,
+                        t = parent.t,
+                        speedMultiplier = parent.speedMultiplier * (if (isButterfly) 1.0f else (0.9f + Random.nextFloat() * 0.2f)),
+                        phaseOffset = parent.phaseOffset + angleOffset,
+                        scaleX = if (isButterfly) parent.scaleX else (parent.scaleX * scaleFactor).coerceIn(0.4f, 1.2f),
+                        scaleY = if (isButterfly) parent.scaleY else (parent.scaleY * scaleFactor).coerceIn(0.4f, 1.2f),
+                        color = when (Random.nextInt(5)) {
+                            0 -> 0xFFEF4444
+                            1 -> 0xFF10B981
+                            2 -> 0xFFF59E0B
+                            3 -> 0xFF8B5CF6
+                            else -> 0xFF3B82F6
+                        }
+                    )
                 }
-            )
+                "parabola" -> {
+                    val newVx = -parent.vx + (Random.nextFloat() * 0.6f - 0.3f)
+                    val newVy = -parent.vy * 0.8f + (Random.nextFloat() * 0.6f - 0.3f)
+                    SimSphere(
+                        x = parent.x,
+                        y = parent.y,
+                        vx = if (newVx == 0f) 0.5f else newVx,
+                        vy = if (newVy == 0f) -1.2f else newVy,
+                        color = when (Random.nextInt(5)) {
+                            0 -> 0xFFEF4444
+                            1 -> 0xFF10B981
+                            2 -> 0xFFF59E0B
+                            3 -> 0xFF8B5CF6
+                            else -> 0xFF3B82F6
+                        }
+                    )
+                }
+                else -> {
+                    val newVx = -parent.vx + (Random.nextFloat() * 0.4f - 0.2f)
+                    val newVy = -parent.vy + (Random.nextFloat() * 0.4f - 0.2f)
+                    SimSphere(
+                        x = parent.x,
+                        y = parent.y,
+                        vx = if (newVx == 0f) 0.6f else newVx,
+                        vy = if (newVy == 0f) -0.6f else newVy,
+                        color = when (Random.nextInt(5)) {
+                            0 -> 0xFFEF4444
+                            1 -> 0xFF10B981
+                            2 -> 0xFFF59E0B
+                            3 -> 0xFF8B5CF6
+                            else -> 0xFF3B82F6
+                        }
+                    )
+                }
+            }
             _sphereList.value = _sphereList.value + duplicate
         }
     }
@@ -6976,22 +7354,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_sphereGameState.value != "running") return
         SoundManager.playSound("boss_teleport")
         val currentSpheres = _sphereList.value
+        val activeMode = _spherePlayMode.value
+        
         val duplicates = currentSpheres.map { parent ->
-            val newVx = -parent.vx + (Random.nextFloat() * 0.4f - 0.2f)
-            val newVy = -parent.vy + (Random.nextFloat() * 0.4f - 0.2f)
-            SimSphere(
-                x = parent.x,
-                y = parent.y,
-                vx = if (newVx == 0f) 0.6f else newVx,
-                vy = if (newVy == 0f) -0.6f else newVy,
-                color = when (Random.nextInt(5)) {
-                    0 -> 0xFFEF4444
-                    1 -> 0xFF10B981
-                    2 -> 0xFFF59E0B
-                    3 -> 0xFF8B5CF6
-                    else -> 0xFF3B82F6
+            when (activeMode) {
+                "math" -> {
+                    val isButterfly = _sphereMathFormula.value == "butterfly"
+                    val angleOffset = if (isButterfly) 0.002f else (Random.nextFloat() * 2f * kotlin.math.PI.toFloat()) / 4f
+                    val scaleFactor = if (isButterfly) 1.0f else 0.7f + Random.nextFloat() * 0.6f
+                    SimSphere(
+                        x = parent.x,
+                        y = parent.y,
+                        vx = 0f,
+                        vy = 0f,
+                        t = parent.t,
+                        speedMultiplier = parent.speedMultiplier * (if (isButterfly) 1.0f else (0.95f + Random.nextFloat() * 0.1f)),
+                        phaseOffset = parent.phaseOffset + angleOffset,
+                        scaleX = if (isButterfly) parent.scaleX else (parent.scaleX * scaleFactor).coerceIn(0.4f, 1.2f),
+                        scaleY = if (isButterfly) parent.scaleY else (parent.scaleY * scaleFactor).coerceIn(0.4f, 1.2f),
+                        color = when (Random.nextInt(5)) {
+                            0 -> 0xFFEF4444
+                            1 -> 0xFF10B981
+                            2 -> 0xFFF59E0B
+                            3 -> 0xFF8B5CF6
+                            else -> 0xFF3B82F6
+                        }
+                    )
                 }
-            )
+                "parabola" -> {
+                    val newVx = -parent.vx + (Random.nextFloat() * 0.6f - 0.3f)
+                    val newVy = -parent.vy * 0.8f + (Random.nextFloat() * 0.6f - 0.3f)
+                    SimSphere(
+                        x = parent.x,
+                        y = parent.y,
+                        vx = if (newVx == 0f) 0.5f else newVx,
+                        vy = if (newVy == 0f) -1.2f else newVy,
+                        color = when (Random.nextInt(5)) {
+                            0 -> 0xFFEF4444
+                            1 -> 0xFF10B981
+                            2 -> 0xFFF59E0B
+                            3 -> 0xFF8B5CF6
+                            else -> 0xFF3B82F6
+                        }
+                    )
+                }
+                else -> {
+                    val newVx = -parent.vx + (Random.nextFloat() * 0.4f - 0.2f)
+                    val newVy = -parent.vy + (Random.nextFloat() * 0.4f - 0.2f)
+                    SimSphere(
+                        x = parent.x,
+                        y = parent.y,
+                        vx = if (newVx == 0f) 0.6f else newVx,
+                        vy = if (newVy == 0f) -0.6f else newVy,
+                        color = when (Random.nextInt(5)) {
+                            0 -> 0xFFEF4444
+                            1 -> 0xFF10B981
+                            2 -> 0xFFF59E0B
+                            3 -> 0xFF8B5CF6
+                            else -> 0xFF3B82F6
+                        }
+                    )
+                }
+            }
         }
         _sphereList.value = currentSpheres + duplicates
     }
@@ -7369,6 +7793,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 _fpsZombies.value = zombieList
+            } else {
+                _fpsMisses.value += 1
+            }
+            return
+        }
+
+        // Special handling for CONTINUOUS mode!
+        if (_fpsGameMode.value == "continuous") {
+            val currentTargets = _fpsContinuousTargets.value.map { it.copy() }.toMutableList()
+            var hitTarget: FpsContinuousTarget? = null
+            
+            for (target in currentTargets) {
+                val dist = kotlin.math.sqrt(
+                    ((relativeX - target.x) * (relativeX - target.x)) + 
+                    ((relativeY - target.y) * (relativeY - target.y))
+                )
+                if (dist < target.radius) {
+                    hitTarget = target
+                    break
+                }
+            }
+            
+            val isTargetHit = hitTarget != null
+            val newHole = FpsBulletHole(x = tapX, y = tapY, isHit = isTargetHit)
+            _fpsBulletHoles.value = _fpsBulletHoles.value + newHole
+            
+            if (isTargetHit && hitTarget != null) {
+                currentTargets.remove(hitTarget)
+                
+                val speed = 0.006f + Random.nextFloat() * 0.008f
+                val angle = Random.nextFloat() * 2f * kotlin.math.PI.toFloat()
+                val newTarget = FpsContinuousTarget(
+                    x = Random.nextFloat() * 0.6f + 0.2f,
+                    y = Random.nextFloat() * 0.6f + 0.2f,
+                    vx = speed * kotlin.math.cos(angle),
+                    vy = speed * kotlin.math.sin(angle),
+                    radius = 0.04f + Random.nextFloat() * 0.03f,
+                    color = when (Random.nextInt(4)) {
+                        0 -> 0xFFEF4444 // Red
+                        1 -> 0xFF3B82F6 // Blue
+                        2 -> 0xFF10B981 // Green
+                        else -> 0xFFF59E0B // Orange
+                    }
+                )
+                currentTargets.add(newTarget)
+                _fpsContinuousTargets.value = currentTargets
+                
+                _fpsHits.value += 1
+                SoundManager.playSound("hit")
+                _reflexMessage.value = "💥 TRÚNG MỤC TIÊU! (+1)"
+                _reflexTimerText.value = "Tiêu diệt: ${_fpsHits.value} | Không giới hạn thời gian!"
             } else {
                 _fpsMisses.value += 1
             }

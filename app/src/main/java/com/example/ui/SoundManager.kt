@@ -33,18 +33,26 @@ object SoundManager {
 
     private fun playPistolSound() {
         val sampleRate = 22050
-        val duration = 0.12f
+        val duration = 0.15f
         val numSamples = (sampleRate * duration).toInt()
         val buffer = ShortArray(numSamples)
         
         for (i in 0 until numSamples) {
             val t = i.toFloat() / sampleRate
-            val freq = 550f * (1f - t / duration) + 90f
-            val angle = 2.0 * Math.PI * freq * t
-            val wave = sin(angle)
+            val fSweep = 850f * kotlin.math.exp(-35f * t) + 120f
+            val angle = 2.0 * Math.PI * fSweep * t
+            val sineWave = sin(angle)
+            
             val noise = Random.nextFloat() * 2f - 1f
-            val env = (1.0f - t / duration) * (1.0f - t / duration)
-            val sample = (wave * 0.35f + noise * 0.65f) * env * 32767
+            
+            // Fast decay exponential envelopes
+            val clickEnv = kotlin.math.exp(-120f * t)
+            val bodyEnv = kotlin.math.exp(-18f * t)
+            
+            val click = clickEnv * sin(2.0 * Math.PI * 1800f * t)
+            val mainShot = (sineWave * 0.45f + noise * 0.55f) * bodyEnv
+            
+            val sample = (click * 0.4f + mainShot * 0.8f) * 32767
             buffer[i] = sample.toInt().coerceIn(-32768, 32767).toShort()
         }
         playBuffer(buffer, sampleRate)
@@ -52,18 +60,26 @@ object SoundManager {
 
     private fun playAK47Sound() {
         val sampleRate = 22050
-        val duration = 0.18f
+        val duration = 0.22f
         val numSamples = (sampleRate * duration).toInt()
         val buffer = ShortArray(numSamples)
         
         for (i in 0 until numSamples) {
             val t = i.toFloat() / sampleRate
-            val freq = 380f * (1f - t / duration) + 60f
-            val angle = 2.0 * Math.PI * freq * t
-            val wave = if (sin(angle) > 0) 1f else -1f
+            val thumpSweep = 450f * kotlin.math.exp(-22f * t) + 70f
+            val angle = 2.0 * Math.PI * thumpSweep * t
+            val sineWave = sin(angle)
+            
+            // Metallic ring
+            val metalRing = sin(2.0 * Math.PI * 980f * t) * kotlin.math.exp(-60f * t) * 0.35f
+            
+            // Noise representing high-pressure powder combustion
             val noise = Random.nextFloat() * 2f - 1f
-            val env = (1.0f - t / duration)
-            val sample = (wave * 0.25f + noise * 0.75f) * env * 32767
+            val noiseEnv = kotlin.math.exp(-14f * t)
+            
+            val bodyEnv = kotlin.math.exp(-10f * t)
+            
+            val sample = (sineWave * 0.4f * bodyEnv + metalRing + noise * 0.55f * noiseEnv) * 32767
             buffer[i] = sample.toInt().coerceIn(-32768, 32767).toShort()
         }
         playBuffer(buffer, sampleRate)
@@ -71,18 +87,34 @@ object SoundManager {
 
     private fun playShotgunSound() {
         val sampleRate = 22050
-        val duration = 0.32f
+        val duration = 0.45f
         val numSamples = (sampleRate * duration).toInt()
         val buffer = ShortArray(numSamples)
         
         for (i in 0 until numSamples) {
             val t = i.toFloat() / sampleRate
-            val thumpFreq = 160f * (1f - t / duration) + 30f
+            
+            // Heavy bass thump
+            val thumpFreq = 180f * kotlin.math.exp(-15f * t) + 40f
             val thumpAngle = 2.0 * Math.PI * thumpFreq * t
-            val thump = sin(thumpAngle)
+            val thump = sin(thumpAngle) * kotlin.math.exp(-12f * t)
+            
+            // Blast explosion noise
             val noise = Random.nextFloat() * 2f - 1f
-            val env = (1.0f - t / duration) * (1.0f - t / duration)
-            val sample = (thump * 0.18f + noise * 0.82f) * env * 32767
+            val blastEnv = kotlin.math.exp(-6f * t)
+            
+            // Pump action reload click-clack at 0.28s and 0.36s
+            var pump = 0f
+            if (t > 0.28f && t < 0.34f) {
+                val pt = t - 0.28f
+                pump = (sin(2.0 * Math.PI * 1500f * pt) * kotlin.math.exp(-120f * pt) * 0.15f).toFloat()
+            }
+            if (t > 0.36f && t < 0.42f) {
+                val pt = t - 0.36f
+                pump += (sin(2.0 * Math.PI * 1200f * pt) * kotlin.math.exp(-120f * pt) * 0.15f).toFloat()
+            }
+            
+            val sample = (thump * 0.4f + noise * 0.6f * blastEnv + pump) * 32767
             buffer[i] = sample.toInt().coerceIn(-32768, 32767).toShort()
         }
         playBuffer(buffer, sampleRate)
@@ -90,23 +122,26 @@ object SoundManager {
 
     private fun playSniperSound() {
         val sampleRate = 22050
-        val duration = 0.55f
+        val duration = 0.65f
         val numSamples = (sampleRate * duration).toInt()
         val buffer = ShortArray(numSamples)
         
         for (i in 0 until numSamples) {
             val t = i.toFloat() / sampleRate
-            val thumpFreq = 200f * (1f - t / 0.15f).coerceAtLeast(0f) + 40f
+            
+            // Supersonic snap (bullet shockwave)
+            val snap = sin(2.0 * Math.PI * 3800f * t) * kotlin.math.exp(-250f * t) * 0.3f
+            
+            // Thunderous sub-bass thump
+            val thumpFreq = 110f * kotlin.math.exp(-8f * t) + 25f
             val thumpAngle = 2.0 * Math.PI * thumpFreq * t
-            val thump = sin(thumpAngle)
+            val thump = sin(thumpAngle) * kotlin.math.exp(-5f * t)
+            
+            // Long echoing blast expansion noise
             val noise = Random.nextFloat() * 2f - 1f
+            val noiseEnv = kotlin.math.exp(-4f * t)
             
-            val echoFreq = 800f
-            val echoAngle = 2.0 * Math.PI * echoFreq * t
-            val echo = sin(echoAngle) * 0.12f * (1f - t / duration)
-            
-            val env = (1.0f - t / duration)
-            val sample = ((thump * 0.2f + noise * 0.6f) * (1f - t / 0.2f).coerceAtLeast(0f) + echo) * env * 32767
+            val sample = (snap + thump * 0.45f + noise * 0.5f * noiseEnv) * 32767
             buffer[i] = sample.toInt().coerceIn(-32768, 32767).toShort()
         }
         playBuffer(buffer, sampleRate)

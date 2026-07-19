@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -83,6 +84,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -139,6 +141,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
 
     var selectedSubTab by remember { mutableStateOf(0) }
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -860,6 +863,8 @@ fun SimulatorScreen(viewModel: MainViewModel) {
             val fpsBossState by viewModel.fpsBossState.collectAsState()
             val fpsWeapon by viewModel.fpsWeapon.collectAsState()
             val fpsZombies by viewModel.fpsZombies.collectAsState()
+            val fpsContinuousTargets by viewModel.fpsContinuousTargets.collectAsState()
+            val scoresList by viewModel.scores.collectAsState()
 
             val sphereList by viewModel.sphereList.collectAsState()
             val sphereFps by viewModel.sphereFps.collectAsState()
@@ -1000,15 +1005,56 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFF05050A))
                                     .border(1.5.dp, NeonCyan.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                                    .pointerInput(reflexState) {
+                                    .pointerInput(reflexState, fpsGameMode) {
                                         if (reflexState == "spawned" || reflexState == "delaying") {
-                                            detectTapGestures { offset ->
-                                                viewModel.handleFpsShot(
-                                                    tapX = offset.x,
-                                                    tapY = offset.y,
-                                                    boxWidth = size.width.toFloat(),
-                                                    boxHeight = size.height.toFloat()
-                                                )
+                                            if (fpsGameMode == "continuous") {
+                                                awaitPointerEventScope {
+                                                    while (true) {
+                                                        val down = awaitFirstDown()
+                                                        var currentPosition = down.position
+                                                        
+                                                        val fireJob = coroutineScope.launch {
+                                                            while (true) {
+                                                                viewModel.handleFpsShot(
+                                                                    tapX = currentPosition.x,
+                                                                    tapY = currentPosition.y,
+                                                                    boxWidth = size.width.toFloat(),
+                                                                    boxHeight = size.height.toFloat()
+                                                                )
+                                                                val delayMs = when (viewModel.fpsWeapon.value) {
+                                                                    "ak47" -> 120L
+                                                                    "pistol" -> 250L
+                                                                    "shotgun" -> 600L
+                                                                    "sniper" -> 1000L
+                                                                    else -> 150L
+                                                                }
+                                                                delay(delayMs)
+                                                            }
+                                                        }
+                                                        
+                                                        while (true) {
+                                                            val event = awaitPointerEvent()
+                                                            val anyPressed = event.changes.any { it.pressed }
+                                                            if (!anyPressed) {
+                                                                fireJob.cancel()
+                                                                break
+                                                            }
+                                                            val change = event.changes.firstOrNull { it.pressed }
+                                                            if (change != null) {
+                                                                currentPosition = change.position
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                detectTapGestures { offset ->
+                                                    viewModel.handleFpsShot(
+                                                        tapX = offset.x,
+                                                        tapY = offset.y,
+                                                        boxWidth = size.width.toFloat(),
+                                                        boxHeight = size.height.toFloat()
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -1023,6 +1069,41 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize().alpha(0.55f)
                                 )
+
+                                // Continuous Fire Mode HUD in Dialog
+                                if (fpsGameMode == "continuous" && (reflexState == "spawned" || reflexState == "delaying")) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.95f)
+                                            .align(Alignment.TopCenter)
+                                            .padding(8.dp)
+                                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(8.dp))
+                                            .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Text("🔥 TIÊU DIỆT:", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("$fpsHits Bia", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                                        }
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color.Red.copy(alpha = 0.8f))
+                                                .clickable { viewModel.finishContinuousGame() }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "KẾT THÚC & LƯU ĐIỂM",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                }
 
                                 // Draw Decorative futuristic grid inside dialog range
                                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1257,6 +1338,44 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                                                 .offset(y = 10.dp)
                                                                 .background(Color(0xFF6B21A8), RoundedCornerShape(3.dp))
                                                                 .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        } else if (fpsGameMode == "continuous") {
+                                            // Render all active continuous targets
+                                            fpsContinuousTargets.forEach { target ->
+                                                val targetSize = 40.dp * (target.radius / 0.05f)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .offset(
+                                                            x = boxWidthDp * target.x - (targetSize / 2),
+                                                            y = boxHeightDp * target.y - (targetSize / 2)
+                                                        )
+                                                        .size(targetSize),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                                        val r = size.minDimension / 2f
+                                                        // Draw outer glowing neon ring
+                                                        drawCircle(
+                                                            color = Color(target.color).copy(alpha = 0.3f),
+                                                            radius = r * 1.3f
+                                                        )
+                                                        // Draw target body
+                                                        drawCircle(
+                                                            color = Color(target.color),
+                                                            radius = r
+                                                        )
+                                                        // Draw concentric target rings for coolness
+                                                        drawCircle(
+                                                            color = Color.White.copy(alpha = 0.6f),
+                                                            radius = r * 0.7f,
+                                                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                                                        )
+                                                        drawCircle(
+                                                            color = Color.White,
+                                                            radius = r * 0.3f
                                                         )
                                                     }
                                                 }
@@ -1843,6 +1962,9 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                             Text(text = t("fps_report_linh_chi_assessment"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NeonPink)
                                             Text(text = getLocalizedText(report.linhChiEvaluation), fontSize = 11.sp, color = ElegantTextPrimary)
                                         }
+                                        
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        FpsLeaderboardView(scores = scoresList)
                                     }
                                 }
                             }
@@ -1945,7 +2067,8 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                             "fast" to t("fps_mode_fast"),
                             "sniper" to t("fps_mode_sniper"),
                             "boss" to t("fps_mode_boss"),
-                            "zombie" to t("fps_mode_zombie")
+                            "zombie" to t("fps_mode_zombie"),
+                            "continuous" to t("fps_mode_continuous")
                         ).forEach { (modeKey, modeLabel) ->
                             val isSelected = fpsGameMode == modeKey
                             Box(
@@ -2146,15 +2269,56 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF0C0B14))
                         .border(1.dp, CardSpaceBorder, RoundedCornerShape(12.dp))
-                        .pointerInput(reflexState) {
+                        .pointerInput(reflexState, fpsGameMode) {
                             if (reflexState == "spawned" || reflexState == "delaying") {
-                                detectTapGestures { offset ->
-                                    viewModel.handleFpsShot(
-                                        tapX = offset.x,
-                                        tapY = offset.y,
-                                        boxWidth = size.width.toFloat(),
-                                        boxHeight = size.height.toFloat()
-                                    )
+                                if (fpsGameMode == "continuous") {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val down = awaitFirstDown()
+                                            var currentPosition = down.position
+                                            
+                                            val fireJob = coroutineScope.launch {
+                                                while (true) {
+                                                    viewModel.handleFpsShot(
+                                                        tapX = currentPosition.x,
+                                                        tapY = currentPosition.y,
+                                                        boxWidth = size.width.toFloat(),
+                                                        boxHeight = size.height.toFloat()
+                                                    )
+                                                    val delayMs = when (viewModel.fpsWeapon.value) {
+                                                        "ak47" -> 120L
+                                                        "pistol" -> 250L
+                                                        "shotgun" -> 600L
+                                                        "sniper" -> 1000L
+                                                        else -> 150L
+                                                    }
+                                                    delay(delayMs)
+                                                }
+                                            }
+                                            
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                val anyPressed = event.changes.any { it.pressed }
+                                                if (!anyPressed) {
+                                                    fireJob.cancel()
+                                                    break
+                                                }
+                                                val change = event.changes.firstOrNull { it.pressed }
+                                                if (change != null) {
+                                                    currentPosition = change.position
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    detectTapGestures { offset ->
+                                        viewModel.handleFpsShot(
+                                            tapX = offset.x,
+                                            tapY = offset.y,
+                                            boxWidth = size.width.toFloat(),
+                                            boxHeight = size.height.toFloat()
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -2169,6 +2333,41 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().alpha(0.5f)
                     )
+
+                    // Continuous Fire Mode HUD
+                    if (fpsGameMode == "continuous" && (reflexState == "spawned" || reflexState == "delaying")) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(0.95f)
+                                .align(Alignment.TopCenter)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(8.dp))
+                                .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("🔥 TIÊU DIỆT:", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("$fpsHits Bia", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color.Red.copy(alpha = 0.8f))
+                                    .clickable { viewModel.finishContinuousGame() }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "KẾT THÚC & LƯU ĐIỂM",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
 
                     // Boss Battle Health HUD
                     if (fpsGameMode == "boss" && (reflexState == "spawned" || reflexState == "delaying")) {
@@ -2570,6 +2769,44 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                                     .offset(y = 12.dp)
                                                     .background(Color(0xFF7E22CE), RoundedCornerShape(3.dp))
                                                     .padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (fpsGameMode == "continuous") {
+                                // Render all active continuous targets in inline view
+                                fpsContinuousTargets.forEach { target ->
+                                    val targetSize = 40.dp * (target.radius / 0.05f)
+                                    Box(
+                                        modifier = Modifier
+                                            .offset(
+                                                x = boxWidthDp * target.x - (targetSize / 2),
+                                                y = boxHeightDp * target.y - (targetSize / 2)
+                                            )
+                                            .size(targetSize),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            val r = size.minDimension / 2f
+                                            // Draw outer glowing neon ring
+                                            drawCircle(
+                                                color = Color(target.color).copy(alpha = 0.3f),
+                                                radius = r * 1.3f
+                                            )
+                                            // Draw target body
+                                            drawCircle(
+                                                color = Color(target.color),
+                                                radius = r
+                                            )
+                                            // Draw concentric target rings for coolness
+                                            drawCircle(
+                                                color = Color.White.copy(alpha = 0.6f),
+                                                radius = r * 0.7f,
+                                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                                            )
+                                            drawCircle(
+                                                color = Color.White,
+                                                radius = r * 0.3f
                                             )
                                         }
                                     }
@@ -3253,6 +3490,9 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     }
                                 }
                             }
+                            
+                            Spacer(modifier = Modifier.height(10.dp))
+                            FpsLeaderboardView(scores = scoresList)
                         }
                     }
                 }
@@ -3430,6 +3670,8 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                 val sphereFps by viewModel.sphereFps.collectAsState()
                 val sphereGameState by viewModel.sphereGameState.collectAsState()
                 val sphereCount by viewModel.sphereCount.collectAsState()
+                val spherePlayMode by viewModel.spherePlayMode.collectAsState()
+                val sphereMathFormula by viewModel.sphereMathFormula.collectAsState()
 
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -3453,7 +3695,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 t("sphere_sim_desc"),
                                 fontSize = 11.sp,
                                 color = Color.Gray
-                            )
+                             )
                         }
 
                         // FPS Meter / Count Badge
@@ -3489,6 +3731,112 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     fontWeight = FontWeight.Bold,
                                     color = NeonCyan
                                 )
+                            }
+                        }
+                    }
+
+                    // Mode & Formula Selectors
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Chế độ:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.LightGray
+                            )
+                            listOf(
+                                "classic" to "🔮 Cổ Điển",
+                                "parabola" to "📐 Parabol",
+                                "math" to "🧮 Toán Học"
+                            ).forEach { (modeKey, modeName) ->
+                                val isSelected = spherePlayMode == modeKey
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) NeonCyan.copy(alpha = 0.25f) else Color(0xFF1E1D31))
+                                        .border(1.dp, if (isSelected) NeonCyan else Color.DarkGray, RoundedCornerShape(8.dp))
+                                        .clickable { viewModel.setSpherePlayMode(modeKey) }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = modeName,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) NeonCyan else Color.White
+                                    )
+                                }
+                            }
+                        }
+
+                        if (spherePlayMode == "math") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Công thức:",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.LightGray
+                                )
+                                listOf(
+                                    "lemniscate" to "♾️ Vô Cực",
+                                    "heart" to "💖 Trái Tim",
+                                    "rose" to "🌸 Hoa Hồng",
+                                    "lissajous" to "🌀 Lissajous",
+                                    "butterfly" to "🦋 Cánh Bướm"
+                                ).forEach { (formKey, formName) ->
+                                    val isSelected = sphereMathFormula == formKey
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) ElegantGold.copy(alpha = 0.25f) else Color(0xFF1E1D31))
+                                            .border(1.dp, if (isSelected) ElegantGold else Color.DarkGray, RoundedCornerShape(8.dp))
+                                            .clickable { viewModel.setSphereMathFormula(formKey) }
+                                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = formName,
+                                             fontSize = 9.sp,
+                                             fontWeight = FontWeight.Bold,
+                                             color = if (isSelected) ElegantGold else Color.White
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (sphereMathFormula == "butterfly") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(ElegantGold.copy(alpha = 0.12f))
+                                        .border(1.dp, ElegantGold.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                                        .padding(8.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            text = "🦋 HIỆU ỨNG CÁNH BƯỚM (CHAOS THEORY)",
+                                            color = ElegantGold,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Chạm nhân đôi bóng! Hai quả cầu ban đầu đè sát lên nhau vì độ sai lệch xuất phát cực kì nhỏ (0.002). Nhờ tính bất định phi tuyến, chúng sẽ tự tách rời và bay theo những quỹ đạo cánh bướm hoàn toàn khác biệt!",
+                                            color = Color.LightGray,
+                                            fontSize = 9.sp,
+                                            lineHeight = 12.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -8391,3 +8739,145 @@ fun SkillItem(index: Int, name: String, desc: String, color: Color) {
         }
     }
 }
+
+@Composable
+fun FpsLeaderboardView(scores: List<com.example.data.ReflexScore>) {
+    val fpsScores = remember(scores) {
+        scores.filter { score ->
+            score.gameName.contains("FPS", ignoreCase = true) || score.result.startsWith("FPS|")
+        }.sortedWith(
+            compareByDescending<com.example.data.ReflexScore> { it.targetsHit }
+                .thenBy { it.responseTimeMs }
+        ).take(5)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("fps_leaderboard_card"),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF141322)),
+        border = BorderStroke(1.dp, ElegantGold.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Speed,
+                    contentDescription = "Leaderboard Icon",
+                    tint = ElegantGold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "🏆 BẢNG VÀNG CAO THỦ (TOP 5 FPS)",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    color = ElegantGold
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(ElegantGold.copy(alpha = 0.2f))
+            )
+
+            if (fpsScores.isEmpty()) {
+                Text(
+                    text = "Chưa có kỷ lục nào được ghi nhận. Hãy bắn thật chuẩn để lọt top nhé!",
+                    fontSize = 11.sp,
+                    color = Color.Gray,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    fpsScores.forEachIndexed { index, score ->
+                        val medal = when (index) {
+                            0 -> "🥇"
+                            1 -> "🥈"
+                            2 -> "🥉"
+                            else -> "🎖️"
+                        }
+                        
+                        val rowBg = when (index) {
+                            0 -> ElegantGold.copy(alpha = 0.08f)
+                            else -> Color(0xFF1E1D31)
+                        }
+
+                        val borderAlpha = when (index) {
+                            0 -> 0.4f
+                            else -> 0.15f
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(rowBg, RoundedCornerShape(6.dp))
+                                .border(0.5.dp, ElegantGold.copy(alpha = borderAlpha), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = medal,
+                                    fontSize = 14.sp
+                                )
+                                Column {
+                                    val displayName = score.gameName.replace("FPS 2D - ", "")
+                                    Text(
+                                        text = displayName,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = android.text.format.DateFormat.format("dd/MM HH:mm", score.timestamp).toString(),
+                                        fontSize = 8.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "Tiêu diệt: ${score.targetsHit}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = NeonCyan
+                                    )
+                                    Text(
+                                        text = "Phản hồi: ${score.responseTimeMs}ms",
+                                        fontSize = 9.sp,
+                                        color = NeonPink
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
