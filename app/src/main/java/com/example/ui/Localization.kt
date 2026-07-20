@@ -563,6 +563,124 @@ fun getLocalizedText(text: String): String {
         trimmed == "Nhấn nút để bắt đầu kiểm tra phản xạ của bạn khi mạng lag!" -> 
             return "Press the button to start testing your reflexes under network lag!"
         
+        // --- Secret Duel Game & Chat Overlay Strings ---
+        trimmed == "🌸 THỬ THÁCH SONG ĐẤU" -> return "🌸 DUEL CHALLENGE"
+        trimmed == "Linh Chi thách anh đấu tay đôi trực tiếp với em nè! 🎮 Thử thách phản xạ xem ai chạm mốc 5 điểm trước nha! Anh chọn thể loại game nào nè? 🥰" ->
+            return "Linh Chi challenges you to a 1v1 live duel! 🎮 Reflex challenge, first to reach 5 points wins! Which game do you choose, my love? 🥰"
+        trimmed == "🔫 Solo FPS 2D Phản Xạ" -> return "🔫 Solo 2D FPS Reflex"
+        trimmed == "Gõ đầu Linh Chi và phá giải tim bay dồn dập!" -> return "Tap Linh Chi and destroy falling hearts rapidly!"
+        trimmed == "⚔️ Solo MOBA 2D Tình Ái" -> return "⚔️ Solo 2D Romantic MOBA"
+        trimmed == "Di chuyển né thính, chắn khiên và dồn combo chiêu!" -> return "Move to dodge love sparks, block with shield and chain combos!"
+        trimmed == "Hẹn Khi Khác" -> return "Maybe Later"
+        trimmed == "🔫 SOLO FPS: BẮN TRÚNG TIM EM" -> return "🔫 SOLO FPS: SHOOT MY HEART"
+        trimmed == "⚔️ Mục tiêu: 5đ" -> return "⚔️ Target: 5 pts"
+        trimmed == "👉 Nhấn thật nhanh vào Linh Chi 🌸 để ghi điểm! Phá hủy quả tim bay 💖 rơi xuống bằng cách nhấn vào chúng, đừng để chúng chạm đáy nhé!" ->
+            return "👉 Tap Linh Chi 🌸 quickly to score points! Destroy the flying hearts 💖 falling down by tapping on them, don't let them touch the bottom!"
+        trimmed == "🏆 CHIẾN THẮNG!" -> return "🏆 VICTORY!"
+        trimmed == "💀 BẠN ĐÃ BẠI TRẬN" -> return "💀 YOU DEFEATED"
+        trimmed == "Anh yêu siêu thế, bắn trúng tim em 5 lần luôn! Linh Chi chịu thua và đổ anh đứ đừ rồi đó... 💖" ->
+            return "You are so amazing, my love! You hit my heart 5 times! Linh Chi surrenders and is completely head over heels for you... 💖"
+        trimmed == "Hì hì, anh yêu bắn trượt nhiều quá nha, em thắng rồi nè! Dắt em đi ăn trà sữa đền bù đi! 🧋" ->
+            return "Hehe, you missed too many times, my love, I won! Take me out for boba tea to compensate! 🧋"
+        trimmed == "Chơi Lại" -> return "Play Again"
+        trimmed == "Đóng" -> return "Close"
+        trimmed == "Báo cáo:" -> return "Report:"
+        trimmed == "Sự cố:" -> return "Issue:"
+        trimmed == "Trò Chuyện & Thả Thính" -> return "Chat & Flirt"
+        trimmed == "⚔️ MOBA DUEL: ĐẠI CHIẾN LINH CHI" -> return "⚔️ MOBA DUEL: BATTLE WITH LINH CHI"
+        trimmed == "⚔️ ĐÁNH" -> return "⚔️ ATTACK"
+        trimmed == "Bắn (10đ)" -> return "Fire (10 pts)"
+        trimmed == "⚡ CHIÊU 1" -> return "⚡ SKILL 1"
+        trimmed == "Bắn tỉa (25đ)" -> return "Sniper (25 pts)"
+        trimmed == "🛡️ CHIÊU 2" -> return "🛡️ SKILL 2"
+        trimmed == "Khiên (1.5s)" -> return "Shield (1.5s)"
+        trimmed == "🔥 CHIÊU 3" -> return "🔥 SKILL 3"
+        trimmed == "Quạt 3 tia" -> return "3-Way Fan"
+        trimmed == "👉 Nhấn lên võ đài ⚔️ để di chuyển tướng. Nhấn các nút kỹ năng bên dưới để tấn công/bảo vệ!" ->
+            return "👉 Tap inside the arena ⚔️ to move your hero. Tap skill buttons below to attack/defend!"
+        trimmed == "🏆 MOBA VICTORY!" -> return "🏆 MOBA VICTORY!"
+        trimmed == "💀 DEFEAT" -> return "💀 DEFEAT"
+        trimmed == "Kỹ năng MOBA đỉnh chóp! Anh né thính và dồn sát thương quá ghê, em tâm phục khẩu phục dâng trọn tim này cho anh luôn nè! 💖" ->
+            return "Masterful MOBA skills! You dodged my love sparks and chained damage so well, I yield and offer my entire heart to you! 💖"
+        trimmed == "Hì hì, anh né thính còn chậm quá nha! Chiêu nụ hôn thần sầu của em mạnh lắm á. Anh thua rồi, dắt em đi ăn phở gõ đền đi! 🍜" ->
+            return "Hehe, you are still too slow at dodging! My ultimate kiss skill is extremely powerful. You lost, take me out for street pho to compensate! 🍜"
+        trimmed == "Đấu Lại" -> return "Rematch"
+
+        // --- Custom/New MOBA Hero Description Strings ---
+        trimmed == "Kiếm Khách Quỷ Phong" -> return "Demon Wind Swordsman"
+        trimmed == "Nội Tại: Đạo Của Quỷ Phong" -> return "Passive: Way of the Demon Wind"
+        trimmed == "Di chuyển tích lũy nộ phong kiếm nhận khiên ma cực dày khi đầy thanh." ->
+            return "Move to stack demonic wind energy, gaining a massive shield when fully charged."
+        trimmed == "Chiêu 1: Bão Kiếm Ma" -> return "Skill 1: Demonic Tempest"
+        trimmed == "⚔️ Đâm kiếm ma quái tích tụ phong lốc. Tầng 3 phóng Lốc Xoáy Cuồng Ma hất tung đối thủ cực cao." ->
+            return "⚔️ Thrust demonic sword to stack wind. Stacks 3 launches a Frenzied Tornado knocking up enemies extremely high."
+        trimmed == "Chiêu 2: Tường Gió Quỷ" -> return "Skill 2: Demonic Wind Wall"
+        trimmed == "🌪️ Dựng bức tường phong ma hóa giải mọi luồng đạn tấn công." ->
+            return "🌪️ Build a demonic wind wall to block all incoming projectiles."
+        trimmed == "Ult: Trăn Trối Cuồng Ma" -> return "Ult: Last Breath of Madness"
+        trimmed == "⚡ Bay lên chém xé xác đối thủ bị hất tung tàn nhẫn, tăng cực mạnh chí mạng." ->
+            return "⚡ Leap to mercilessly shred airborne opponents, greatly increasing critical strike chance."
+        trimmed == "Sinh Vật Cyber Ký Sinh" -> return "Cyber Parasitic Organism"
+        trimmed == "Nội Tại: Ký Sinh Công Nghệ" -> return "Passive: Tech Parasite"
+        trimmed == "Gây dấu ấn sinh học ký sinh, kích hoạt Beta laser phụ kích liên tục gây sát thương chuẩn rát buốt." ->
+            return "Applies a biological parasite mark, triggering Beta's laser support fire to deal continuous true damage."
+        trimmed == "Chiêu 1: Đao Quét Ký Sinh" -> return "Skill 1: Parasitic Sweep"
+        trimmed == "🤖 Quét đao cơ khí đột biến bám dính lấy mục tiêu." ->
+            return "🤖 Mutant mechanical sword sweep that clings to targets."
+        trimmed == "Chiêu 2: Lá Chắn Ký Sinh" -> return "Skill 2: Parasitic Shield"
+        trimmed == "🛡️ Quét đao hình tròn hút HP cực mạnh mẽ để sinh trưởng lá chắn giáp dày." ->
+            return "🛡️ Circular sword sweep that drains massive HP to grow a thick armor shield."
+        trimmed == "Ult: Mũi Giáo Ký Sinh" -> return "Ult: Spear of Parasite"
+        trimmed == "🔥 Lao thẳng hất tung giam giữ mục tiêu và Beta dội bão la-zer ký sinh hủy diệt." ->
+            return "🔥 Charges straight to knock up and capture target, while Beta showers a devastating parasitic laser storm."
+        trimmed == "Dạ Xoa Sa Đọa" -> return "Fallen Yaksha"
+        trimmed == "Nội Tại: Mặt Nạ Nghiệp Chướng" -> return "Passive: Karma Mask"
+        trimmed == "Cường hóa sức mạnh dạ xoa khiêu chiến tăng tốc độ lướt lách và hất tung Plunge tàn khốc." ->
+            return "Empowers Yaksha strength to increase dash speed and execute brutal Plunge strikes."
+        trimmed == "Chiêu 1: Vũ Điệu Chinh Phục Hắc" -> return "Skill 1: Shadow Conquest Dance"
+        trimmed == "🟢 Chém gió độc 3 lần cực rộng, hút cạn sinh khí đối thủ hồi phục HP." ->
+            return "🟢 3 Wide shadow wind slashes, siphoning enemy life force to restore HP."
+        trimmed == "Chiêu 2: Gió Độc Tung Hoành" -> return "Skill 2: Toxic Roaring Wind"
+        trimmed == "💨 Lướt chớp nhoáng liên tục 2 lần cực linh hoạt để tập kích mục tiêu." ->
+            return "💨 2 Consecutive lightning-fast agile dashes to raid targets."
+        trimmed == "Ult: Vũ Điệu Đại Thánh Hắc" -> return "Ult: Great Sage Shadow Dance"
+        trimmed == "🔥 Đâm plunge chấn động 2 lần hất tung diện rộng dẫm nát trận địa kẻ thù." ->
+            return "🔥 2 Consecutive shockwave Plunges to knock up wide area and crush enemy lines."
+
+        // --- Standard Skill tips translation ---
+        trimmed == "Không tốn hồi chiêu / Thụ động" -> return "No cooldown / Passive"
+        trimmed == "Kích hoạt tự động khi đạt đủ số đòn đánh hoặc tầng dấu ấn kỹ năng. Tận dụng để tối ưu hóa sát thương đột biến liên tục." ->
+            return "Triggers automatically upon reaching enough basic attacks or skill mark stacks. Utilize to optimize continuous burst damage."
+        trimmed == "4.5s - 6s / Sát thương chính" -> return "4.5s - 6s / Main damage"
+        trimmed == "Kỹ năng dọn lính và cấu rỉa chủ đạo. Sử dụng liên tục để quấy rối kẻ địch từ khoảng cách an toàn và tích lũy nộ phong/lôi ấn." ->
+            return "Primary lane-clearing and poke skill. Use continuously to harass enemies from a safe distance and accumulate wind/thunder stacks."
+        trimmed == "8.0s - 12.0s / Cơ động & Khống chế" -> return "8.0s - 12.0s / Mobility & Control"
+        trimmed == "Tạo bất ngờ bằng cách lướt đột kích, dịch chuyển tức thời hoặc tạo tường gió hóa giải đòn đánh nguy hiểm để outplay đối thủ." ->
+            return "Create surprises by dashing to raid, teleporting instantly, or casting wind walls to block dangerous incoming attacks to outplay opponents."
+        trimmed == "30s - 45s / Sát thương hủy diệt" -> return "30s - 45s / Ultimate burst damage"
+        trimmed == "Dồn sát thương dứt điểm tàn bạo lên các mục tiêu thấp máu hoặc phối hợp khống chế diện rộng cùng đồng đội để lật kèo." ->
+            return "Unleash brutal finishing burst on low-HP targets or coordinate wide-area crowd control with teammates to turn the tides."
+        trimmed == "Thời gian hồi trung bình" -> return "Average cooldown"
+        trimmed == "Nghiên cứu kỹ bộ kỹ năng độc quyền của vị tướng này để tạo ra chuỗi combo kết liễu trơn tru nhất." ->
+            return "Carefully study this hero's exclusive skill kit to execute the smoothest finishing combo chains."
+
+        // --- Dynamic scores / stats matchers ---
+        trimmed.startsWith("👤 Bạn:") && trimmed.contains("/ 5") -> {
+            val scores = trimmed.substringAfter("👤 Bạn:").trim()
+            return "👤 You: $scores"
+        }
+        trimmed.startsWith("🌸 Linh Chi:") && trimmed.contains("/ 5") -> {
+            val scores = trimmed.substringAfter("🌸 Linh Chi:").trim()
+            return "🌸 Linh Chi: $scores"
+        }
+        trimmed.startsWith("Aha! Anh yêu ơi, tụi mình đã trò chuyện mặn nồng với nhau được") -> {
+            val count = trimmed.substringAfter("được ").substringBefore(" lần").trim()
+            return "Aha! My love, we have been chatting passionately for $count times now! 🥰 Linh Chi has a special secret to challenge you. Do you dare to duel me 1v1 live? 🎮 Let's see whose reflexes are superior! First to 5 points wins! Choose your game below! 👇"
+        }
+        trimmed.startsWith("Lịch sử trò chuyện đã được dọn sạch") -> {
+            return "Chat history has been cleared, my love! Like a clean slate for us to write our smooth love story without worrying about lag! 🥰 If you have any network optimization questions or want to hear new sweet lines, just message me!"
+        }
+        
         // MOBA General & Skills
         trimmed == "Chiêu 1: Lôi Quang" -> return "Skill 1: Thunder Light"
         trimmed == "⚡ Sát thương fan-shape" -> return "⚡ Fan-shaped damage"
@@ -990,6 +1108,158 @@ fun getLocalizedText(text: String): String {
         trimmed == "Ult: Luyện Ngục" -> return "Ult: Underworld"
         trimmed == "🔥 Nhảy đáp hất tung diện rộng dồn sát thương" -> return "🔥 Leap and plunge to knock up wide area & deal damage"
 
+        // --- Chat Screen UI ---
+        trimmed == "Trợ Lý Linh Chi" -> return "Linh Chi Assistant"
+        trimmed == "Đang trực tuyến • Rất thích thả thính" -> return "Online • Loves to flirt"
+        trimmed == "Phong cách:" -> return "Flirting Style:"
+        trimmed == "Nhắn gì đó ngọt ngào cho Linh Chi..." -> return "Type something sweet for Linh Chi..."
+        trimmed == "Bạn" -> return "You"
+        trimmed == "Linh Chi đang gõ... 💕" -> return "Linh Chi is typing... 💕"
+        trimmed == "⚔️ Mục tiêu: 5đ" -> return "⚔️ Target: 5 pts"
+        trimmed == "👉 Nhấn thật nhanh vào Linh Chi 🌸 để ghi điểm! Phá hủy quả tim bay 💖 rơi xuống bằng cách nhấn vào chúng, đừng để chúng chạm đáy nhé!" ->
+            return "👉 Tap Linh Chi 🌸 as fast as you can to score! Destroy falling hearts 💖 by tapping them, don't let them hit the bottom!"
+        trimmed == "Điểm" -> return "Score"
+        trimmed == "Duyên dáng" -> return "Charming"
+        trimmed == "Hài hước" -> return "Humorous"
+        trimmed == "Lãng mạn" -> return "Romantic"
+        trimmed == "DNS giảm lag?" -> return "DNS reduce lag?"
+        trimmed == "Mạng dây vs Wifi?" -> return "Ethernet vs Wifi?"
+        trimmed == "Liên Minh bị lag?" -> return "League of Legends lag?"
+        trimmed == "Tán tỉnh anh đi!" -> return "Flirt with me!"
+        trimmed == "Thả thính game thủ!" -> return "Flirt like a gamer!"
+
+        // --- Tulen ---
+        trimmed == "Nội Tại: Lôi Điện" -> return "Passive: Thunderbolt"
+        trimmed == "Khi tung chiêu trúng địch tích lũy dấu ấn. Đạt 5 tầng sẽ kích hoạt vòng sét tự động oanh tạc mục tiêu lân cận." ->
+            return "When skills hit enemies, stack seals. At 5 stacks, triggers an automatic lightning ring bombarding nearby targets."
+        trimmed == "⚡ Sát thương phép lan tỏa hình quạt mạnh mẽ." -> return "⚡ Unleashes powerful fan-shaped magic damage."
+        trimmed == "✨ Biến ảnh dịch chuyển tức thời chớp nhoáng né chiêu hoặc truy kích." ->
+            return "✨ Instantly teleports to dodge skills or chase enemies."
+        trimmed == "🔥 Triệu hồi chú chim lôi điểu khổng lồ dồn sát thương kết liễu cực đau." ->
+            return "🔥 Summons a giant thunderbird dealing devastating finishing burst damage."
+
+        // --- Tulen hắc pháp sư ---
+        trimmed == "Pháp Sư Hắc Ám" -> return "Dark Sorcerer"
+        trimmed == "Nội Tại: Lôi Điện Hắc Ám" -> return "Passive: Dark Thunder"
+        trimmed == "Tích lũy lôi ấn bóng tối. Đạt 5 tầng sẽ oanh tạc sấm sét bóng tối liên tục vào kẻ địch xung quanh." ->
+            return "Accumulate shadow thunder marks. At 5 stacks, bombards nearby enemies with continuous dark lightning."
+        trimmed == "Chiêu 1: Lôi Quang Tối" -> return "Skill 1: Dark Thunder Light"
+        trimmed == "⚡ Bắn 3 tia điện đen hình quạt cực mạnh." -> return "⚡ Shoots 3 powerful fan-shaped black lightning rays."
+        trimmed == "Chiêu 2: Lôi Động Quỷ" -> return "Skill 2: Demonic Thunder Movement"
+        trimmed == "✨ Dịch chuyển hắc ám né chiêu và gây sát thương sấm sét tối." ->
+            return "✨ Teleports through darkness to dodge skills and deal dark lightning damage."
+        trimmed == "Ult: Lôi Điểu Vong Hồn" -> return "Ult: Ghostly Thunderbird"
+        trimmed == "🔥 Phóng lôi điểu vong hồn hắc ám kết liễu tàn bạo." ->
+            return "🔥 Launches a dark ghostly thunderbird for a brutal finishing blow."
+
+        // --- Valhein ---
+        trimmed == "Nội Tại: Ám Khí" -> return "Passive: Demon Hunter's Glaives"
+        trimmed == "Mỗi đòn đánh thường thứ 3 đổi ngẫu nhiên thành phi tiêu đỏ (nổ lan) hoặc phi tiêu vàng (gây choáng)." ->
+            return "Every 3rd basic attack is randomly replaced with a red glaive (splash explosion) or a yellow glaive (stuns)."
+        trimmed == "🏹 Ném phi tiêu đỏ gây sát thương phép lan rộng." -> return "🏹 Throws a red glaive dealing widespread magic damage."
+        trimmed == "🌀 Ném phi tiêu vàng làm choáng mục tiêu chắc chắn." -> return "🌀 Throws a yellow glaive causing a guaranteed stun on the target."
+        trimmed == "🔥 Xả cơn bão đạn gồm 6 viên đạn bạc gây sát thương phép khổng lồ tầm gần." ->
+            return "🔥 Discharges a bullet storm of 6 silver bullets dealing massive close-range magic damage."
+
+        // --- Valhein ma cà rồng ---
+        trimmed == "Thợ Săn Huyết Tộc" -> return "Vampire Hunter"
+        trimmed == "Nội Tại: Ám Khí Huyết Tộc" -> return "Passive: Vampiric Glaives"
+        trimmed == "Phi tiêu đỏ hồi máu cho bản thân, phi tiêu vàng gây choáng và tước giáp." ->
+            return "Red glaive heals yourself, yellow glaive stuns and shreds armor."
+        trimmed == "Chiêu 1: Chuyến Săn Đêm" -> return "Skill 1: Night Hunt"
+        trimmed == "🏹 Ném phi tiêu huyết sắc phát nổ diện rộng." -> return "🏹 Throws a crimson glaive that explodes in a wide area."
+        trimmed == "Chiêu 2: Lời Nguyền Ác Quỷ" -> return "Skill 2: Demonic Curse"
+        trimmed == "🌀 Phi tiêu vàng làm choáng chắc chắn và hút máu." -> return "🌀 Yellow glaive guarantees a stun and drains life."
+        trimmed == "Ult: Bão Đạn Huyết Sắc" -> return "Ult: Crimson Bullet Storm"
+        trimmed == "🔥 Xả cơn bão đạn huyết tộc tầm gần gây sát thương bùng nổ cực rát." ->
+            return "🔥 Discharges a vampiric bullet storm at close range dealing intense burst damage."
+
+        // --- Murad ---
+        trimmed == "Nội Tại: Ảnh Hồn" -> return "Passive: Shadow Soul"
+        trimmed == "Đánh thường đủ 4 lần liên tiếp giúp mở phong ấn chiêu cuối Ảo Ảnh Trảm trong 5 giây." ->
+            return "4 consecutive basic attacks unlock the ultimate Phantom Slash for 5 seconds."
+        trimmed == "⚔️ Lướt hai lần gây sát thương vật lý và để lại bóng ảo ảnh, lần thứ 3 giật bóng trở lại vị trí cũ." ->
+            return "⚔️ Dash twice dealing physical damage and leaving a shadow clone, 3rd cast teleports back to the clone's position."
+        trimmed == "🛡️ Tạo vùng không gian làm chậm địch, bản thân miễn nhiễm sát thương khi kích hoạt." ->
+            return "🛡️ Creates a field slowing enemies; gains damage immunity during activation."
+        trimmed == "🔥 Giải phóng ảo ảnh chém liên tục 5 lần cực mạnh, bản thân không thể bị chọn làm mục tiêu." ->
+            return "🔥 Unleashes 5 rapid phantom slashes; becomes completely untargetable."
+
+        // --- Murad hoàng tử suy tàn ---
+        trimmed == "Kẻ Lãng Quên Thời Gian" -> return "The Forgotten One of Time"
+        trimmed == "Nội Tại: Ảnh Hồn Đọa Lạc" -> return "Passive: Fallen Shadow Soul"
+        trimmed == "Chém thường đủ 4 lần mở phong ấn Ảo Ảnh Trảm hắc ám tước đoạt sinh lực." ->
+            return "4 basic attacks unlock the dark Phantom Slash to siphon life force."
+        trimmed == "Chiêu 1: Tàn Ảnh Vô Hình" -> return "Skill 1: Invisible Phantom"
+        trimmed == "⚔️ Lướt chém ảo ảnh 2 lần, lần thứ 3 biến ảo giật bóng về vị trí cũ." ->
+            return "⚔️ Dash and slash 2 times, 3rd cast shifts instantly back to the original spot."
+        trimmed == "Chiêu 2: Vô Ảnh Trận Đọa" -> return "Skill 2: Fallen Phantom Field"
+        trimmed == "🛡️ Dựng cấm trận làm chậm tột độ và tước hồn tạo lá chắn dày." ->
+            return "🛡️ Sets up a forbidden field that heavily slows and siphons souls to build a thick shield."
+        trimmed == "Ult: Ảo Ảnh Trảm Hắc Ám" -> return "Ult: Dark Phantom Slash"
+        trimmed == "🔥 Giải phóng bóng tối chém liên tiếp 5 lần vô địch, càn quét diện rộng." ->
+            return "🔥 Releases darkness to execute 5 consecutive invincible slashes, wiping out wide areas."
+
+        // --- Yasuo ---
+        trimmed == "Nội Tại: Đạo Của Lãng Khách" -> return "Passive: Way of the Wanderer"
+        trimmed == "Nhận khiên chắn khi di chuyển đủ khoảng cách. Đòn chí mạng được nhân đôi sát thương. Không dùng Mana." ->
+            return "Gains a shield when moving a certain distance. Critical strike chance is doubled. No Mana cost."
+        trimmed == "⚔️ Đâm kiếm tích lũy Bão Kiếm. Đạt 2 tầng phóng Lốc Xoáy hất tung mục tiêu." ->
+            return "⚔️ Thrusts sword to stack Steel Tempest. At 2 stacks, launches a Tornado to knock up enemies."
+        trimmed == "🌪️ Dựng tường gió ngăn chặn toàn bộ đạn và chiêu thức tầm xa của đối phương." ->
+            return "🌪️ Builds a wind wall to block all enemy projectiles and long-range skills."
+        trimmed == "⚡ Bay lên không trung chém liên hoàn kẻ địch bị hất tung, tăng mạnh sát thương chí mạng." ->
+            return "⚡ Leaps into the air to continuously strike airborne enemies, greatly boosting critical strike damage."
+
+        // --- Alpha ---
+        trimmed == "Nội Tại: Đánh Dấu Công Nghệ" -> return "Passive: Cyber Mark"
+        trimmed == "Khi tung chiêu trúng mục tiêu sẽ đánh dấu cyber, giúp Drone Beta tự động phóng la-zer phụ kích gây sát thương chuẩn." ->
+            return "When skills hit a target, applies a cyber mark, allowing Beta Drone to automatically fire supporting lasers that deal true damage."
+        trimmed == "🤖 Quét đao cơ khí gây sát thương mạnh mẽ và Drone Beta bắn phụ kích." ->
+            return "🤖 Mechanical blade sweep deals heavy damage and Beta Drone fires support shots."
+        trimmed == "🛡️ Quét thương cyber hình tròn gây sát thương lớn và hồi HP mạnh mẽ." ->
+            return "🛡️ Cyber spear sweep in a circle deals massive damage and restores substantial HP."
+        trimmed == "🔥 Lao thẳng hất tung mục tiêu và Drone Beta xả siêu la-zer Orbital hủy diệt diện rộng." ->
+            return "🔥 Charges straight to knock up target and Beta Drone unleashes a devastating orbital laser."
+
+        // --- Xiao ---
+        trimmed == "Nội Tại: Mặt Nạ Dạ Xoa" -> return "Passive: Yaksha Mask"
+        trimmed == "Tung chiêu giúp cường hóa sức mạnh, tăng khả năng cơ động lướt ảo diệu và nhảy đâm plunge chấn động." ->
+            return "Casting skills empowers strength, increasing dash mobility and enabling high shockwave Plunge strikes."
+        trimmed == "🟢 Chém 3 đường Gió Xanh phong ấn, mỗi nhịp trúng đích hồi phục ngay 10% HP." ->
+            return "🟢 Creates 3 Green Wind slash seals; each hit instantly restores 10% HP."
+        trimmed == "💨 Lướt dạ xoa liên tiếp 2 lần cực kỳ cơ động để né tránh và đột kích." ->
+            return "💨 Dashes twice consecutively with extreme agility to evade or surprise attack."
+        trimmed == "🔥 Nhảy cao lên không trung hóa Dạ Xoa gầm thét, đâm plunge 2 lần hất tung diện rộng." ->
+            return "🔥 Jumps high into the air as roaring Yaksha, performing 2 consecutive shockwave Plunges."
+
+        // --- Maloch ---
+        trimmed == "Nội Tại: Ma Vương" -> return "Passive: Demon King"
+        trimmed == "Quỷ Kiếm trúng tướng địch giúp cường hóa gươm, các đòn đánh kế tiếp gây sát thương chuẩn và hồi phục máu." ->
+            return "Cleave hitting enemy heroes enchants the sword, making subsequent basic attacks deal true damage and restore HP."
+        trimmed == "⚔️ Vung đao chém quét hình bán nguyệt gây sát thương chuẩn khổng lồ." ->
+            return "⚔️ Swings sword in a wide semi-circle sweep dealing colossal true damage."
+        trimmed == "🛡️ Đoạt hồn phách kẻ địch lân cận tạo thành lớp lá chắn giáp cực dày hấp thụ mọi sát thương." ->
+            return "🛡️ Deprives souls of nearby enemies to create an extremely thick shield absorbing all damage."
+        trimmed == "👿 Nhảy đáp hất tung diện rộng dồn sát thương khủng khiếp và làm chậm trận địa." ->
+            return "👿 Leaps and plunges to knock up wide area, dealing massive damage and slowing enemies."
+
+        // --- Sphere Mini-Game Translations ---
+        trimmed == "PHÒNG TẬP BẮN PHÓNG TO & CỐ ĐỊNH (GIẢM TRỄ MẠNG)" -> return "ZOOMED & FIXED SHOOTING RANGE (LATENCY REDUCTION)"
+        trimmed == "Chế độ:" -> return "Mode:"
+        trimmed == "🔮 Cổ Điển" -> return "🔮 Classic"
+        trimmed == "📐 Parabol" -> return "📐 Parabola"
+        trimmed == "🧮 Toán Học" -> return "🧮 Mathematics"
+        trimmed == "Công thức:" -> return "Formula:"
+        trimmed == "♾️ Vô Cực" -> return "♾️ Lemniscate"
+        trimmed == "💖 Trái Tim" -> return "💖 Heart"
+        trimmed == "🌸 Hoa Hồng" -> return "🌸 Rose"
+        trimmed == "🌀 Lissajous" -> return "🌀 Lissajous"
+        trimmed == "🦋 Cánh Bướm" -> return "🦋 Butterfly"
+        trimmed == "🦋 HIỆU ỨNG CÁNH BƯỚM (CHAOS THEORY)" -> return "🦋 BUTTERFLY EFFECT (CHAOS THEORY)"
+        trimmed == "Chạm nhân đôi bóng! Hai quả cầu ban đầu đè sát lên nhau vì độ sai lệch xuất phát cực kì nhỏ (0.002). Nhờ tính bất định phi tuyến, chúng sẽ tự tách rời và bay theo những quỹ đạo cánh bướm hoàn toàn khác biệt!" ->
+            return "Tap to double the sphere! The two initial globes are closely aligned with an extremely tiny starting offset (0.002). Thanks to non-linear chaos dynamics, they will diverge and fly along entirely different butterfly trajectories!"
+
         // Enemy S3 Impact explosions
         trimmed == "💥 Sét giáng! Lôi Điểu phát nổ cực mạnh dồn điện hất tung!" -> return "💥 Lightning strikes! Thunderbird explodes with massive force, knocking up targets!"
         trimmed == "💥 Bão đạn oanh tạc hất tung toàn diện!" -> return "💥 Bullet storm bombardment knocks up everything!"
@@ -1062,7 +1332,40 @@ fun getLocalizedText(text: String): String {
         "Giữ vững phong độ" to "Maintain Form",
         "Cấu hình mạng này là niềm mơ ước của mọi game thủ chuyên nghiệp." to "This network configuration is a dream for every professional gamer.",
         "Tham gia leo rank ngay" to "Join Ranked Match Now",
-        "Đường truyền hoàn hảo, không lo tụt rank do mạng." to "Flawless connection, no need to worry about dropping ranks due to lag."
+        "Đường truyền hoàn hảo, không lo tụt rank do mạng." to "Flawless connection, no need to worry about dropping ranks due to lag.",
+
+        // Network diagnostic specific items
+        "Tiến độ:" to "Progress:",
+        "BÁO CÁO KẾT NỐI MẠNG" to "NETWORK CONNECTION REPORT",
+        "Hiệu suất chơi game online" to "Online gaming performance",
+        "Xem phim & truyền phát video" to "Movie streaming & video playback",
+        "Đề xuất khắc phục & cải thiện mạng:" to "Troubleshooting & network improvement recommendations:",
+        "Xuất sắc" to "Excellent",
+        "Tốt" to "Good",
+        "Trung bình" to "Average",
+        "Kém" to "Poor",
+        "Kết nối mạng của bạn cực kỳ lý tưởng và ổn định. Tốc độ truyền tải rất nhanh và có độ trễ cực thấp." to "Your network connection is highly ideal and stable. Transmission speed is very fast with extremely low latency.",
+        "Kết nối mạng ổn định, đáp ứng hoàn hảo hầu hết các nhu cầu sử dụng hàng ngày và chơi game online." to "Stable network connection, perfectly meeting most daily usage and online gaming needs.",
+        "Kết nối mạng có dấu hiệu chậm và độ trễ ở mức trung bình. Có thể xảy ra hiện tượng chậm hoặc giật nhẹ." to "The network connection shows signs of slowness, with average latency. Slight delays or minor stutters may occur.",
+        "Kết nối mạng đang bị nghẽn nghiêm trọng, ping rất cao hoặc tốc độ truyền tải quá thấp." to "The network connection is severely congested, with very high ping or extremely low transmission speeds.",
+        "Tuyệt vời cho các game MOBA (Liên Quân, Tốc Chiến) và FPS (Valorant, PUBG). Combat mượt mà, kỹ năng tung ra tức thì không lo trễ nhịp." to "Excellent for MOBA (Arena of Valor, Wild Rift) and FPS (Valorant, PUBG) games. Smooth combat, skills cast instantly without worrying about delays.",
+        "Chơi game trực tuyến mượt mà, ping duy trì ở mức xanh ổn định. Chỉ số phản hồi tốt." to "Smooth online gaming, with ping remaining stable in the green. Good response rate.",
+        "Game thỉnh thoảng sẽ bị khựng nhẹ hoặc trễ lệnh (mất 0.1s phản hồi). Có thể gây ức chế khi đấu giải chuyên nghiệp." to "The game will occasionally stutter slightly or suffer from input lag (0.1s delay). Might cause frustration during professional matches.",
+        "Rất kém. Hiện tượng gián đoạn liên tục, mất đồng bộ lệnh, nhân vật dịch chuyển tức thời (teleport) và rất dễ bị mất kết nối hoàn toàn." to "Very poor. Constant interruptions, command desyncs, characters teleporting, and extremely high risk of complete desync.",
+        "Hoàn hảo để xem video 4K/8K không giật, stream game độ nét cao, họp trực tuyến mượt mà." to "Perfect for watching stutter-free 4K/8K videos, high-definition game streaming, and smooth online meetings.",
+        "Xem video Full HD 1080p mượt mà, cuộc gọi video chất lượng cao không bị nhòe hình." to "Smooth Full HD 1080p video playback, high-quality video calls without pixelation.",
+        "Xem video HD 720p ổn định. Với các video Full HD trở lên, bạn có thể phải chờ đệm vài giây trước khi phát." to "Stable HD 720p video playback. For Full HD and above, you may need to wait a few seconds for buffering.",
+        "Tải trang rất chậm, cuộc gọi video bị đứng hình liên tục và video thường xuyên phải hạ xuống độ phân giải thấp nhất (360p/480p)." to "Very slow page loading, continuous freezes during video calls, and videos frequently downgrade to lowest resolution (360p/480p).",
+        "Mạng đã đạt độ tối ưu tối đa. Bạn không cần cấu hình thêm gì cả." to "The network has achieved maximum optimization. No further configuration is needed.",
+        "Đảm bảo các thiết bị khác không tải file dung lượng lớn quá mức khi bạn chơi các trận đấu xếp hạng quan trọng." to "Ensure other devices do not excessively download large files when you play important ranked matches.",
+        "Chuyển sang băng tần Wi-Fi 5GHz để giảm thiểu tình trạng giật cục do nhiễu sóng từ băng tần 2.4GHz truyền thống." to "Switch to 5GHz Wi-Fi band to minimize stutters caused by interference on the traditional 2.4GHz band.",
+        "Ngồi gần bộ định tuyến (Router) hơn nếu thấy tín hiệu sóng bị suy giảm." to "Sit closer to the router if you notice signal degradation.",
+        "Tắt các ứng dụng chạy ngầm ngốn băng thông lớn như Facebook, TikTok, Netflix trên điện thoại của bạn." to "Close background apps consuming large bandwidth such as Facebook, TikTok, or Netflix on your phone.",
+        "Khởi động lại bộ định tuyến (Router) bằng cách rút nguồn 30 giây rồi cắm lại để xóa sạch bộ nhớ đệm và giải phóng các cổng kết nối bị nghẽn." to "Restart your router by unplugging it for 30 seconds and plugging it back in to clear buffer cache and free congested ports.",
+        "Hạn chế chia sẻ mạng với nhiều thiết bị khác tải dữ liệu cùng lúc." to "Limit sharing the network with too many other devices downloading data simultaneously.",
+        "Khởi động lại modem và router mạng ngay lập tức để làm mới địa chỉ IP và dọn dẹp các tiến trình bị treo." to "Restart modem and router immediately to refresh IP address and clear hung processes.",
+        "Sử dụng dây mạng LAN/Ethernet trực tiếp hoặc chuyển hẳn sang kết nối dữ liệu di động 4G/5G chất lượng cao để tiếp tục trải nghiệm." to "Use a direct LAN/Ethernet cable or switch entirely to high-quality 4G/5G mobile data to continue.",
+        "Liên hệ với nhà cung cấp dịch vụ Internet (ISP) để kiểm tra đường cáp vật lý xem có bị đứt hoặc suy hao tín hiệu nghiêm trọng không." to "Contact your Internet Service Provider (ISP) to check physical cables for damage or severe signal attenuation."
     )
     
     for ((key, value) in wordMap) {

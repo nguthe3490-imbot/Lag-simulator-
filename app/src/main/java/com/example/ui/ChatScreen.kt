@@ -65,6 +65,16 @@ import com.example.ui.theme.CardSpaceBackground
 import com.example.ui.theme.CardSpaceBorder
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonPink
+import com.example.ui.theme.ElegantGold
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.geometry.Offset
 
 @Composable
 fun ChatScreen(viewModel: MainViewModel) {
@@ -74,6 +84,12 @@ fun ChatScreen(viewModel: MainViewModel) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
+    val showSecretGameSelector by viewModel.showSecretGameSelector.collectAsState()
+    val activeSecretGame by viewModel.activeSecretGame.collectAsState()
+    val secretGameStatus by viewModel.secretGameStatus.collectAsState()
+    val playerScore by viewModel.playerScore.collectAsState()
+    val linhChiScore by viewModel.linhChiScore.collectAsState()
+
     // Autoscroll to bottom when messages list size or typing state changes
     LaunchedEffect(messages.size, isTyping) {
         if (messages.isNotEmpty()) {
@@ -81,11 +97,12 @@ fun ChatScreen(viewModel: MainViewModel) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
         // --- Chat Header ---
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -136,7 +153,7 @@ fun ChatScreen(viewModel: MainViewModel) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Trợ Lý Linh Chi",
+                                text = getLocalizedText("Trợ Lý Linh Chi"),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -153,7 +170,7 @@ fun ChatScreen(viewModel: MainViewModel) {
                             )
                         }
                         Text(
-                            text = "Đang trực tuyến • Rất thích thả thính",
+                            text = getLocalizedText("Đang trực tuyến • Rất thích thả thính"),
                             fontSize = 11.sp,
                             color = NeonCyan,
                             fontWeight = FontWeight.Medium
@@ -185,7 +202,7 @@ fun ChatScreen(viewModel: MainViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Phong cách:",
+                text = getLocalizedText("Phong cách:"),
                 color = Color.LightGray,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
@@ -209,7 +226,7 @@ fun ChatScreen(viewModel: MainViewModel) {
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = styleName,
+                        text = getLocalizedText(styleName),
                         color = if (isSelected) Color.White else Color.LightGray,
                         fontSize = 11.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
@@ -262,7 +279,7 @@ fun ChatScreen(viewModel: MainViewModel) {
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    placeholder = { Text(text = "Nhắn gì đó ngọt ngào cho Linh Chi...", color = Color.Gray, fontSize = 14.sp) },
+                    placeholder = { Text(text = getLocalizedText("Nhắn gì đó ngọt ngào cho Linh Chi..."), color = Color.Gray, fontSize = 14.sp) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("chat_input_text_field"),
@@ -304,6 +321,18 @@ fun ChatScreen(viewModel: MainViewModel) {
             }
         }
     }
+
+    // --- Overlays ---
+    if (showSecretGameSelector) {
+        SecretGameSelectorOverlay(viewModel)
+    }
+
+    if (activeSecretGame == "fps") {
+        SecretFpsGameOverlay(viewModel, playerScore, linhChiScore, secretGameStatus)
+    } else if (activeSecretGame == "moba") {
+        SecretMobaGameOverlay(viewModel, playerScore, linhChiScore, secretGameStatus)
+    }
+}
 }
 
 @Composable
@@ -366,7 +395,7 @@ fun ChatBubble(message: ChatMessage) {
                     .padding(12.dp)
             ) {
                 Text(
-                    text = message.text,
+                    text = getLocalizedText(message.text),
                     color = Color.White,
                     fontSize = 14.sp,
                     lineHeight = 20.sp
@@ -376,7 +405,7 @@ fun ChatBubble(message: ChatMessage) {
             // Timestamp with cute styling
             val timeString = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp))
             Text(
-                text = if (isUser) "Bạn • $timeString" else "Linh Chi • $timeString",
+                text = if (isUser) "${getLocalizedText("Bạn")} • $timeString" else "Linh Chi • $timeString",
                 fontSize = 10.sp,
                 color = Color.Gray,
                 modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
@@ -432,7 +461,7 @@ fun TypingIndicator() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Linh Chi đang gõ... 💕",
+                    text = getLocalizedText("Linh Chi đang gõ... 💕"),
                     color = NeonPink,
                     fontSize = 12.sp,
                     fontStyle = FontStyle.Italic,
@@ -497,10 +526,602 @@ fun SuggestionChip(text: String, onClicked: () -> Unit) {
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
-            text = text,
+            text = getLocalizedText(text),
             color = Color.LightGray,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Composable
+fun SecretGameSelectorOverlay(viewModel: MainViewModel) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.8f))
+            .clickable { /* Block taps */ }
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF131124)),
+            border = BorderStroke(2.dp, NeonPink)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = getLocalizedText("🌸 THỬ THÁCH SONG ĐẤU"),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    color = ElegantGold,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = getLocalizedText("Linh Chi thách anh đấu tay đôi trực tiếp với em nè! 🎮 Thử thách phản xạ xem ai chạm mốc 5 điểm trước nha! Anh chọn thể loại game nào nè? 🥰"),
+                    fontSize = 14.sp,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = { viewModel.startSecretGame("fps") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeonPink,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(getLocalizedText("🔫 Solo FPS 2D Phản Xạ"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(getLocalizedText("Gõ đầu Linh Chi và phá giải tim bay dồn dập!"), fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f))
+                    }
+                }
+
+                Button(
+                    onClick = { viewModel.startSecretGame("moba") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeonCyan,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(getLocalizedText("⚔️ Solo MOBA 2D Tình Ái"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(getLocalizedText("Di chuyển né thính, chắn khiên và dồn combo chiêu!"), fontSize = 10.sp, color = Color.Black.copy(alpha = 0.8f))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Button(
+                    onClick = { viewModel.closeSecretGame() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.DarkGray,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(0.5f)
+                ) {
+                    Text(getLocalizedText("Hẹn Khi Khác"), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SecretFpsGameOverlay(
+    viewModel: MainViewModel,
+    playerScore: Int,
+    linhChiScore: Int,
+    status: String
+) {
+    val targetX by viewModel.secretFpsTargetX.collectAsState()
+    val targetY by viewModel.secretFpsTargetY.collectAsState()
+    val heartX by viewModel.secretFpsHeartX.collectAsState()
+    val heartY by viewModel.secretFpsHeartY.collectAsState()
+    val heartActive by viewModel.secretFpsHeartActive.collectAsState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.9f))
+            .clickable { /* Prevent clicking through */ }
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F0E1B)),
+            border = BorderStroke(1.5.dp, NeonPink)
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Top Header Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(getLocalizedText("🔫 SOLO FPS: BẮN TRÚNG TIM EM"), color = ElegantGold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    IconButton(onClick = { viewModel.closeSecretGame() }) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.LightGray)
+                    }
+                }
+
+                // Score banner
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF1E1B3A), RoundedCornerShape(8.dp))
+                        .padding(6.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Text(getLocalizedText("👤 Bạn: $playerScore / 5"), color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(getLocalizedText("⚔️ Mục tiêu: 5đ"), color = Color.White, fontSize = 11.sp)
+                    Text(getLocalizedText("🌸 Linh Chi: $linhChiScore / 5"), color = NeonPink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+
+                if (status == "playing") {
+                    // Active Game Box with constraints
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                            .background(Color(0xFF07060F), RoundedCornerShape(12.dp))
+                            .border(0.5.dp, Color.DarkGray, RoundedCornerShape(12.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures { offset ->
+                                    val xPercent = (offset.x / size.width) * 100f
+                                    val yPercent = (offset.y / size.height) * 100f
+                                    viewModel.handleSecretFpsTap(xPercent, yPercent)
+                                }
+                            }
+                    ) {
+                        // Draw target (Linh Chi)
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = (targetX / 100f * maxWidth.value).dp - 24.dp,
+                                    y = (targetY / 100f * maxHeight.value).dp - 24.dp
+                                )
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(NeonPink.copy(alpha = 0.2f))
+                                .border(1.5.dp, NeonPink, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🌸", fontSize = 24.sp)
+                        }
+
+                        // Draw flying heart projectile
+                        if (heartActive) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(
+                                        x = (heartX / 100f * maxWidth.value).dp - 12.dp,
+                                        y = (heartY / 100f * maxHeight.value).dp - 12.dp
+                                    )
+                                    .size(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("💖", fontSize = 16.sp)
+                            }
+                        }
+
+                        // Bottom shield/danger bar
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .background(Color.Red.copy(alpha = 0.5f))
+                        )
+                    }
+
+                    Text(
+                        text = getLocalizedText("👉 Nhấn thật nhanh vào Linh Chi 🌸 để ghi điểm! Phá hủy quả tim bay 💖 rơi xuống bằng cách nhấn vào chúng, đừng để chúng chạm đáy nhé!"),
+                        fontSize = 11.sp,
+                        color = Color.LightGray,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 15.sp,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                } else {
+                    // Game Over Screen (Victory or Defeat)
+                    val isVictory = status == "victory"
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = if (isVictory) getLocalizedText("🏆 CHIẾN THẮNG!") else getLocalizedText("💀 BẠN ĐÃ BẠI TRẬN"),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444)
+                        )
+
+                        Text(
+                            text = if (isVictory) {
+                                getLocalizedText("Anh yêu siêu thế, bắn trúng tim em 5 lần luôn! Linh Chi chịu thua và đổ anh đứ đừ rồi đó... 💖")
+                            } else {
+                                getLocalizedText("Hì hì, anh yêu bắn trượt nhiều quá nha, em thắng rồi nè! Dắt em đi ăn trà sữa đền bù đi! 🧋")
+                            },
+                            fontSize = 13.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.startSecretGame("fps") },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonPink)
+                            ) {
+                                Text(getLocalizedText("Chơi Lại"), fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            Button(
+                                onClick = { viewModel.closeSecretGame() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                            ) {
+                                Text(getLocalizedText("Đóng"), color = Color.White)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SecretMobaGameOverlay(
+    viewModel: MainViewModel,
+    playerScore: Int,
+    linhChiScore: Int,
+    status: String
+) {
+    val playerX by viewModel.mobaSecPlayerX.collectAsState()
+    val playerY by viewModel.mobaSecPlayerY.collectAsState()
+    val lcX by viewModel.mobaSecLinhChiX.collectAsState()
+    val lcY by viewModel.mobaSecLinhChiY.collectAsState()
+    val playerHP by viewModel.mobaSecPlayerHP.collectAsState()
+    val lcHP by viewModel.mobaSecLinhChiHP.collectAsState()
+    
+    val s1CD by viewModel.mobaSecS1CD.collectAsState()
+    val s2CD by viewModel.mobaSecS2CD.collectAsState()
+    val s3CD by viewModel.mobaSecS3CD.collectAsState()
+    
+    val shieldActive by viewModel.mobaSecPlayerShieldActive.collectAsState()
+    val stunnedLeftMs by viewModel.mobaSecPlayerStunnedLeftMs.collectAsState()
+    val projectiles by viewModel.mobaSecProjectiles.collectAsState()
+    
+    val ultX by viewModel.mobaSecUltWarningX.collectAsState()
+    val ultY by viewModel.mobaSecUltWarningY.collectAsState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.9f))
+            .clickable { /* Prevent clicking through */ }
+            .padding(12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F0E1B)),
+            border = BorderStroke(1.5.dp, NeonCyan)
+        ) {
+            Column(
+                modifier = Modifier.padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Top Header Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(getLocalizedText("⚔️ MOBA DUEL: ĐẠI CHIẾN LINH CHI"), color = ElegantGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    IconButton(onClick = { viewModel.closeSecretGame() }) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.LightGray)
+                    }
+                }
+
+                // HP and Score Bars
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("${getLocalizedText("Bạn")}: ${playerHP.toInt()}/100", color = NeonCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Box(modifier = Modifier.fillMaxWidth().height(6.dp).background(Color.DarkGray, RoundedCornerShape(3.dp))) {
+                            Box(modifier = Modifier.fillMaxWidth(playerHP / 100f).height(6.dp).background(Color(0xFF10B981), RoundedCornerShape(3.dp)))
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("$playerScore - $linhChiScore", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                        Text(getLocalizedText("Điểm"), color = Color.Gray, fontSize = 8.sp)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("${getLocalizedText("Linh Chi")}: ${lcHP.toInt()}/100", color = NeonPink, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth())
+                        Box(modifier = Modifier.fillMaxWidth().height(6.dp).background(Color.DarkGray, RoundedCornerShape(3.dp))) {
+                            Box(modifier = Modifier.fillMaxWidth(lcHP / 100f).height(6.dp).background(NeonPink, RoundedCornerShape(3.dp)))
+                        }
+                    }
+                }
+
+                if (status == "playing") {
+                    // Active MOBA Arena
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .background(Color(0xFF07060F), RoundedCornerShape(12.dp))
+                            .border(0.5.dp, Color.DarkGray, RoundedCornerShape(12.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures { offset ->
+                                    val xPercent = (offset.x / size.width) * 100f
+                                    val yPercent = (offset.y / size.height) * 100f
+                                    viewModel.handleMobaSecMove(xPercent, yPercent)
+                                }
+                            }
+                    ) {
+                        // Draw Ultimate Warning Ring
+                        if (ultX > 0f) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(
+                                        x = (ultX / 100f * maxWidth.value).dp - 36.dp,
+                                        y = (ultY / 100f * maxHeight.value).dp - 36.dp
+                                    )
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red.copy(alpha = 0.25f))
+                                    .border(1.5.dp, Color.Red, CircleShape)
+                            )
+                        }
+
+                        // Draw Player
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = (playerX / 100f * maxWidth.value).dp - 16.dp,
+                                    y = (playerY / 100f * maxHeight.value).dp - 16.dp
+                                )
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1E3A8A))
+                                .border(
+                                    if (shieldActive) 3.dp else 1.dp,
+                                    if (shieldActive) NeonCyan else Color.White,
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("👤", fontSize = 14.sp)
+                            if (stunnedLeftMs > 0) {
+                                Text("💫", fontSize = 14.sp, modifier = Modifier.align(Alignment.TopCenter).offset(y = (-10).dp))
+                            }
+                        }
+
+                        // Draw Linh Chi Boss
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = (lcX / 100f * maxWidth.value).dp - 16.dp,
+                                    y = (lcY / 100f * maxHeight.value).dp - 16.dp
+                                )
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF5B1B3A))
+                                .border(1.dp, NeonPink, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🌸", fontSize = 14.sp)
+                        }
+
+                        // Draw projectiles
+                        projectiles.forEach { p ->
+                            val px = p["x"] as Float
+                            val py = p["y"] as Float
+                            val type = p["type"] as String
+                            val bulletSymbol = when (type) {
+                                "player_normal" -> "✦"
+                                "player_s1" -> "✴"
+                                "player_s3" -> "✦"
+                                "linhchi_normal" -> "🌸"
+                                "linhchi_s1" -> "😘"
+                                else -> "✦"
+                            }
+                            val color = if (type.startsWith("player")) NeonCyan else NeonPink
+                            val sizeVal = if (type == "player_s1") 16.dp else 10.dp
+                            
+                            Box(
+                                modifier = Modifier
+                                    .offset(
+                                        x = (px / 100f * maxWidth.value).dp - (sizeVal.value / 2).dp,
+                                        y = (py / 100f * maxHeight.value).dp - (sizeVal.value / 2).dp
+                                    )
+                                    .size(sizeVal),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(bulletSymbol, color = color, fontSize = if (type == "player_s1") 16.sp else 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // Skills Control Grid Panel
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Normal Attack Button
+                        Button(
+                            onClick = { viewModel.castMobaSecSkill(0) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1B3A)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(getLocalizedText("⚔️ ĐÁNH"), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(getLocalizedText("Bắn (10đ)"), fontSize = 7.sp, color = Color.Gray)
+                            }
+                        }
+
+                        // Skill 1 Button
+                        Button(
+                            onClick = { viewModel.castMobaSecSkill(1) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1B3A)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1.1f).height(40.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(getLocalizedText("⚡ CHIÊU 1"), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (s1CD > 0f) Color.Gray else NeonCyan)
+                                    Text(getLocalizedText("Bắn tỉa (25đ)"), fontSize = 7.sp, color = Color.Gray)
+                                }
+                                if (s1CD > 0f) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
+                                        Text("${(s1CD * 3).toInt() + 1}s", color = Color.Yellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Skill 2 Button
+                        Button(
+                            onClick = { viewModel.castMobaSecSkill(2) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1B3A)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1.1f).height(40.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(getLocalizedText("🛡️ CHIÊU 2"), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (s2CD > 0f) Color.Gray else NeonCyan)
+                                    Text(getLocalizedText("Khiên (1.5s)"), fontSize = 7.sp, color = Color.Gray)
+                                }
+                                if (s2CD > 0f) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
+                                        Text("${(s2CD * 6).toInt() + 1}s", color = Color.Yellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Skill 3 Button
+                        Button(
+                            onClick = { viewModel.castMobaSecSkill(3) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1B3A)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1.1f).height(40.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(getLocalizedText("🔥 CHIÊU 3"), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (s3CD > 0f) Color.Gray else NeonCyan)
+                                    Text(getLocalizedText("Quạt 3 tia"), fontSize = 7.sp, color = Color.Gray)
+                                }
+                                if (s3CD > 0f) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
+                                        Text("${(s3CD * 8).toInt() + 1}s", color = Color.Yellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = getLocalizedText("👉 Nhấn lên võ đài ⚔️ để di chuyển tướng. Nhấn các nút kỹ năng bên dưới để tấn công/bảo vệ!"),
+                        fontSize = 10.sp,
+                        color = Color.LightGray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                } else {
+                    // Game Over Screen (Victory or Defeat)
+                    val isVictory = status == "victory"
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = if (isVictory) getLocalizedText("🏆 MOBA VICTORY!") else getLocalizedText("💀 DEFEAT"),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444)
+                        )
+
+                        Text(
+                            text = if (isVictory) {
+                                getLocalizedText("Kỹ năng MOBA đỉnh chóp! Anh né thính và dồn sát thương quá ghê, em tâm phục khẩu phục dâng trọn tim này cho anh luôn nè! 💖")
+                            } else {
+                                getLocalizedText("Hì hì, anh né thính còn chậm quá nha! Chiêu nụ hôn thần sầu của em mạnh lắm á. Anh thua rồi, dắt em đi ăn phở gõ đền đi! 🍜")
+                            },
+                            fontSize = 13.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.startSecretGame("moba") },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = Color.Black)
+                            ) {
+                                Text(getLocalizedText("Đấu Lại"), fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = { viewModel.closeSecretGame() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray, contentColor = Color.White)
+                            ) {
+                                Text(getLocalizedText("Đóng"))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

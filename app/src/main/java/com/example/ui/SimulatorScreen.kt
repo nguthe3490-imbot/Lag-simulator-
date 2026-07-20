@@ -681,7 +681,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = "Báo cáo: ${report.timestamp}",
+                                    text = "${getLocalizedText("Báo cáo:")} ${report.timestamp}",
                                     fontSize = 10.sp,
                                     color = Color.Gray,
                                     fontWeight = FontWeight.SemiBold
@@ -700,13 +700,17 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
-                                    text = "Sự cố: ${report.mainIssue}",
+                                    text = "${getLocalizedText("Sự cố:")} ${getLocalizedText(report.mainIssue)}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = NeonPink
                                 )
                                 Text(
-                                    text = "Chi tiết đường truyền giả lập tại game [${report.gameName}]: Ping ${report.ping}ms | Jitter ±${report.jitter}ms | Loss ${report.loss}%",
+                                    text = if (LocaleManager.currentLanguage == AppLanguage.EN) {
+                                        "Simulated network details for game [${getLocalizedGameName(report.gameName)}]: Ping ${report.ping}ms | Jitter ±${report.jitter}ms | Loss ${report.loss}%"
+                                    } else {
+                                        "Chi tiết đường truyền giả lập tại game [${report.gameName}]: Ping ${report.ping}ms | Jitter ±${report.jitter}ms | Loss ${report.loss}%"
+                                    },
                                     fontSize = 11.sp,
                                     color = Color.LightGray
                                 )
@@ -730,7 +734,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     color = NeonPink
                                 )
                                 Text(
-                                    text = report.introMessage,
+                                    text = getLocalizedText(report.introMessage),
                                     fontSize = 12.sp,
                                     color = ElegantTextPrimary,
                                     lineHeight = 18.sp
@@ -766,14 +770,14 @@ fun SimulatorScreen(viewModel: MainViewModel) {
 
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = tip.first,
+                                            text = getLocalizedText(tip.first),
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = NeonCyan
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = tip.second,
+                                            text = getLocalizedText(tip.second),
                                             fontSize = 12.sp,
                                             color = Color.LightGray,
                                             lineHeight = 16.sp
@@ -800,7 +804,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = "Trò Chuyện & Thả Thính",
+                                    text = getLocalizedText("Trò Chuyện & Thả Thính"),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -820,7 +824,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = "Đóng",
+                                    text = getLocalizedText("Đóng"),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -910,7 +914,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "PHÒNG TẬP BẮN PHÓNG TO & CỐ ĐỊNH (GIẢM TRỄ MẠNG)",
+                                        text = getLocalizedText("PHÒNG TẬP BẮN PHÓNG TO & CỐ ĐỊNH (GIẢM TRỄ MẠNG)"),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = NeonCyan
@@ -3746,7 +3750,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Chế độ:",
+                                text = getLocalizedText("Chế độ:"),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.LightGray
@@ -3766,7 +3770,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                         .padding(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Text(
-                                        text = modeName,
+                                        text = getLocalizedText(modeName),
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isSelected) NeonCyan else Color.White
@@ -3782,7 +3786,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Công thức:",
+                                    text = getLocalizedText("Công thức:"),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.LightGray
@@ -3804,7 +3808,7 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                             .padding(horizontal = 8.dp, vertical = 6.dp)
                                     ) {
                                         Text(
-                                            text = formName,
+                                            text = getLocalizedText(formName),
                                              fontSize = 9.sp,
                                              fontWeight = FontWeight.Bold,
                                              color = if (isSelected) ElegantGold else Color.White
@@ -3824,13 +3828,13 @@ fun SimulatorScreen(viewModel: MainViewModel) {
                                 ) {
                                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Text(
-                                            text = "🦋 HIỆU ỨNG CÁNH BƯỚM (CHAOS THEORY)",
+                                            text = getLocalizedText("🦋 HIỆU ỨNG CÁNH BƯỚM (CHAOS THEORY)"),
                                             color = ElegantGold,
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = "Chạm nhân đôi bóng! Hai quả cầu ban đầu đè sát lên nhau vì độ sai lệch xuất phát cực kì nhỏ (0.002). Nhờ tính bất định phi tuyến, chúng sẽ tự tách rời và bay theo những quỹ đạo cánh bướm hoàn toàn khác biệt!",
+                                            text = getLocalizedText("Chạm nhân đôi bóng! Hai quả cầu ban đầu đè sát lên nhau vì độ sai lệch xuất phát cực kì nhỏ (0.002). Nhờ tính bất định phi tuyến, chúng sẽ tự tách rời và bay theo những quỹ đạo cánh bướm hoàn toàn khác biệt!"),
                                             color = Color.LightGray,
                                             fontSize = 9.sp,
                                             lineHeight = 12.sp
@@ -4051,6 +4055,7 @@ fun MobaGameAreaContent(
     val mobaYasuoArcSlashes by viewModel.mobaYasuoArcSlashes.collectAsState()
 
     val mobaIsZoomed by viewModel.mobaIsZoomed.collectAsState()
+    var showMobaDetailsByClick by remember { mutableStateOf(false) }
 
     val mobaEnemyIsKnockedUp by viewModel.mobaEnemyIsKnockedUp.collectAsState()
     val mobaEnemyKnockupHeight by viewModel.mobaEnemyKnockupHeight.collectAsState()
@@ -4077,6 +4082,8 @@ fun MobaGameAreaContent(
     val mobaEnemyMuradS2Y by viewModel.mobaEnemyMuradS2Y.collectAsState()
     val mobaEnemyTulenUltLaserActive by viewModel.mobaEnemyTulenUltLaserActive.collectAsState()
     val mobaEnemyClones by viewModel.mobaEnemyClones.collectAsState()
+    val mobaEnemyMuradTornado by viewModel.mobaEnemyMuradTornado.collectAsState()
+    val valheinVampireCastleActive by viewModel.valheinVampireCastleActive.collectAsState()
 
     val comboScale = remember { Animatable(1.0f) }
     val comboFlash = remember { Animatable(0.0f) }
@@ -4231,7 +4238,15 @@ fun MobaGameAreaContent(
                         .fillMaxWidth()
                         .height(260.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF0B0F19))
+                        .background(
+                            if (valheinVampireCastleActive) {
+                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(Color(0xFF1F030B), Color(0xFF2A0812), Color(0xFF120106))
+                                )
+                            } else {
+                                androidx.compose.ui.graphics.SolidColor(Color(0xFF0B0F19))
+                            }
+                        )
                         .border(1.dp, CardSpaceBorder)
                         .pointerInput(Unit) {
                             detectTapGestures { offset ->
@@ -4243,35 +4258,56 @@ fun MobaGameAreaContent(
                 ) {
                     val boardWidth = maxWidth
                     val boardHeight = maxHeight
-
+ 
                     // 1. Draw river and paths behind everything using standard Canvas
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         // Draw three horizontal lane pathways (Kinh Thống - Top, Giữa - Mid, Rồng - Bot)
                         // Top Lane
                         drawRect(
-                            color = Color(0xFF1E293B),
+                            color = if (valheinVampireCastleActive) Color(0xFF3F0B1E) else Color(0xFF1E293B),
                             topLeft = Offset(0f, size.height * 0.20f),
                             size = Size(size.width, size.height * 0.12f)
                         )
                         // Mid Lane
                         drawRect(
-                            color = Color(0xFF1E293B),
+                            color = if (valheinVampireCastleActive) Color(0xFF3F0B1E) else Color(0xFF1E293B),
                             topLeft = Offset(0f, size.height * 0.44f),
                             size = Size(size.width, size.height * 0.12f)
                         )
                         // Bot Lane
                         drawRect(
-                            color = Color(0xFF1E293B),
+                            color = if (valheinVampireCastleActive) Color(0xFF3F0B1E) else Color(0xFF1E293B),
                             topLeft = Offset(0f, size.height * 0.68f),
                             size = Size(size.width, size.height * 0.12f)
                         )
-
+ 
                         // River (vertical stream down the middle)
                         drawRect(
-                            color = Color(0xFF0369A1).copy(alpha = 0.3f),
+                            color = if (valheinVampireCastleActive) Color(0xFF991B1B).copy(alpha = 0.45f) else Color(0xFF0369A1).copy(alpha = 0.3f),
                             topLeft = Offset(size.width * 0.48f, 0f),
                             size = Size(size.width * 0.04f, size.height)
                         )
+
+                        // If Vampire Castle is active, draw blood-red sky mist/vortex or blood moon!
+                        if (valheinVampireCastleActive) {
+                            // Blood moon!
+                            drawCircle(
+                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                    colors = listOf(Color(0xFFEF4444), Color(0xFF7F1D1D), Color.Transparent),
+                                    center = Offset(size.width * 0.85f, size.height * 0.2f),
+                                    radius = size.width * 0.08f
+                                ),
+                                radius = size.width * 0.08f,
+                                center = Offset(size.width * 0.85f, size.height * 0.2f)
+                            )
+                            
+                            // Gothic castle u tối red haze
+                            drawRect(
+                                color = Color(0xFF7F1D1D).copy(alpha = 0.15f),
+                                topLeft = Offset(0f, 0f),
+                                size = size
+                            )
+                        }
 
                         // Top Allied Turret Ring
                         drawCircle(
@@ -5007,6 +5043,121 @@ fun MobaGameAreaContent(
                             Text("🩸", modifier = Modifier.align(Alignment.BottomCenter).offset(y = 4.dp), fontSize = 10.sp)
                             Text("🩸", modifier = Modifier.align(Alignment.CenterStart).offset(x = (-4).dp), fontSize = 10.sp)
                             Text("🩸", modifier = Modifier.align(Alignment.CenterEnd).offset(x = 4.dp), fontSize = 10.sp)
+                        }
+                    }
+
+                    // 5d2. Enemy Murad's Boss Tornado (Lốc Xoáy Đặc Biệt)
+                    mobaEnemyMuradTornado?.let { tornado ->
+                        val infiniteTransition = rememberInfiniteTransition(label = "bossTornado")
+                        val rotateAngle by infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = -360f, // Spin the other way for chaos!
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1800, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "rotateAngle"
+                        )
+                        val pulseScale by infiniteTransition.animateFloat(
+                            initialValue = 0.94f,
+                            targetValue = 1.06f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(800, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "pulseScale"
+                        )
+                        val windAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.25f,
+                            targetValue = 0.55f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(600, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "windAlpha"
+                        )
+
+                        val tCenterX = boardWidth * (tornado.x / 100f)
+                        val tCenterY = boardHeight * (tornado.y / 100f)
+                        val tDiameter = boardWidth * 0.24f * pulseScale
+
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = tCenterX - (tDiameter / 2),
+                                    y = tCenterY - (tDiameter / 2)
+                                )
+                                .size(tDiameter)
+                        ) {
+                            Canvas(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(rotationZ = rotateAngle)
+                            ) {
+                                val radius = size.width / 2f
+                                
+                                // Draw core vortex
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFF7C3AED).copy(alpha = 0.85f), // Purple violet
+                                            Color(0xFFD97706).copy(alpha = 0.5f),  // Dark sand orange
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    radius = radius,
+                                    center = center
+                                )
+
+                                // Inner spiral stroke 1
+                                drawCircle(
+                                    color = Color(0xFFA78BFA),
+                                    radius = radius - 8f,
+                                    center = center,
+                                    style = Stroke(
+                                        width = 6f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 25f), rotateAngle)
+                                    )
+                                )
+
+                                // Outer spiral stroke 2
+                                drawCircle(
+                                    color = Color(0xFFF59E0B),
+                                    radius = radius - 20f,
+                                    center = center,
+                                    style = Stroke(
+                                        width = 4f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(25f, 15f), -rotateAngle)
+                                    )
+                                )
+                            }
+
+                            // Dynamic spiral background
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp)
+                                    .background(
+                                        Brush.radialGradient(
+                                            colors = listOf(
+                                                Color(0xFFF59E0B).copy(alpha = windAlpha),
+                                                Color(0xFF8B5CF6).copy(alpha = windAlpha * 0.6f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    )
+                                    .border(1.5.dp, Color(0xFF8B5CF6).copy(alpha = 0.5f), CircleShape)
+                            )
+
+                            // Centered Tornado indicator icon
+                            Text("🌪️", modifier = Modifier.align(Alignment.Center).graphicsLayer(scaleX = 1.35f, scaleY = 1.35f), fontSize = 20.sp)
+                            
+                            // Orbital particles rotating around the vortex
+                            Text("⚡", modifier = Modifier.align(Alignment.TopStart).offset(x = 4.dp, y = 4.dp), fontSize = 11.sp)
+                            Text("🩸", modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-4).dp, y = (-4).dp), fontSize = 11.sp)
+                            Text("👿", modifier = Modifier.align(Alignment.TopEnd).offset(x = (-4).dp, y = 4.dp), fontSize = 11.sp)
+                            Text("🌀", modifier = Modifier.align(Alignment.BottomStart).offset(x = 4.dp, y = (-4).dp), fontSize = 11.sp)
                         }
                     }
 
@@ -7108,51 +7259,175 @@ fun MobaGameAreaContent(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.95f))
-                            .padding(24.dp),
+                            .clickable { showMobaDetailsByClick = !showMobaDetailsByClick }
+                            .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            Text(
-                                text = if (isVictory) t("moba_big_victory") else t("moba_big_defeat"),
-                                fontSize = 54.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 4.sp,
-                                color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444)
-                            )
-                            
-                            Text(
-                                text = if (isVictory) t("moba_congrats_victory") else t("moba_congrats_defeat"),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.LightGray
-                            )
-                            
-                            Icon(
-                                imageVector = if (isVictory) Icons.Filled.Info else Icons.Filled.Warning,
-                                contentDescription = null,
-                                tint = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444),
-                                modifier = Modifier.size(96.dp)
-                            )
-                            
-                            Button(
-                                onClick = { viewModel.dismissMobaSplash() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444),
-                                    contentColor = Color.Black
-                                ),
-                                shape = RoundedCornerShape(12.dp),
+                        if (showMobaDetailsByClick && mobaDiagnosticReport != null) {
+                            Card(
                                 modifier = Modifier
-                                    .fillMaxWidth(0.8f)
-                                    .height(44.dp)
+                                    .fillMaxSize()
+                                    .padding(4.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF131124)),
+                                border = BorderStroke(1.5.dp, NeonPink)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "📊 CHI TIẾT TRẬN ĐẤU MOBA 2D",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ElegantGold
+                                    )
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Tướng: $mobaHero", color = Color.White, fontSize = 11.sp)
+                                        Text("Đối thủ: $mobaSelectedEnemy", color = Color.White, fontSize = 11.sp)
+                                    }
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color(0xFF1E1B3A), RoundedCornerShape(8.dp))
+                                            .padding(8.dp),
+                                        horizontalArrangement = Arrangement.SpaceEvenly,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Hạ Gục", color = Color.Gray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.kills}", color = Color(0xFF10B981), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.Gray))
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Bị Diệt", color = Color.Gray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.deaths}", color = Color(0xFFEF4444), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.Gray))
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Độ Chuẩn", color = Color.Gray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.accuracy}%", color = NeonCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Tổng số lần tung chiêu:", color = Color.LightGray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.skillCasts}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Chiêu bị ngắt (do lag):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.skillsInterruptedCount}", color = if (mobaDiagnosticReport.skillsInterruptedCount > 0) Color.Yellow else Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Trễ mạng (Ping trung bình):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.networkPingSimulated} ms", color = if (mobaDiagnosticReport.networkPingSimulated > 100) Color.Red else Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Độ trồi sụt ping (Jitter):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.networkJitterSimulated} ms", color = Color.White, fontSize = 10.sp)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Tỷ lệ mất gói tin (Loss):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text("${mobaDiagnosticReport.networkLossSimulated}%", color = if (mobaDiagnosticReport.networkLossSimulated > 0) Color.Red else Color.White, fontSize = 10.sp)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Kết quả chung cuộc:", color = Color.LightGray, fontSize = 10.sp)
+                                            Text(mobaDiagnosticReport.turretStatus, color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                            .background(Color(0xFF1B1832), RoundedCornerShape(8.dp))
+                                            .padding(6.dp)
+                                    ) {
+                                        Text("🌸 Linh Chi Đánh Giá:", color = NeonPink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = mobaDiagnosticReport.linhChiEvaluation,
+                                            color = Color.White,
+                                            fontSize = 9.sp,
+                                            lineHeight = 12.sp,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+
+                                    Text(
+                                        text = "Nhấn lại để quay lại",
+                                        fontSize = 9.sp,
+                                        color = Color.Gray,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 Text(
-                                    text = t("moba_confirm_action") ?: "Xác nhận",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
+                                    text = if (isVictory) t("moba_big_victory") else t("moba_big_defeat"),
+                                    fontSize = 54.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 4.sp,
+                                    color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444)
                                 )
+                                
+                                Text(
+                                    text = if (isVictory) t("moba_congrats_victory") else t("moba_congrats_defeat"),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.LightGray
+                                )
+
+                                Text(
+                                    text = "💡 Nhấn vào màn hình này để xem thống số chi tiết",
+                                    fontSize = 12.sp,
+                                    color = ElegantGold,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                
+                                Icon(
+                                    imageVector = if (isVictory) Icons.Filled.Info else Icons.Filled.Warning,
+                                    contentDescription = null,
+                                    tint = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444),
+                                    modifier = Modifier.size(72.dp)
+                                )
+                                
+                                Button(
+                                    onClick = { 
+                                        showMobaDetailsByClick = false
+                                        viewModel.dismissMobaSplash() 
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444),
+                                        contentColor = Color.Black
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.8f)
+                                        .height(44.dp)
+                                ) {
+                                    Text(
+                                        text = t("moba_confirm_action") ?: "Xác nhận",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -8495,7 +8770,7 @@ fun MobaHeroDetailsDialog(
                     ) {
                         val selEnemyText = t("moba_select_enemy_for_battle").replace(":", "")
                         Text(
-                            text = if (selEnemyText.length > 15) "Chọn Địch" else selEnemyText,
+                            text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Select Enemy" else (if (selEnemyText.length > 15) "Chọn Địch" else selEnemyText),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -8539,36 +8814,36 @@ fun getStatsAndTipsForSkill(name: String): SkillTips {
         name.contains("Nội Tại") || name.contains("Passive") -> {
             SkillTips(
                 difficulty = "★★☆☆☆",
-                cooldown = "Không tốn hồi chiêu / Thụ động",
-                tip = "Kích hoạt tự động khi đạt đủ số đòn đánh hoặc tầng dấu ấn kỹ năng. Tận dụng để tối ưu hóa sát thương đột biến liên tục."
+                cooldown = getLocalizedText("Không tốn hồi chiêu / Thụ động"),
+                tip = getLocalizedText("Kích hoạt tự động khi đạt đủ số đòn đánh hoặc tầng dấu ấn kỹ năng. Tận dụng để tối ưu hóa sát thương đột biến liên tục.")
             )
         }
         name.contains("Chiêu 1") -> {
             SkillTips(
                 difficulty = "★★★☆☆",
-                cooldown = "4.5s - 6s / Sát thương chính",
-                tip = "Kỹ năng dọn lính và cấu rỉa chủ đạo. Sử dụng liên tục để quấy rối kẻ địch từ khoảng cách an toàn và tích lũy nộ phong/lôi ấn."
+                cooldown = getLocalizedText("4.5s - 6s / Sát thương chính"),
+                tip = getLocalizedText("Kỹ năng dọn lính và cấu rỉa chủ đạo. Sử dụng liên tục để quấy rối kẻ địch từ khoảng cách an toàn và tích lũy nộ phong/lôi ấn.")
             )
         }
         name.contains("Chiêu 2") -> {
             SkillTips(
                 difficulty = "★★★★☆",
-                cooldown = "8.0s - 12.0s / Cơ động & Khống chế",
-                tip = "Tạo bất ngờ bằng cách lướt đột kích, dịch chuyển tức thời hoặc tạo tường gió hóa giải đòn đánh nguy hiểm để outplay đối thủ."
+                cooldown = getLocalizedText("8.0s - 12.0s / Cơ động & Khống chế"),
+                tip = getLocalizedText("Tạo bất ngờ bằng cách lướt đột kích, dịch chuyển tức thời hoặc tạo tường gió hóa giải đòn đánh nguy hiểm để outplay đối thủ.")
             )
         }
         name.contains("Ult") || name.contains("Chiêu cuối") -> {
             SkillTips(
                 difficulty = "★★★★★",
-                cooldown = "30s - 45s / Sát thương hủy diệt",
-                tip = "Dồn sát thương dứt điểm tàn bạo lên các mục tiêu thấp máu hoặc phối hợp khống chế diện rộng cùng đồng đội để lật kèo."
+                cooldown = getLocalizedText("30s - 45s / Sát thương hủy diệt"),
+                tip = getLocalizedText("Dồn sát thương dứt điểm tàn bạo lên các mục tiêu thấp máu hoặc phối hợp khống chế diện rộng cùng đồng đội để lật kèo.")
             )
         }
         else -> {
             SkillTips(
                 difficulty = "★★★☆☆",
-                cooldown = "Thời gian hồi trung bình",
-                tip = "Nghiên cứu kỹ bộ kỹ năng độc quyền của vị tướng này để tạo ra chuỗi combo kết liễu trơn tru nhất."
+                cooldown = getLocalizedText("Thời gian hồi trung bình"),
+                tip = getLocalizedText("Nghiên cứu kỹ bộ kỹ năng độc quyền của vị tướng này để tạo ra chuỗi combo kết liễu trơn tru nhất.")
             )
         }
     }
@@ -8689,7 +8964,7 @@ fun SkillItem(index: Int, name: String, desc: String, color: Color) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "⭐ Đánh giá độ khó:",
+                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "⭐ Difficulty Rating:" else "⭐ Đánh giá độ khó:",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Gray
@@ -8707,7 +8982,7 @@ fun SkillItem(index: Int, name: String, desc: String, color: Color) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "⏱️ Cooldown & Loại Chiêu:",
+                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "⏱️ Cooldown & Type:" else "⏱️ Cooldown & Loại Chiêu:",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Gray
@@ -8723,7 +8998,7 @@ fun SkillItem(index: Int, name: String, desc: String, color: Color) {
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "💡 Mẹo & Chiến thuật combo:",
+                    text = if (LocaleManager.currentLanguage == AppLanguage.EN) "💡 Tips & Combo Strategy:" else "💡 Mẹo & Chiến thuật combo:",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = color
@@ -8791,7 +9066,7 @@ fun FpsLeaderboardView(scores: List<com.example.data.ReflexScore>) {
 
             if (fpsScores.isEmpty()) {
                 Text(
-                    text = "Chưa có kỷ lục nào được ghi nhận. Hãy bắn thật chuẩn để lọt top nhé!",
+                    text = if (LocaleManager.currentLanguage == AppLanguage.EN) "No records recorded yet. Shoot accurately to reach the top!" else "Chưa có kỷ lục nào được ghi nhận. Hãy bắn thật chuẩn để lọt top nhé!",
                     fontSize = 11.sp,
                     color = Color.Gray,
                     modifier = Modifier
@@ -8861,13 +9136,13 @@ fun FpsLeaderboardView(scores: List<com.example.data.ReflexScore>) {
                             ) {
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        text = "Tiêu diệt: ${score.targetsHit}",
+                                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Eliminated: ${score.targetsHit}" else "Tiêu diệt: ${score.targetsHit}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Black,
                                         color = NeonCyan
                                     )
                                     Text(
-                                        text = "Phản hồi: ${score.responseTimeMs}ms",
+                                        text = if (LocaleManager.currentLanguage == AppLanguage.EN) "Response: ${score.responseTimeMs}ms" else "Phản hồi: ${score.responseTimeMs}ms",
                                         fontSize = 9.sp,
                                         color = NeonPink
                                     )

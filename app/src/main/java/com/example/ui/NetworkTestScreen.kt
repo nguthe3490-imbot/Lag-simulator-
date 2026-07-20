@@ -349,7 +349,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tiến độ: ${(progress * 100).toInt()}%",
+                            text = "${getLocalizedText("Tiến độ:")} ${(progress * 100).toInt()}%",
                             color = ElegantTextSecondary,
                             fontSize = 11.sp
                         )
@@ -378,7 +378,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "BÁO CÁO KẾT NỐI MẠNG",
+                            text = getLocalizedText("BÁO CÁO KẾT NỐI MẠNG"),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = ElegantGold
@@ -391,7 +391,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = report.statusText,
+                                text = getLocalizedText(report.statusText),
                                 color = Color(report.statusColor),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
@@ -401,7 +401,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = report.description,
+                        text = getLocalizedText(report.description),
                         color = Color.White,
                         fontSize = 14.sp,
                         lineHeight = 20.sp
@@ -414,8 +414,8 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
 
                     // Gaming Performance Subsection
                     EvaluationRow(
-                        title = "Hiệu suất chơi game online",
-                        description = report.gamingPerformance,
+                        title = getLocalizedText("Hiệu suất chơi game online"),
+                        description = getLocalizedText(report.gamingPerformance),
                         icon = Icons.Default.SportsEsports,
                         iconColor = NeonPink
                     )
@@ -424,8 +424,8 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
 
                     // Streaming/Media Performance Subsection
                     EvaluationRow(
-                        title = "Xem phim & truyền phát video",
-                        description = report.streamingPerformance,
+                        title = getLocalizedText("Xem phim & truyền phát video"),
+                        description = getLocalizedText(report.streamingPerformance),
                         icon = Icons.Default.PlayCircle,
                         iconColor = NeonCyan
                     )
@@ -437,7 +437,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
 
                     // Suggestions / Troubleshooting steps
                     Text(
-                        text = "Đề xuất khắc phục & cải thiện mạng:",
+                        text = getLocalizedText("Đề xuất khắc phục & cải thiện mạng:"),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = NeonCyan,
@@ -467,7 +467,7 @@ fun NetworkTestScreen(viewModel: MainViewModel) {
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = suggestion,
+                                text = getLocalizedText(suggestion),
                                 color = ElegantTextPrimary,
                                 fontSize = 13.sp,
                                 lineHeight = 18.sp,
