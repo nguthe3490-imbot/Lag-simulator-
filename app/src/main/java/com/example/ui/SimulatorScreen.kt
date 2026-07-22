@@ -6776,6 +6776,7 @@ fun MobaGameAreaContent(
                             val isYasuo = mobaHero == "Yasuo"
                             val isAlpha = mobaHero == "Alpha"
                             val isXiao = mobaHero == "Xiao"
+                            val isSara = mobaHero == "Kujou Sara"
                             val skills = if (isTulen) {
                                 listOf(
                                     Triple("Chiêu 1: Lôi Quang", "⚡ Sát thương fan-shape", 55f),
@@ -6792,7 +6793,7 @@ fun MobaGameAreaContent(
                                 listOf(
                                     Triple("Chiêu 1: Bão Kiếm", "⚔️ Đâm kiếm tích lũy tụ bão phóng lốc xoáy", 0f),
                                     Triple("Chiêu 2: Tường Gió", "🌪️ Dựng tường chắn mọi chiêu thức địch", 0f),
-                                    Triple("Ult: Trăn Trối", "⚡ Bay chém địch bị hất tung (Cần khống chế)", 0f)
+                                    Triple("Ult: Trăn Trối", "⚡ Bay chém kép & Chém xuống cực ngầu", 0f)
                                 )
                             } else if (isAlpha) {
                                 listOf(
@@ -6804,7 +6805,13 @@ fun MobaGameAreaContent(
                                 listOf(
                                     Triple("Chiêu 1: Vũ Điệu Chinh Phục", "🟢 Chém 3 đường Gió Xanh phong ấn & Hồi 10% HP", 0f),
                                     Triple("Chiêu 2: Gió Tung Hoành", "💨 Lướt kép 2 lần né tránh đột kích", 0f),
-                                    Triple("Ult: Vũ Điệu Đại Thánh", "🔥 Nhảy vút lên không & Đâm plunge 2 lần chấn động", 0f)
+                                    Triple("Ult: Vũ Điệu Đại Thánh", "🔥 Nhảy vút lên không & Plunge 4 lần chấn động cực ngầu", 0f)
+                                )
+                            } else if (isSara) {
+                                listOf(
+                                    Triple("Chiêu 1: Tengu Bẫy Điện", "🪶 Bom lông vũ nổ & Teleport lùi", 45f),
+                                    Triple("Chiêu 2: Chim Điện Phóng", "🦅 Biến chim điện lao xé gió càn quét", 55f),
+                                    Triple("Ult: Thiên Sét Tengu", "⚡ Cột sét giáng & Tách 5 cột điện nổ", 95f)
                                 )
                             } else {
                                 listOf(
@@ -7280,7 +7287,7 @@ fun MobaGameAreaContent(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
-                                        text = "📊 CHI TIẾT TRẬN ĐẤU MOBA 2D",
+                                        text = getLocalizedText("📊 CHI TIẾT TRẬN ĐẤU MOBA 2D"),
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = ElegantGold
@@ -7290,8 +7297,8 @@ fun MobaGameAreaContent(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text("Tướng: $mobaHero", color = Color.White, fontSize = 11.sp)
-                                        Text("Đối thủ: $mobaSelectedEnemy", color = Color.White, fontSize = 11.sp)
+                                        Text("${getLocalizedText("Tướng:")} ${getLocalizedText(mobaHero)}", color = Color.White, fontSize = 11.sp)
+                                        Text("${getLocalizedText("Đối thủ:")} ${getLocalizedText(mobaSelectedEnemy)}", color = Color.White, fontSize = 11.sp)
                                     }
 
                                     Row(
@@ -7303,17 +7310,17 @@ fun MobaGameAreaContent(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Hạ Gục", color = Color.Gray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Hạ Gục"), color = Color.Gray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.kills}", color = Color(0xFF10B981), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                         }
                                         Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.Gray))
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Bị Diệt", color = Color.Gray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Bị Diệt"), color = Color.Gray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.deaths}", color = Color(0xFFEF4444), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                         }
                                         Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.Gray))
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Độ Chuẩn", color = Color.Gray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Độ Chuẩn"), color = Color.Gray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.accuracy}%", color = NeonCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
@@ -7323,28 +7330,28 @@ fun MobaGameAreaContent(
                                         verticalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Tổng số lần tung chiêu:", color = Color.LightGray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Tổng số lần tung chiêu:"), color = Color.LightGray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.skillCasts}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Chiêu bị ngắt (do lag):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Chiêu bị ngắt (do lag):"), color = Color.LightGray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.skillsInterruptedCount}", color = if (mobaDiagnosticReport.skillsInterruptedCount > 0) Color.Yellow else Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Trễ mạng (Ping trung bình):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Trễ mạng (Ping trung bình):"), color = Color.LightGray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.networkPingSimulated} ms", color = if (mobaDiagnosticReport.networkPingSimulated > 100) Color.Red else Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Độ trồi sụt ping (Jitter):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Độ trồi sụt ping (Jitter):"), color = Color.LightGray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.networkJitterSimulated} ms", color = Color.White, fontSize = 10.sp)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Tỷ lệ mất gói tin (Loss):", color = Color.LightGray, fontSize = 10.sp)
+                                            Text(getLocalizedText("Tỷ lệ mất gói tin (Loss):"), color = Color.LightGray, fontSize = 10.sp)
                                             Text("${mobaDiagnosticReport.networkLossSimulated}%", color = if (mobaDiagnosticReport.networkLossSimulated > 0) Color.Red else Color.White, fontSize = 10.sp)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Kết quả chung cuộc:", color = Color.LightGray, fontSize = 10.sp)
-                                            Text(mobaDiagnosticReport.turretStatus, color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Text(getLocalizedText("Kết quả chung cuộc:"), color = Color.LightGray, fontSize = 10.sp)
+                                            Text(getLocalizedText(mobaDiagnosticReport.turretStatus), color = if (isVictory) Color(0xFF10B981) else Color(0xFFEF4444), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
 
@@ -7355,10 +7362,10 @@ fun MobaGameAreaContent(
                                             .background(Color(0xFF1B1832), RoundedCornerShape(8.dp))
                                             .padding(6.dp)
                                     ) {
-                                        Text("🌸 Linh Chi Đánh Giá:", color = NeonPink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Text(getLocalizedText("🌸 Linh Chi Đánh Giá:"), color = NeonPink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = mobaDiagnosticReport.linhChiEvaluation,
+                                            text = getLocalizedText(mobaDiagnosticReport.linhChiEvaluation),
                                             color = Color.White,
                                             fontSize = 9.sp,
                                             lineHeight = 12.sp,
@@ -7367,7 +7374,7 @@ fun MobaGameAreaContent(
                                     }
 
                                     Text(
-                                        text = "Nhấn lại để quay lại",
+                                        text = getLocalizedText("Nhấn lại để quay lại"),
                                         fontSize = 9.sp,
                                         color = Color.Gray,
                                         fontWeight = FontWeight.Medium
@@ -7395,7 +7402,7 @@ fun MobaGameAreaContent(
                                 )
 
                                 Text(
-                                    text = "💡 Nhấn vào màn hình này để xem thống số chi tiết",
+                                    text = getLocalizedText("💡 Nhấn vào màn hình này để xem thống số chi tiết"),
                                     fontSize = 12.sp,
                                     color = ElegantGold,
                                     fontWeight = FontWeight.Medium
@@ -7485,6 +7492,8 @@ fun MobaHeroSelection(
             "Alpha kẻ kí sinh" -> Color(0xFFEC4899)
             "Xiao" -> Color(0xFF10B981)
             "Xiao nghiệp chướng" -> Color(0xFF059669)
+            "Kujou Sara" -> Color(0xFF9333EA)
+            "Kujou Sara đại tướng tengu" -> Color(0xFFA855F7)
             "Maloch" -> Color(0xFFDC2626)
             else -> Color.Gray
         }
@@ -7504,6 +7513,8 @@ fun MobaHeroSelection(
             "Alpha kẻ kí sinh" -> "👾"
             "Xiao" -> "🟢"
             "Xiao nghiệp chướng" -> "👹"
+            "Kujou Sara" -> "🪶"
+            "Kujou Sara đại tướng tengu" -> "🦅"
             "Maloch" -> "👿"
             else -> "👤"
         }
@@ -7516,23 +7527,24 @@ fun MobaHeroSelection(
         Triple("Yasuo", "🌪️", "Đấu Sĩ"),
         Triple("Alpha", "🤖", "Đấu Sĩ"),
         Triple("Xiao", "🟢", "Sát Thủ"),
+        Triple("Kujou Sara", "🪶", "Xạ Thủ"),
         Triple("Maloch", "👿", "Đỡ Đòn")
     )
 
     val enemiesList = listOf(
-        "Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Maloch",
+        "Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Kujou Sara", "Maloch",
         "Tulen hắc pháp sư", "Valhein ma cà rồng", "Murad hoàng tử suy tàn",
-        "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng"
+        "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng", "Kujou Sara đại tướng tengu"
     )
 
     var enemyTab by remember { mutableStateOf(0) } // 0 = Thường, 1 = Boss
 
     val filteredEnemies = if (enemyTab == 0) {
-        listOf("Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Maloch")
+        listOf("Tulen", "Valhein", "Murad", "Yasuo", "Alpha", "Xiao", "Kujou Sara", "Maloch")
     } else {
         listOf(
             "Tulen hắc pháp sư", "Valhein ma cà rồng", "Murad hoàng tử suy tàn",
-            "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng"
+            "Yasuo cơn gió cuồng ma", "Alpha kẻ kí sinh", "Xiao nghiệp chướng", "Kujou Sara đại tướng tengu"
         )
     }
 
@@ -8621,6 +8633,34 @@ fun MobaHeroDetailsDialog(
             s2Desc = getLocalizedText("💨 Lướt chớp nhoáng liên tục 2 lần cực linh hoạt để tập kích mục tiêu."),
             ultName = getLocalizedText("Ult: Vũ Điệu Đại Thánh Hắc"),
             ultDesc = getLocalizedText("🔥 Đâm plunge chấn động 2 lần hất tung diện rộng dẫm nát trận địa kẻ thù.")
+        )
+        "Kujou Sara" -> MobaHeroDetails(
+            name = "Kujou Sara",
+            title = getLocalizedText("Đại Tướng Tengu Cánh Đen"),
+            icon = "🪶",
+            color = Color(0xFF9333EA),
+            passiveName = getLocalizedText("Nội Tại: Sấm Sét Tengu"),
+            passiveDesc = getLocalizedText("Bắn cung chuẩn xác tích lôi năng. Kích hoạt chiêu thức ban cho bản thân sức mạnh tốc phẫn sấm sét."),
+            s1Name = getLocalizedText("Chiêu 1: Tengu Bẫy Điện"),
+            s1Desc = getLocalizedText("🪶 Để lại quả cầu bom điện tại vị trí và lập tức dịch chuyển lùi lại phía sau an toàn."),
+            s2Name = getLocalizedText("Chiêu 2: Chim Điện Phóng Tới"),
+            s2Desc = getLocalizedText("🦅 Biến thành đại điểu lôi điện lao xé gió về phía trước càn quét làm chậm kẻ địch."),
+            ultName = getLocalizedText("Ult: Thiên Sét Tengu Titanbreaker"),
+            ultDesc = getLocalizedText("⚡ Triệu hồi CỘT SÉT KHỔNG LỒ Titanbreaker giáng xuống từ trên trời, đánh trúng lập tức TÁCH THÀNH 5 CỘT ĐIỆN NHỎ oanh tạc cực ngầu.")
+        )
+        "Kujou Sara đại tướng tengu" -> MobaHeroDetails(
+            name = "Kujou Sara đại tướng tengu",
+            title = getLocalizedText("Đại Tướng Tengu Lôi Điện"),
+            icon = "🦅",
+            color = Color(0xFFA855F7),
+            passiveName = getLocalizedText("Nội Tại: Tengu Bão Lôi"),
+            passiveDesc = getLocalizedText("Cung điện giật sấm, tăng sát thương chí mạng lôi thuộc tính và giáp bảo vệ."),
+            s1Name = getLocalizedText("Chiêu 1: Bẫy Lôi Bão"),
+            s1Desc = getLocalizedText("🪶 Thả quả bom feather lôi điện nổ bộc phá và dịch chuyển lùi cực nhanh."),
+            s2Name = getLocalizedText("Chiêu 2: Chim Điện Bão Tới"),
+            s2Desc = getLocalizedText("🦅 Biến đại điểu sấm sét lao thẳng gây sát thương và tê liệt đối thủ."),
+            ultName = getLocalizedText("Ult: Thiên Sét Tengu Bộc Phá"),
+            ultDesc = getLocalizedText("⚡ Cột lôi điện khổng lồ giáng lâm nổ tung tách thành 5 cột sét phụ oanh tạc rực rỡ.")
         )
         else -> MobaHeroDetails(
             name = "Maloch",

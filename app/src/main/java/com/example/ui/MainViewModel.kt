@@ -617,6 +617,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var malochS3Cooldown = 0f
     var malochShieldDurationLeft = 0L
 
+    var saraS1Cooldown = 0f
+    var saraS2Cooldown = 0f
+    var saraS3Cooldown = 0f
+    var saraMeleeEmpowerTicks = 0
+
     // Murad specific combo states
     var muradOriginalX = 65f
     var muradOriginalY = 50f
@@ -1206,10 +1211,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             // Find nearest enemy to attack
-            val isMurad = _mobaHero.value == "Murad"
-            val isYasuo = _mobaHero.value == "Yasuo"
-            val isAlpha = _mobaHero.value == "Alpha"
-            val isXiao = _mobaHero.value == "Xiao"
+            val isMurad = _mobaHero.value == "Murad" || _mobaHero.value == "Murad hoàng tử suy tàn"
+            val isYasuo = _mobaHero.value == "Yasuo" || _mobaHero.value == "Yasuo cơn gió cuồng ma"
+            val isAlpha = _mobaHero.value == "Alpha" || _mobaHero.value == "Alpha kẻ kí sinh"
+            val isXiao = _mobaHero.value == "Xiao" || _mobaHero.value == "Xiao nghiệp chướng"
+            val isSara = _mobaHero.value == "Kujou Sara" || _mobaHero.value == "Kujou Sara đại tướng tengu"
             val target = findNearestMobaEnemy(range = if (isMurad || isXiao) 16f else if (isYasuo || isAlpha) 18f else 25f)
             if (target == null) {
                 _mobaLog.value = "⚠️ Không có kẻ địch nào trong tầm đánh!"
@@ -1264,12 +1270,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             // Spawn basic projectile
-            val isTulen = _mobaHero.value == "Tulen"
-            val projColor = if (isTulen) 0xFF33FFFF else if (isMurad) 0xFFEAB308 else if (isYasuo) 0xFFF1F5F9 else if (isAlpha) 0xFF22D3EE else if (isXiao) 0xFF10B981 else 0xFFFFCC33
-            val damage = if (isTulen) 140f else if (isMurad) 195f else if (isYasuo) 180f else if (isAlpha) 175f else if (isXiao) 190f else 160f
+            val isTulen = _mobaHero.value == "Tulen" || _mobaHero.value == "Tulen hắc pháp sư"
+
+            val projColor = if (isTulen) 0xFF33FFFF else if (isMurad) 0xFFEAB308 else if (isYasuo) 0xFFF1F5F9 else if (isAlpha) 0xFF22D3EE else if (isXiao) 0xFF10B981 else if (isSara) 0xFF9333EA else 0xFFFFCC33
+            val damage = if (isTulen) 140f else if (isMurad) 195f else if (isYasuo) 180f else if (isAlpha) 175f else if (isXiao) 190f else if (isSara) 185f else 160f
             
-            val isPassiveShot = !isTulen && !isMurad && !isYasuo && !isAlpha && !isXiao && (mobaValheinAttackCount >= 2)
-            val projType = if (isMurad) "murad_basic" else if (isYasuo) "yasuo_basic" else if (isAlpha) "alpha_basic" else if (isXiao) "xiao_basic" else if (isPassiveShot) "passive_glaive" else "basic"
+            val isPassiveShot = !isTulen && !isMurad && !isYasuo && !isAlpha && !isXiao && !isSara && (mobaValheinAttackCount >= 2)
+            val projType = if (isMurad) "murad_basic" else if (isYasuo) "yasuo_basic" else if (isAlpha) "alpha_basic" else if (isXiao) "xiao_basic" else if (isSara) "sara_arrow" else if (isPassiveShot) "passive_glaive" else "basic"
             val finalColor = if (isPassiveShot) {
                 val rand = Random.nextInt(3)
                 when (rand) {
@@ -1282,12 +1289,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val proj = MobaProjectile(
                 x = _mobaHeroX.value,
                 y = _mobaHeroY.value,
-                speed = if (isMurad) 3.0f else if (isYasuo) 3.2f else if (isAlpha) 3.4f else if (isXiao) 3.3f else 2.2f, // Murad, Yasuo, Alpha, Xiao hit faster!
+                speed = if (isMurad) 3.0f else if (isYasuo) 3.2f else if (isAlpha) 3.4f else if (isXiao) 3.3f else if (isSara) 3.6f else 2.2f, // Murad, Yasuo, Alpha, Xiao, Sara hit faster!
                 isEnemy = false,
                 damage = damage,
                 type = projType,
                 color = finalColor,
-                radius = if (isMurad || isYasuo || isAlpha || isXiao) 1.2f else 1.8f,
+                radius = if (isMurad || isYasuo || isAlpha || isXiao || isSara) 1.2f else 1.8f,
                 targetX = target.first,
                 targetY = target.second,
                 isHoming = true,
@@ -1295,7 +1302,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             
             _mobaProjectiles.value = _mobaProjectiles.value + proj
-            if (!isTulen && !isMurad && !isYasuo && !isAlpha && !isXiao) {
+            if (!isTulen && !isMurad && !isYasuo && !isAlpha && !isXiao && !isSara) {
                 mobaValheinAttackCount = if (isPassiveShot) 0 else (mobaValheinAttackCount + 1)
                 val healAmt = _mobaHeroMaxHP.value * 0.05f
                 _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
@@ -1322,11 +1329,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_mobaHeroHP.value <= 0f) return
         if (_mobaSkillCooldowns.value[skillIndex] > 0f) return
 
-        val isTulen = _mobaHero.value == "Tulen"
-        val isMurad = _mobaHero.value == "Murad"
-        val isYasuo = _mobaHero.value == "Yasuo"
-        val isAlpha = _mobaHero.value == "Alpha"
-        val isXiao = _mobaHero.value == "Xiao"
+        val isTulen = _mobaHero.value == "Tulen" || _mobaHero.value == "Tulen hắc pháp sư"
+        val isMurad = _mobaHero.value == "Murad" || _mobaHero.value == "Murad hoàng tử suy tàn"
+        val isYasuo = _mobaHero.value == "Yasuo" || _mobaHero.value == "Yasuo cơn gió cuồng ma"
+        val isAlpha = _mobaHero.value == "Alpha" || _mobaHero.value == "Alpha kẻ kí sinh"
+        val isXiao = _mobaHero.value == "Xiao" || _mobaHero.value == "Xiao nghiệp chướng"
+        val isSara = _mobaHero.value == "Kujou Sara" || _mobaHero.value == "Kujou Sara đại tướng tengu"
 
         // For Murad, Ultimate is locked unless passive stacks are 4
         if (isMurad && skillIndex == 2 && _mobaPassiveStacks.value < 4) {
@@ -1342,9 +1350,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // Check Mana cost (Yasuo uses no mana)
         val manaCost = if (isYasuo) 0f else when (skillIndex) {
-            0 -> if (isTulen) 55f else if (isMurad) 55f else if (isAlpha) 50f else 50f
-            1 -> if (isTulen) 60f else if (isMurad) 60f else if (isAlpha) 60f else 65f
-            else -> if (isTulen) 100f else if (isMurad) 80f else if (isAlpha) 100f else 110f
+            0 -> if (isTulen) 55f else if (isMurad) 55f else if (isAlpha) 50f else if (isSara) 45f else 50f
+            1 -> if (isTulen) 60f else if (isMurad) 60f else if (isAlpha) 60f else if (isSara) 55f else 65f
+            else -> if (isTulen) 100f else if (isMurad) 80f else if (isAlpha) 100f else if (isSara) 95f else 110f
         }
 
         if (_mobaHeroMP.value < manaCost) {
@@ -1367,7 +1375,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             0 -> {
                 if (isMurad) {
                     if (_mobaMuradCastCount.value < 2) 0.6f else 8.0f
-                } else if (isTulen) 4.5f else if (isAlpha) 4.0f else 4.0f
+                } else if (isTulen) 4.5f else if (isAlpha) 4.0f else if (isSara) 4.0f else 4.0f
             }
             1 -> {
                 if (isTulen) {
@@ -1378,9 +1386,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     } else {
                         6.0f
                     }
-                } else if (isMurad) 7.0f else if (isAlpha) 5.5f else 6.0f
+                } else if (isMurad) 7.0f else if (isAlpha) 5.5f else if (isSara) 5.0f else 6.0f
             }
-            else -> if (isMurad) 4.0f else if (isTulen) 11.0f else if (isAlpha) 12.0f else 14.0f
+            else -> if (isMurad) 4.0f else if (isTulen) 11.0f else if (isAlpha) 12.0f else if (isSara) 11.0f else 14.0f
         }
         cds[skillIndex] = baseCd
         _mobaSkillCooldowns.value = cds
@@ -1545,14 +1553,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         mobaWindWallDurationLeftMs = 3800L // 3.8 seconds active
                     }
                 }
-                2 -> { // Chiêu 3: Trăn Trối (Last Breath)
+                2 -> { // Chiêu 3: Trăn Trối (Last Breath) - Double Slash + Cool Slam Down Slash
                     if (!_mobaEnemyIsStunned.value) {
                         _mobaLog.value = "⚠️ Kẻ địch phải bị HẤT TUNG (Choáng) mới thi triển được Trăn Trối!"
                         return
                     }
-                    _mobaLog.value = "⚡ SOYEGEDON! Yasuo bay tới TRĂN TRỐI liên hoàn kiếm lên Maloch!"
+                    val isCuongMa = _mobaHero.value == "Yasuo cơn gió cuồng ma"
+                    val heroTitle = if (isCuongMa) "Yasuo CG" else "Yasuo"
+                    _mobaLog.value = "⚡ SOYEGEDON! $heroTitle bay tới TRĂN TRỐI - CHÉM KÉP VÀ CHÉM XUỐNG CỰC NGẦU!"
                     
-                    // Teleport Yasuo to Maloch
+                    // Teleport Yasuo to enemy target
                     val eX = _mobaEnemyX.value
                     val eY = _mobaEnemyY.value
                     _mobaHeroX.value = eX - 4f
@@ -1562,53 +1572,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     
                     _mobaHeroIsImmune.value = true
                     
-                    // Suspend them both in the air with a fresh knockup of 1200ms duration
-                    triggerMobaEnemyKnockup(1200L)
+                    // Suspend enemy in air with knockup duration
+                    triggerMobaEnemyKnockup(1600L)
                     
                     viewModelScope.launch {
-                        // Animate Yasuo's visual elevation synchronized with the knockup
+                        // Animate elevation
                         launch {
-                            val steps = 24
-                            val peakHeight = 45f
-                            val stepDelay = 1200L / steps
+                            val steps = 30
+                            val peakHeight = 48f
+                            val stepDelay = 1600L / steps
                             for (i in 0..steps) {
                                 val progress = i.toFloat() / steps
-                                val angle = progress * kotlin.math.PI
-                                _mobaHeroKnockupHeight.value = (kotlin.math.sin(angle) * peakHeight).toFloat()
+                                val ang = progress * kotlin.math.PI
+                                _mobaHeroKnockupHeight.value = (kotlin.math.sin(ang) * peakHeight).toFloat()
                                 delay(stepDelay)
                             }
                             _mobaHeroKnockupHeight.value = 0f
                         }
 
-                        for (i in 1..4) {
-                            dealAoeMobaDamage(eX, eY, radius = 12f, damage = 190f, type = "yasuo_ult")
-                            addMobaDamageText("TRĂN TRỐI! 🌪️", eX + Random.nextFloat() * 8f - 4f, eY - 8f - _mobaEnemyKnockupHeight.value, 0xFFFFFFFF)
-                            
-                            val offsetDist = 10f
+                        // --- Slash 1 (Chém lần 1 - chém ngang) ---
+                        dealAoeMobaDamage(eX, eY, radius = 12f, damage = 250f, type = "yasuo_ult")
+                        addMobaDamageText("CHÉM LẦN 1! ⚔️", eX - 3f, eY - 12f - _mobaEnemyKnockupHeight.value, 0xFF38BDF8)
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX - 8f, y = eY - 4f, speed = 3.5f, isEnemy = false, damage = 0f,
+                            type = "yasuo_slash_visual", color = if (isCuongMa) 0xFF818CF8 else 0xFF38BDF8,
+                            radius = 2.5f, targetX = eX + 8f, targetY = eY + 4f, isHoming = false
+                        )
+                        delay(280)
+
+                        // --- Slash 2 (Chém lần 2 - chém chéo ngược) ---
+                        dealAoeMobaDamage(eX, eY, radius = 12f, damage = 290f, type = "yasuo_ult")
+                        addMobaDamageText("CHÉM LẦN 2! ⚔️⚡", eX + 3f, eY - 12f - _mobaEnemyKnockupHeight.value, 0xFF818CF8)
+                        _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                            x = eX + 8f, y = eY - 4f, speed = 3.5f, isEnemy = false, damage = 0f,
+                            type = "yasuo_slash_visual", color = if (isCuongMa) 0xFFC084FC else 0xFF00FFFF,
+                            radius = 2.5f, targetX = eX - 8f, targetY = eY + 4f, isHoming = false
+                        )
+                        delay(320)
+
+                        // --- Slam Down Slash (Chém bổ xuống cực ngầu!) ---
+                        dealAoeMobaDamage(eX, eY, radius = 16f, damage = 620f, type = "yasuo_ult_slam")
+                        addMobaDamageText("SORYE GE TON! CHÉM XUỐNG CỰC NGẦU! 💥🗡️", eX, eY - 14f, 0xFFEF4444)
+                        
+                        // Spawn 4 ground shockwave burst projectiles
+                        val shockwaveAngles = listOf(0f, 90f, 180f, 270f)
+                        shockwaveAngles.forEach { deg ->
+                            val rad = Math.toRadians(deg.toDouble())
                             _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
-                                x = eX - offsetDist + Random.nextFloat() * (2 * offsetDist),
-                                y = eY - offsetDist + Random.nextFloat() * (2 * offsetDist),
-                                speed = 4f,
-                                isEnemy = false,
-                                damage = 0f,
-                                type = "yasuo_slash_visual",
-                                color = 0xFF38BDF8,
-                                radius = 2.0f,
-                                targetX = eX + offsetDist - Random.nextFloat() * (2 * offsetDist),
-                                targetY = eY + offsetDist - Random.nextFloat() * (2 * offsetDist),
-                                isHoming = false
+                                x = eX, y = eY, speed = 2.8f, isEnemy = false, damage = 0f,
+                                type = "yasuo_slash_visual", color = if (isCuongMa) 0xFFEF4444 else 0xFF38BDF8,
+                                radius = 3.0f, targetX = eX + (kotlin.math.cos(rad) * 12f).toFloat(),
+                                targetY = eY + (kotlin.math.sin(rad) * 12f).toFloat(), isHoming = false
                             )
-                            delay(200)
                         }
 
-                        // Slam down with massive extra damage!
-                        dealAoeMobaDamage(eX, eY, radius = 14f, damage = 350f, type = "yasuo_ult_slam")
-                        addMobaDamageText("SORYE GE TON!!! 💥", eX, eY - 12f, 0xFFEF4444)
-
                         _mobaHeroIsImmune.value = false
-                        // Gain a flow shield!
-                        _mobaHeroHP.value = (_mobaHeroHP.value + 400f).coerceAtMost(_mobaHeroMaxHP.value)
-                        addMobaDamageText("+400 GIÁP 🛡️", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF38BDF8)
+                        val flowShield = _mobaHeroMaxHP.value * 0.40f
+                        _mobaHeroShield.value = flowShield
+                        mobaHeroShieldDurationLeft = 4000L
+                        addMobaDamageText("+${flowShield.toInt()} GIÁP GIÓ 🛡️", _mobaHeroX.value, _mobaHeroY.value - 6f, 0xFF38BDF8)
                     }
                 }
             }
@@ -2081,8 +2103,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 addMobaDamageText("MỞ KHOÁ S2! 🔓", _mobaHeroX.value, _mobaHeroY.value - 12f, 0xFF22C55E)
                             }
                             
-                            val textLabel = if (isMaskStillActive) "PLUNGE DẠ XOA! 👺⚡" else "PLUNGE THƯỜNG! 🟢"
-                            addMobaDamageText(textLabel, targetX, targetY - 6f, 0xFF22C55E)
+                            val textLabel = if (isMaskStillActive) "PLUNGE LAO XUỐNG CỰC NGẦU! 💥🐉" else "PLUNGE THƯỜNG! 🟢"
+                            addMobaDamageText(textLabel, targetX, targetY - 8f, 0xFF22C55E)
+                            
+                            // Spawn 4 emerald spear spikes bursting outward 360 degrees
+                            val spearAngles = listOf(45f, 135f, 225f, 315f)
+                            spearAngles.forEach { deg ->
+                                val rad = Math.toRadians(deg.toDouble())
+                                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                    x = targetX, y = targetY, speed = 3.2f, isEnemy = false, damage = 0f,
+                                    type = "xiao_needle", color = 0xFF22C55E, radius = 2.2f,
+                                    targetX = targetX + (kotlin.math.cos(rad) * 10f).toFloat(),
+                                    targetY = targetY + (kotlin.math.sin(rad) * 10f).toFloat(), isHoming = false
+                                )
+                            }
                             
                             _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
                                 x = targetX,
@@ -2103,6 +2137,161 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             }
                         }
                         
+                        _mobaHeroIsImmune.value = false
+                    }
+                }
+            }
+        } else if (_mobaHero.value == "Kujou Sara" || _mobaHero.value == "Kujou Sara đại tướng tengu") {
+            // Kujou Sara skill implementations
+            when (skillIndex) {
+                0 -> { // Skill 1: Drop Electro Feather Bomb & Teleport Backward
+                    val healAmt = _mobaHeroMaxHP.value * 0.10f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+
+                    _mobaLog.value = "🪶 Kujou Sara thả CẦU BOM LÔNG VŨ ĐIỆN, HỒI 10% HP và DỊCH CHUYỂN LÙI LẠI PHÍA SAU!"
+                    
+                    val bombX = hX
+                    val bombY = hY
+                    
+                    // Blink Sara backward
+                    val blinkDist = 14f
+                    val backAngle = angle + kotlin.math.PI.toFloat()
+                    val newX = (hX + kotlin.math.cos(backAngle) * blinkDist).coerceIn(10f, 90f)
+                    val newY = (hY + kotlin.math.sin(backAngle) * blinkDist).coerceIn(20f, 80f)
+                    
+                    _mobaHeroX.value = newX
+                    _mobaHeroY.value = newY
+                    _mobaHeroDestX.value = newX
+                    _mobaHeroDestY.value = newY
+                    
+                    _mobaDashTrails.value = listOf(
+                        MobaDashTrail(id = "sara_blink_start_${System.currentTimeMillis()}", x = bombX, y = bombY, color = 0xFF9333EA, isTulen = false, alpha = 0.8f),
+                        MobaDashTrail(id = "sara_blink_end_${System.currentTimeMillis()}", x = newX, y = newY, color = 0xFFA855F7, isTulen = false, alpha = 0.8f)
+                    )
+                    viewModelScope.launch {
+                        delay(250)
+                        _mobaDashTrails.value = emptyList()
+                    }
+                    
+                    // Feather Bomb Detonation
+                    viewModelScope.launch {
+                        addMobaDamageText("🪶 BOM LÔNG VŨ ĐIỆN", bombX, bombY - 6f, 0xFFC084FC)
+                        delay(500)
+                        
+                        dealAoeMobaDamage(bombX, bombY, radius = 11f, damage = 380f, type = "sara_bomb")
+                        addMobaDamageText("OANH TẠC LÔI VŨ! ⚡💥", bombX, bombY - 8f, 0xFFA855F7)
+                        
+                        for (deg in listOf(0, 90, 180, 270)) {
+                            val rad = Math.toRadians(deg.toDouble())
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = bombX, y = bombY, speed = 3.0f, isEnemy = false, damage = 0f,
+                                type = "sara_electro_spark", color = 0xFFC084FC, radius = 2.2f,
+                                targetX = bombX + (kotlin.math.cos(rad) * 10f).toFloat(),
+                                targetY = bombY + (kotlin.math.sin(rad) * 10f).toFloat(), isHoming = false
+                            )
+                        }
+                    }
+                }
+                1 -> { // Skill 2: Transforms into Electro Crow/Bird and Dashes Forward
+                    val healAmt = _mobaHeroMaxHP.value * 0.10f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+
+                    _mobaLog.value = "🦅 Kujou Sara CHUYỂN HÓA THÀNH CHIM ĐIỆN & HỒI 10% HP! Lao xé gió càn quét làm chậm kẻ địch!"
+                    
+                    val destX = _mobaHeroDestX.value
+                    val destY = _mobaHeroDestY.value
+                    val dist = kotlin.math.sqrt((destX - hX) * (destX - hX) + (destY - hY) * (destY - hY))
+                    val dashDist = if (dist > 1.0f) dist.coerceAtMost(18f) else 15f
+                    val bAng = if (dist > 1.0f) kotlin.math.atan2(destY - hY, destX - hX) else angle
+                    val nextX = (hX + kotlin.math.cos(bAng) * dashDist).coerceIn(10f, 90f)
+                    val nextY = (hY + kotlin.math.sin(bAng) * dashDist).coerceIn(20f, 80f)
+
+                    viewModelScope.launch {
+                        _mobaHeroIsImmune.value = true
+                        val steps = 6
+                        val stepX = (nextX - hX) / steps
+                        val stepY = (nextY - hY) / steps
+                        
+                        for (i in 1..steps) {
+                            val currX = hX + stepX * i
+                            val currY = hY + stepY * i
+                            _mobaHeroX.value = currX
+                            _mobaHeroY.value = currY
+                            
+                            _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                                id = "sara_crow_${System.currentTimeMillis()}_$i",
+                                x = currX, y = currY, color = 0xFF9333EA, isTulen = false, alpha = 0.25f * i
+                            )
+                            delay(15)
+                        }
+
+                        _mobaHeroX.value = nextX
+                        _mobaHeroY.value = nextY
+                        _mobaHeroDestX.value = nextX
+                        _mobaHeroDestY.value = nextY
+                        
+                        dealAoeMobaDamage(nextX, nextY, radius = 10f, damage = 420f, type = "sara_crow_dash")
+                        addMobaDamageText("🦅 CHIM ĐIỆN CÀN QUÉT ⚡", nextX, nextY - 8f, 0xFF9333EA)
+                        
+                        val nearest = findNearestMobaEnemy(range = 10f)
+                        if (nearest != null && nearest.third == "enemy_hero") {
+                            triggerMobaEnemyStun(800L)
+                        }
+
+                        _mobaHeroIsImmune.value = false
+                        delay(200)
+                        _mobaDashTrails.value = emptyList()
+                    }
+                }
+                2 -> { // Skill 3 (Ult): Tengu Juurai: Titanbreaker & Stormcluster
+                    val healAmt = _mobaHeroMaxHP.value * 0.10f
+                    _mobaHeroHP.value = (_mobaHeroHP.value + healAmt).coerceAtMost(_mobaHeroMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", hX, hY - 6f, 0xFF10B981)
+
+                    _mobaLog.value = "⚡ SIÊU PHẨM CỘT SÉT TENGU TITANBREAKER & HỒI 10% HP! Cột sét khổng lồ giáng xuống và TÁCH THÀNH 5 CỘT ĐIỆN HỦY DIỆT!"
+                    
+                    viewModelScope.launch {
+                        _mobaHeroIsImmune.value = true
+                        
+                        val mainX = tX.coerceIn(10f, 90f)
+                        val mainY = tY.coerceIn(20f, 80f)
+                        
+                        addMobaDamageText("⚡ TITANBREAKER FOCUS!", mainX, mainY - 14f, 0xFFE9D5FF)
+                        
+                        _mobaDashTrails.value = listOf(
+                            MobaDashTrail(id = "sara_ult_titanbreaker", x = mainX, y = mainY, color = 0xFF9333EA, isTulen = true, alpha = 1.0f)
+                        )
+                        delay(200)
+                        
+                        dealAoeMobaDamage(mainX, mainY, radius = 15f, damage = 880f, type = "sara_ult_main")
+                        addMobaDamageText("THIÊN SÉT TITANBREAKER! ⚡💥", mainX, mainY - 10f, 0xFF9333EA)
+                        triggerMobaEnemyStun(1000L)
+                        
+                        delay(150)
+                        
+                        _mobaLog.value = "⚡ BÃỎ ĐIỆN STORMCLUSTER! Tách thành 5 cột điện phụ oanh tạc 5 hướng cực ngầu!"
+                        
+                        val splitRadius = 12f
+                        val angles5 = listOf(0, 72, 144, 216, 288)
+                        
+                        val subTrails = mutableListOf<MobaDashTrail>()
+                        angles5.forEachIndexed { index, deg ->
+                            val rad = Math.toRadians(deg.toDouble())
+                            val subX = (mainX + kotlin.math.cos(rad) * splitRadius).toFloat().coerceIn(10f, 90f)
+                            val subY = (mainY + kotlin.math.sin(rad) * splitRadius).toFloat().coerceIn(20f, 80f)
+                            
+                            subTrails.add(MobaDashTrail(id = "sara_ult_sub_$index", x = subX, y = subY, color = 0xFFA855F7, isTulen = true, alpha = 0.9f))
+                            
+                            dealAoeMobaDamage(subX, subY, radius = 8f, damage = 300f, type = "sara_ult_sub")
+                            addMobaDamageText("⚡ CỘT ĐIỆN ${index+1}", subX, subY - 6f, 0xFFE9D5FF)
+                        }
+                        
+                        _mobaDashTrails.value = subTrails
+                        
+                        delay(400)
+                        _mobaDashTrails.value = emptyList()
                         _mobaHeroIsImmune.value = false
                     }
                 }
@@ -3034,6 +3223,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             malochS1Cooldown = (malochS1Cooldown - 0.05f).coerceAtLeast(0f)
             malochS2Cooldown = (malochS2Cooldown - 0.05f).coerceAtLeast(0f)
             malochS3Cooldown = (malochS3Cooldown - 0.05f).coerceAtLeast(0f)
+
+            // Decrement Sara boss cooldowns
+            saraS1Cooldown = (saraS1Cooldown - 0.05f).coerceAtLeast(0f)
+            saraS2Cooldown = (saraS2Cooldown - 0.05f).coerceAtLeast(0f)
+            saraS3Cooldown = (saraS3Cooldown - 0.05f).coerceAtLeast(0f)
+            if (saraMeleeEmpowerTicks > 0) saraMeleeEmpowerTicks--
 
             // Decrement Murad cooldowns
             muradComboCooldown = (muradComboCooldown - 0.05f).coerceAtLeast(0f)
@@ -4277,6 +4472,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (activeEnemy.contains("Xiao")) {
             updateXiaoEnemyAI(currentTime, dmgMultiplier)
+            return
+        }
+
+        if (activeEnemy.contains("Sara") || activeEnemy.contains("Kujou")) {
+            updateSaraEnemyAI(currentTime, dmgMultiplier)
             return
         }
 
@@ -6492,6 +6692,387 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
+            }
+        }
+    }
+
+    private fun updateSaraEnemyAI(currentTime: Long, dmgMultiplier: Float) {
+        val activeEnemy = _mobaSelectedEnemy.value
+        val isBossTengu = activeEnemy == "Kujou Sara đại tướng tengu"
+        val themeColor = if (isBossTengu) 0xFFA855F7L else 0xFF9333EAL
+        
+        val eHP = _mobaEnemyHP.value
+        if (eHP <= 0f) {
+            if (tickCounterMoba % 200 == 0) { // approx 10s
+                _mobaEnemyHP.value = _mobaEnemyMaxHP.value
+                _mobaEnemyX.value = 65f
+                _mobaEnemyY.value = 50f
+                saraMeleeEmpowerTicks = 0
+                _mobaLog.value = "👿 $activeEnemy đã hồi sinh từ Tế Đàn Địch và tiến ra Đại Lộ!"
+            }
+            return
+        }
+
+        // Handle stun
+        if (_mobaEnemyIsStunned.value) {
+            if (currentTime >= mobaEnemyStunUntil) {
+                _mobaEnemyIsStunned.value = false
+            } else {
+                return
+            }
+        }
+
+        val eX = _mobaEnemyX.value
+        val eY = _mobaEnemyY.value
+        val hX = _mobaHeroX.value
+        val hY = _mobaHeroY.value
+
+        val distToPlayer = kotlin.math.sqrt((hX - eX) * (hX - eX) + (hY - eY) * (hY - eY))
+
+        // Flee if low HP and not empowered
+        if (eHP < 900f && _mobaEnemyTurretHP.value > 0f && saraMeleeEmpowerTicks <= 0) {
+            val dx = 75f - eX
+            val dy = 50f - eY
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > 1f) {
+                _mobaEnemyX.value += (dx / dist) * 1.0f
+                _mobaEnemyY.value += (dy / dist) * 1.0f
+            }
+            if (dist <= 5f) {
+                _mobaEnemyHP.value = (eHP + 25f).coerceAtMost(_mobaEnemyMaxHP.value)
+            }
+            return
+        }
+
+        if (_mobaHeroHP.value > 0f && distToPlayer <= 35f) {
+            if (!isBossTengu) {
+                // NORMAL ENEMY KUJOU SARA - EXACTLY MATCHES PLAYABLE HERO SKILLS
+                
+                // 3. Ult: Thiên Sét Tengu Titanbreaker (Splits into 5 columns, heals 10% HP)
+                if (saraS3Cooldown <= 0f) {
+                    saraS3Cooldown = 11.0f
+                    val healAmt = _mobaEnemyMaxHP.value * 0.10f
+                    _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", eX, eY - 6f, 0xFF10B981)
+
+                    _mobaLog.value = "⚡ Kujou Sara tung SIÊU PHẨM CỘT SÉT TITANBREAKER & HỒI 10% HP! Cột sét giáng xuống và TÁCH THÀNH 5 CỘT ĐIỆN HỦY DIỆT!"
+
+                    viewModelScope.launch {
+                        _mobaEnemyIsLeaping.value = true
+                        val mainX = hX.coerceIn(10f, 90f)
+                        val mainY = hY.coerceIn(20f, 80f)
+
+                        addMobaDamageText("⚡ TITANBREAKER FOCUS!", mainX, mainY - 14f, 0xFFE9D5FF)
+
+                        _mobaDashTrails.value = listOf(
+                            MobaDashTrail(id = "sara_ult_titanbreaker", x = mainX, y = mainY, color = 0xFF9333EA, isTulen = true, alpha = 1.0f)
+                        )
+                        delay(200)
+
+                        dealAoeMobaEnemyDamage(mainX, mainY, radius = 15f, damage = 650f * dmgMultiplier, type = "sara_ult_main")
+                        addMobaDamageText("THIÊN SÉT TITANBREAKER! ⚡💥", mainX, mainY - 10f, 0xFF9333EA)
+                        triggerHeroStun(1000L)
+
+                        delay(150)
+
+                        val splitRadius = 12f
+                        val angles5 = listOf(0, 72, 144, 216, 288)
+
+                        val subTrails = mutableListOf<MobaDashTrail>()
+                        angles5.forEachIndexed { index, deg ->
+                            val rad = Math.toRadians(deg.toDouble())
+                            val subX = (mainX + kotlin.math.cos(rad) * splitRadius).toFloat().coerceIn(10f, 90f)
+                            val subY = (mainY + kotlin.math.sin(rad) * splitRadius).toFloat().coerceIn(20f, 80f)
+
+                            subTrails.add(MobaDashTrail(id = "sara_ult_sub_$index", x = subX, y = subY, color = 0xFFA855F7, isTulen = true, alpha = 0.9f))
+
+                            dealAoeMobaEnemyDamage(subX, subY, radius = 8f, damage = 250f * dmgMultiplier, type = "sara_ult_sub")
+                            addMobaDamageText("⚡ CỘT ĐIỆN ${index+1}", subX, subY - 6f, 0xFFE9D5FF)
+                        }
+
+                        _mobaDashTrails.value = subTrails
+
+                        delay(400)
+                        _mobaDashTrails.value = emptyList()
+                        _mobaEnemyIsLeaping.value = false
+                    }
+                    return
+                }
+
+                // 2. Chiêu 2: Chim Điện Phóng Tới (Crow Dash through player, heals 10% HP)
+                if (saraS2Cooldown <= 0f) {
+                    saraS2Cooldown = 6.0f
+                    val healAmt = _mobaEnemyMaxHP.value * 0.10f
+                    _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", eX, eY - 6f, 0xFF10B981)
+
+                    _mobaLog.value = "🦅 Kujou Sara CHUYỂN HÓA THÀNH CHIM ĐIỆN & HỒI 10% HP! Lao xé gió càn quét làm chậm kẻ địch!"
+
+                    val angle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val dashDist = 15f
+                    val nextX = (eX + kotlin.math.cos(angle) * dashDist).coerceIn(10f, 90f)
+                    val nextY = (eY + kotlin.math.sin(angle) * dashDist).coerceIn(20f, 80f)
+
+                    viewModelScope.launch {
+                        _mobaEnemyIsLeaping.value = true
+                        val steps = 6
+                        val stepX = (nextX - eX) / steps
+                        val stepY = (nextY - eY) / steps
+
+                        for (i in 1..steps) {
+                            val currX = eX + stepX * i
+                            val currY = eY + stepY * i
+                            _mobaEnemyX.value = currX
+                            _mobaEnemyY.value = currY
+
+                            _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                                id = "sara_enemy_crow_${System.currentTimeMillis()}_$i",
+                                x = currX, y = currY, color = 0xFF9333EA, isTulen = false, alpha = 0.25f * i
+                            )
+                            delay(15)
+                        }
+
+                        _mobaEnemyX.value = nextX
+                        _mobaEnemyY.value = nextY
+
+                        dealAoeMobaEnemyDamage(nextX, nextY, radius = 10f, damage = 350f * dmgMultiplier, type = "sara_crow_dash")
+                        addMobaDamageText("🦅 CHIM ĐIỆN CÀN QUÉT ⚡", nextX, nextY - 8f, 0xFF9333EA)
+                        triggerHeroStun(800L)
+
+                        _mobaEnemyIsLeaping.value = false
+                        delay(200)
+                        _mobaDashTrails.value = emptyList()
+                    }
+                    return
+                }
+
+                // 1. Chiêu 1: Tengu Bẫy Điện (Drops Feather Bomb, heals 10% HP, blinks backward)
+                if (saraS1Cooldown <= 0f) {
+                    saraS1Cooldown = 3.5f
+                    val healAmt = _mobaEnemyMaxHP.value * 0.10f
+                    _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                    addMobaDamageText("+${healAmt.toInt()} HP 💚", eX, eY - 6f, 0xFF10B981)
+
+                    _mobaLog.value = "🪶 Kujou Sara thả CẦU BOM LÔNG VŨ ĐIỆN, HỒI 10% HP và DỊCH CHUYỂN LÙI LẠI PHÍA SAU!"
+
+                    val bombX = eX
+                    val bombY = eY
+
+                    // Blink Sara backward away from player
+                    val angle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val backAngle = angle + kotlin.math.PI.toFloat()
+                    val blinkDist = 14f
+                    val newX = (eX + kotlin.math.cos(backAngle) * blinkDist).coerceIn(10f, 90f)
+                    val newY = (eY + kotlin.math.sin(backAngle) * blinkDist).coerceIn(20f, 80f)
+
+                    _mobaEnemyX.value = newX
+                    _mobaEnemyY.value = newY
+
+                    _mobaDashTrails.value = listOf(
+                        MobaDashTrail(id = "sara_enemy_blink_start_${System.currentTimeMillis()}", x = bombX, y = bombY, color = 0xFF9333EA, isTulen = false, alpha = 0.8f),
+                        MobaDashTrail(id = "sara_enemy_blink_end_${System.currentTimeMillis()}", x = newX, y = newY, color = 0xFFA855F7, isTulen = false, alpha = 0.8f)
+                    )
+                    viewModelScope.launch {
+                        delay(250)
+                        _mobaDashTrails.value = emptyList()
+                    }
+
+                    // Feather Bomb Detonation
+                    viewModelScope.launch {
+                        addMobaDamageText("🪶 BOM LÔNG VŨ ĐIỆN", bombX, bombY - 6f, 0xFFC084FC)
+                        delay(400)
+
+                        dealAoeMobaEnemyDamage(bombX, bombY, radius = 11f, damage = 300f * dmgMultiplier, type = "sara_bomb")
+                        addMobaDamageText("OANH TẠC LÔI VŨ! ⚡💥", bombX, bombY - 8f, 0xFFA855F7)
+
+                        for (deg in listOf(0, 90, 180, 270)) {
+                            val rad = Math.toRadians(deg.toDouble())
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = bombX, y = bombY, speed = 3.0f, isEnemy = true, damage = 0f,
+                                type = "sara_electro_spark", color = 0xFFC084FC, radius = 2.2f,
+                                targetX = bombX + (kotlin.math.cos(rad) * 10f).toFloat(),
+                                targetY = bombY + (kotlin.math.sin(rad) * 10f).toFloat(), isHoming = false
+                            )
+                        }
+                    }
+                    return
+                }
+
+            } else {
+                // Check if Katana Melee Stance Empowered is active!
+                if (saraMeleeEmpowerTicks > 0) {
+                // Boss rushes directly towards player in melee range
+                if (distToPlayer > 5.0f) {
+                    val dx = hX - eX
+                    val dy = hY - eY
+                    _mobaEnemyX.value += (dx / distToPlayer) * 1.5f
+                    _mobaEnemyY.value += (dy / distToPlayer) * 1.5f
+                    
+                    // Add purple ghost dash trails behind boss
+                    _mobaDashTrails.value = _mobaDashTrails.value + MobaDashTrail(
+                        id = "sara_melee_trail_${System.currentTimeMillis()}",
+                        x = _mobaEnemyX.value, y = _mobaEnemyY.value, color = 0xFF9333EA, isTulen = false, alpha = 0.6f
+                    )
+                }
+                
+                // Rapid Melee Katana Slashes!
+                if (distToPlayer <= 7.0f && tickCounterMoba % 16 == 0) {
+                    val isSlash1 = tickCounterMoba % 32 == 0
+                    val slashName = if (isSlash1) "NHẤT TRẢM TENGU XÉ GIÓ! ⚡⚔️" else "MA TRẢM LÔI PHONG! 💜🗡️"
+                    dealAoeMobaEnemyDamage(hX, hY, radius = 8f, damage = 380f * dmgMultiplier, type = "sara_katana_slash")
+                    addMobaDamageText(slashName, hX, hY - 8f, 0xFFC084FC)
+                    
+                    // Spawn purple slash arc visual projectiles
+                    val slashAng = kotlin.math.atan2(hY - eY, hX - eX)
+                    val p1X = eX + kotlin.math.cos(slashAng - 0.5f) * 12f
+                    val p1Y = eY + kotlin.math.sin(slashAng - 0.5f) * 12f
+                    val p2X = eX + kotlin.math.cos(slashAng + 0.5f) * 12f
+                    val p2Y = eY + kotlin.math.sin(slashAng + 0.5f) * 12f
+                    
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX, y = eY, speed = 4.0f, isEnemy = true, damage = 0f,
+                        type = "yasuo_slash_visual", color = 0xFF9333EA, radius = 2.5f,
+                        targetX = p1X, targetY = p1Y, isHoming = false
+                    )
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX, y = eY, speed = 4.0f, isEnemy = true, damage = 0f,
+                        type = "yasuo_slash_visual", color = 0xFFC084FC, radius = 2.5f,
+                        targetX = p2X, targetY = p2Y, isHoming = false
+                    )
+                }
+                return
+            }
+
+            // --- Normal Ranged & Skill Rotation ---
+            
+            // 3. Chiêu thứ ba (Ult): Xé đôi không gian Katana tím & Cường hóa Boss chuyển sang Đánh Gần!
+            if (saraS3Cooldown <= 0f) {
+                saraS3Cooldown = 13.0f
+                saraMeleeEmpowerTicks = 200 // 10 seconds of Katana Melee Stance Empower!
+                
+                _mobaLog.value = "⚡ $activeEnemy XÉ ĐÔI KHÔNG GIAN BẰNG KATANA TÍM & CƯỜNG HÓA! Chuyển sang ĐÁNH GẦN VỚI NHỮNG VẾT CHÉM CỰC LỚN VÀ CỰC NGẦU!"
+                
+                viewModelScope.launch {
+                    _mobaEnemyIsLeaping.value = true
+                    
+                    // Spatial Katana Rift line visual from Boss through Hero
+                    val angle = kotlin.math.atan2(hY - eY, hX - eX)
+                    val lineLen = 35f
+                    val riftX = eX + kotlin.math.cos(angle) * lineLen
+                    val riftY = eY + kotlin.math.sin(angle) * lineLen
+                    
+                    _mobaDashTrails.value = listOf(
+                        MobaDashTrail(id = "sara_ult_rift_start", x = eX, y = eY, color = 0xFF9333EA, isTulen = true, alpha = 1.0f),
+                        MobaDashTrail(id = "sara_ult_rift_mid", x = hX, y = hY, color = 0xFFA855F7, isTulen = true, alpha = 1.0f),
+                        MobaDashTrail(id = "sara_ult_rift_end", x = riftX, y = riftY, color = 0xFFE9D5FF, isTulen = true, alpha = 1.0f)
+                    )
+                    
+                    addMobaDamageText("⚡ DIMENSIONAL KATANA RIFT!", hX, hY - 14f, 0xFFE9D5FF)
+                    delay(300)
+                    
+                    dealAoeMobaEnemyDamage(hX, hY, radius = 16f, damage = 780f * dmgMultiplier, type = "sara_katana_ult")
+                    addMobaDamageText("XÉ ĐÔI KHÔNG GIAN KATANA TÍM! 🔮🗡️💥", hX, hY - 10f, 0xFF9333EA)
+                    triggerHeroStun(1000L)
+                    
+                    // Grant massive purple shield & move boss close
+                    val shieldVal = 600f * dmgMultiplier
+                    _mobaEnemyShield.value = shieldVal
+                    addMobaDamageText("+${shieldVal.toInt()} GIÁP LÔI TENGU 🛡️", eX, eY - 8f, 0xFFC084FC)
+                    
+                    _mobaEnemyIsLeaping.value = false
+                    delay(300)
+                    _mobaDashTrails.value = emptyList()
+                }
+                return
+            }
+
+            // 2. Chiêu thứ hai: Tạo 3 cột sét đánh trúng mục tiêu sẽ TÁCH THÀNH 7 CỘT SÉT NHỎ
+            if (saraS2Cooldown <= 0f) {
+                saraS2Cooldown = 6.5f
+                _mobaLog.value = "⚡ $activeEnemy GIÁNG 3 CỘT SÉT TENGU! Mỗi cột sét đánh trúng TÁCH THÀNH 7 CỘT ĐIỆN NHỎ càn quét bão lôi!"
+                
+                viewModelScope.launch {
+                    val p1 = Pair(hX, hY)
+                    val p2 = Pair(hX - 7f, hY - 4f)
+                    val p3 = Pair(hX + 7f, hY + 4f)
+                    val mainPillars = listOf(p1, p2, p3)
+                    
+                    val trails = mutableListOf<MobaDashTrail>()
+                    mainPillars.forEachIndexed { i, p ->
+                        trails.add(MobaDashTrail(id = "sara_pillar_$i", x = p.first, y = p.second, color = 0xFF9333EA, isTulen = true, alpha = 1.0f))
+                    }
+                    _mobaDashTrails.value = trails
+                    delay(250)
+                    
+                    // Detonate 3 main pillars and split each into 7 sub-pillars!
+                    val angles7 = listOf(0, 51, 102, 154, 205, 257, 308)
+                    mainPillars.forEachIndexed { idx, p ->
+                        val pX = p.first.coerceIn(10f, 90f)
+                        val pY = p.second.coerceIn(20f, 80f)
+                        
+                        dealAoeMobaEnemyDamage(pX, pY, radius = 9f, damage = 320f * dmgMultiplier, type = "sara_pillar")
+                        addMobaDamageText("⚡ CỘT SÉT ${idx + 1}", pX, pY - 6f, 0xFFE9D5FF)
+                        triggerHeroStun(500L)
+                        
+                        // Split into 7 small lightning pillars!
+                        angles7.forEach { deg ->
+                            val rad = Math.toRadians(deg.toDouble())
+                            val subX = pX + (kotlin.math.cos(rad) * 10f).toFloat()
+                            val subY = pY + (kotlin.math.sin(rad) * 10f).toFloat()
+                            
+                            dealAoeMobaEnemyDamage(subX, subY, radius = 6f, damage = 140f * dmgMultiplier, type = "sara_pillar_sub")
+                            _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                                x = pX, y = pY, speed = 3.5f, isEnemy = true, damage = 0f,
+                                type = "sara_electro_spark", color = 0xFFC084FC, radius = 2.0f,
+                                targetX = subX, targetY = subY, isHoming = false
+                            )
+                        }
+                    }
+                    addMobaDamageText("TÁCH THÀNH 21 CỘT ĐIỆN BỘC PHÁ! ⚡💥", hX, hY - 12f, 0xFFA855F7)
+                    
+                    delay(400)
+                    _mobaDashTrails.value = emptyList()
+                }
+                return
+            }
+
+            // 1. Chiêu đầu tiên: Bắn ra bom điện và hồi HP khá nhanh!
+            if (saraS1Cooldown <= 0f) {
+                saraS1Cooldown = 2.5f // Cooldown fast!
+                _mobaLog.value = "🪶 $activeEnemy bắn BOM ĐIỆN TENGU liên tục và HỒI HP KHÁ NHANH!"
+                
+                // Heal Boss
+                val healAmt = 260f * dmgMultiplier
+                _mobaEnemyHP.value = (_mobaEnemyHP.value + healAmt).coerceAtMost(_mobaEnemyMaxHP.value)
+                addMobaDamageText("+${healAmt.toInt()} HP 💚", eX, eY - 6f, 0xFF10B981)
+                
+                val bombTargetX = hX
+                val bombTargetY = hY
+                
+                viewModelScope.launch {
+                    addMobaDamageText("🪶 BOM ĐIỆN!", eX, eY - 8f, 0xFFC084FC)
+                    
+                    _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                        x = eX, y = eY, speed = 3.6f, isEnemy = true, damage = 350f * dmgMultiplier,
+                        type = "sara_bomb", color = 0xFF9333EA, radius = 2.5f,
+                        targetX = bombTargetX, targetY = bombTargetY, isHoming = false
+                    )
+                    
+                    delay(350)
+                    dealAoeMobaEnemyDamage(bombTargetX, bombTargetY, radius = 10f, damage = 350f * dmgMultiplier, type = "sara_bomb")
+                    addMobaDamageText("BOM ĐIỆN TENGU NỔ! ⚡💥", bombTargetX, bombTargetY - 8f, 0xFFA855F7)
+                }
+                return
+            }
+            }
+
+            // Basic Ranged Attack
+            if (tickCounterMoba % 25 == 0) {
+                _mobaProjectiles.value = _mobaProjectiles.value + MobaProjectile(
+                    x = eX, y = eY, speed = 3.6f, isEnemy = true, damage = 175f * dmgMultiplier,
+                    type = "sara_arrow", color = themeColor, radius = 1.3f,
+                    targetX = hX, targetY = hY, isHoming = true, homingTargetId = "player"
+                )
             }
         }
     }
@@ -8881,10 +9462,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearChat() {
+        val welcomeText = if (_appLanguage.value == AppLanguage.EN) {
+            "Chat history has been cleared, sweetheart! Like a fresh blank page for us to continue our smooth story without any network lag! 🥰 Ask me anything about network optimization or flirt with me anytime!"
+        } else {
+            "Lịch sử trò chuyện đã được dọn sạch rồi anh yêu! Như một trang giấy trắng để chúng mình viết tiếp câu chuyện tình yêu mượt mà không lo lag giật nhé! 🥰 Có câu hỏi nào về tối ưu kết nối mạng hay muốn nghe thính mới thì cứ nhắn cho em nha!"
+        }
         _chatMessages.value = listOf(
             ChatMessage(
                 sender = Sender.LINH_CHI,
-                text = "Lịch sử trò chuyện đã được dọn sạch rồi anh yêu! Như một trang giấy trắng để chúng mình viết tiếp câu chuyện tình yêu mượt mà không lo lag giật nhé! 🥰 Có câu hỏi nào về tối ưu kết nối mạng hay muốn nghe thính mới thì cứ nhắn cho em nha!"
+                text = welcomeText
             )
         )
     }

@@ -497,7 +497,7 @@ fun QuickSuggestions(onSuggestionClicked: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 suggestions.take(3).forEach { text ->
-                    SuggestionChip(text = text, onClicked = { onSuggestionClicked(text) })
+                    SuggestionChip(text = text, onClicked = { onSuggestionClicked(getLocalizedText(text)) })
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
@@ -508,7 +508,7 @@ fun QuickSuggestions(onSuggestionClicked: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 suggestions.takeLast(2).forEach { text ->
-                    SuggestionChip(text = text, onClicked = { onSuggestionClicked(text) })
+                    SuggestionChip(text = text, onClicked = { onSuggestionClicked(getLocalizedText(text)) })
                 }
             }
         }

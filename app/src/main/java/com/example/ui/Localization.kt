@@ -647,6 +647,36 @@ fun getLocalizedText(text: String): String {
         trimmed == "🔥 Đâm plunge chấn động 2 lần hất tung diện rộng dẫm nát trận địa kẻ thù." ->
             return "🔥 2 Consecutive shockwave Plunges to knock up wide area and crush enemy lines."
 
+        // Kujou Sara Hero & Boss Details
+        trimmed == "Kujou Sara đại tướng tengu" -> return "Kujou Sara Tengu General"
+        trimmed == "Đại Tướng Tengu Cánh Đen" -> return "Black-Feathered Tengu General"
+        trimmed == "Nội Tại: Sấm Sét Tengu" -> return "Passive: Tengu Lightning"
+        trimmed == "Bắn cung chuẩn xác tích lôi năng. Kích hoạt chiêu thức ban cho bản thân sức mạnh tốc phẫn sấm sét." ->
+            return "Accurate archery builds electro power. Skill activation grants lightning speed & attack power."
+        trimmed == "Chiêu 1: Tengu Bẫy Điện" -> return "Skill 1: Tengu Electro Trap"
+        trimmed == "🪶 Để lại quả cầu bom điện tại vị trí và lập tức dịch chuyển lùi lại phía sau an toàn." ->
+            return "🪶 Drops an electro feather bomb at position and blinks back safely."
+        trimmed == "Chiêu 2: Chim Điện Phóng Tới" -> return "Skill 2: Charging Electro Crow"
+        trimmed == "🦅 Biến thành đại điểu lôi điện lao xé gió về phía trước càn quét làm chậm kẻ địch." ->
+            return "🦅 Transforms into an electro crow, dashing forward to sweep & slow enemies."
+        trimmed == "Ult: Thiên Sét Tengu Titanbreaker" -> return "Ult: Tengu Juurai Titanbreaker"
+        trimmed == "⚡ Triệu hồi CỘT SÉT KHỔNG LỒ Titanbreaker giáng xuống từ trên trời, đánh trúng lập tức TÁCH THÀNH 5 CỘT ĐIỆN NHỎ oanh tạc cực ngầu." ->
+            return "⚡ Summons a GIANT TITANBREAKER LIGHTNING PILLAR from above, instantly splitting into 5 DESTRUCTIVE SUB-PILLARS upon impact."
+
+        trimmed == "Đại Tướng Tengu Lôi Điện" -> return "Tengu Lightning General"
+        trimmed == "Nội Tại: Tengu Bão Lôi" -> return "Passive: Tengu Storm"
+        trimmed == "Cung điện giật sấm, tăng sát thương chí mạng lôi thuộc tính và giáp bảo vệ." ->
+            return "Thunderous electro bow, boosting electro critical strike damage & defense shield."
+        trimmed == "Chiêu 1: Bẫy Lôi Bão" -> return "Skill 1: Lightning Storm Trap"
+        trimmed == "🪶 Thả quả bom feather lôi điện nổ bộc phá và dịch chuyển lùi cực nhanh." ->
+            return "🪶 Drops an explosive electro feather bomb and teleports backward rapidly."
+        trimmed == "Chiêu 2: Chim Điện Bão Tới" -> return "Skill 2: Thunder Crow Rush"
+        trimmed == "🦅 Biến đại điểu sấm sét lao thẳng gây sát thương và tê liệt đối thủ." ->
+            return "🦅 Transforms into a thunder crow charging straight ahead, dealing damage & paralyzing opponents."
+        trimmed == "Ult: Thiên Sét Tengu Bộc Phá" -> return "Ult: Tengu Lightning Detonation"
+        trimmed == "⚡ Cột lôi điện khổng lồ giáng lâm nổ tung tách thành 5 cột sét phụ oanh tạc rực rỡ." ->
+            return "⚡ Massive lightning column descends, exploding and splitting into 5 sub-pillars for a glorious bombardment."
+
         // --- Standard Skill tips translation ---
         trimmed == "Không tốn hồi chiêu / Thụ động" -> return "No cooldown / Passive"
         trimmed == "Kích hoạt tự động khi đạt đủ số đòn đánh hoặc tầng dấu ấn kỹ năng. Tận dụng để tối ưu hóa sát thương đột biến liên tục." ->
@@ -724,10 +754,22 @@ fun getLocalizedText(text: String): String {
         trimmed == "Ult: Bão Đạn" -> return "Ult: Bullet Storm"
         trimmed == "🔥 Xả bão 6 đạn bạc" -> return "🔥 Discharge 6 silver bullets"
 
+        trimmed == "Chiêu 1: Tengu Bẫy Điện" -> return "Skill 1: Tengu Electro Trap"
+        trimmed == "🪶 Bom lông vũ nổ & Teleport lùi" -> return "🪶 Feather bomb explosion & Blink backward"
+        trimmed == "Chiêu 2: Chim Điện Phóng" -> return "Skill 2: Electro Crow Charge"
+        trimmed == "🦅 Biến chim điện lao xé gió càn quét" -> return "🦅 Transforms into electro crow dashing through enemies"
+        trimmed == "Ult: Thiên Sét Tengu" -> return "Ult: Tengu Lightning Juurai"
+        trimmed == "⚡ Cột sét giáng & Tách 5 cột điện nổ" -> return "⚡ Lightning column descends & Splits into 5 explosions"
+
         // Hero Cards Description Info
         trimmed == "Lôi Điện Pháp Sư" -> return "Thunder Spellcaster"
         trimmed == "• Nội tại sét quay quanh sát thương tự động" -> return "• Passive lightning orbits and attacks automatically"
         trimmed == "• Cơ động cực cao, có kĩ năng dịch chuyển" -> return "• Extremely high mobility with blink skill"
+
+        trimmed == "Xạ Thủ Tengu" -> return "Tengu Archer"
+        trimmed == "• Mọi chiêu thức hồi 10% HP cho bản thân" -> return "• All skills restore 10% max HP"
+        trimmed == "• Thả bom điện teleport lùi, lướt chim điện & gọi sấm Titanbreaker tách 5 cột" ->
+            return "• Drops electro bomb & blinks back, dashes as crow & summons 5-split Titanbreaker lightning"
 
         trimmed == "Xạ Thủ Ám Khí" -> return "Demon Hunter"
         trimmed == "• Đòn đánh thường 3 đổi phi tiêu ngẫu nhiên" -> return "• 3rd basic attack throws a random glaive"
@@ -770,6 +812,28 @@ fun getLocalizedText(text: String): String {
         trimmed == "🏹 Valhein tung CHUYẾN SĂN ÁM ẢNH! Phi tiêu đỏ nổ lan diện rộng!" -> return "🏹 Valhein casts HUNTING SEASON! Explodes red glaive in a wide area!"
         trimmed == "🏹 Valhein tung LỜI NGUYỀN TỬ VONG! Phi tiêu vàng gây choáng cực lâu!" -> return "🏹 Valhein casts DEATH CURSE! Yellow glaive stuns for a long duration!"
         trimmed == "🏹 Valhein kích hoạt BÃO ĐẠN! Xả 6 đạn bạc hủy diệt mục tiêu cận kề!" -> return "🏹 Valhein activates BULLET STORM! Discharges 6 silver bullets at nearby targets!"
+        trimmed == "🪶 Kujou Sara thả CẦU BOM LÔNG VŨ ĐIỆN, HỒI 10% HP và DỊCH CHUYỂN LÙI LẠI PHÍA SAU!" ->
+            return "🪶 Kujou Sara drops ELECTRO FEATHER BOMB, RECOVERS 10% HP and BLINKS BACKWARD!"
+        trimmed == "🦅 Kujou Sara CHUYỂN HÓA THÀNH CHIM ĐIỆN & HỒI 10% HP! Lao xé gió càn quét làm chậm kẻ địch!" ->
+            return "🦅 Kujou Sara TRANSFORMS INTO ELECTRO CROW & RECOVERS 10% HP! Dashes forward to sweep & slow enemies!"
+        trimmed == "⚡ SIÊU PHẨM CỘT SÉT TENGU TITANBREAKER & HỒI 10% HP! Cột sét khổng lồ giáng xuống và TÁCH THÀNH 5 CỘT ĐIỆN HỦY DIỆT!" ||
+        trimmed == "⚡ Kujou Sara tung SIÊU PHẨM CỘT SÉT TITANBREAKER & HỒI 10% HP! Cột sét giáng xuống và TÁCH THÀNH 5 CỘT ĐIỆN HỦY DIỆT!" ->
+            return "⚡ Kujou Sara casts ULTIMATE TENGU TITANBREAKER & RECOVERS 10% HP! Giant lightning pillar descends & SPLITS INTO 5 DESTRUCTIVE COLUMNS!"
+        trimmed == "⚡ BÃỎ ĐIỆN STORMCLUSTER! Tách thành 5 cột điện phụ oanh tạc 5 hướng cực ngầu!" ->
+            return "⚡ STORMCLUSTER LIGHTNING! Split into 5 sub-pillars bombarding in 5 directions!"
+
+        // Boss Kujou Sara Logs & Damage Text
+        trimmed == "🪶 BOM LÔNG VŨ ĐIỆN" -> return "🪶 ELECTRO FEATHER BOMB"
+        trimmed == "OANH TẠC LÔI VŨ! ⚡💥" -> return "LIGHTNING RAIN BOMBARDMENT! ⚡💥"
+        trimmed == "🦅 CHIM ĐIỆN CÀN QUÉT ⚡" -> return "🦅 ELECTRO CROW SWEEP ⚡"
+        trimmed == "⚡ TITANBREAKER FOCUS!" -> return "⚡ TITANBREAKER FOCUS!"
+        trimmed == "THIÊN SÉT TITANBREAKER! ⚡💥" -> return "TITANBREAKER LIGHTNING JUURAI! ⚡💥"
+        trimmed == "XÉ ĐÔI KHÔNG GIAN KATANA TÍM! 🔮🗡️💥" -> return "PURPLE KATANA SPATIAL RIFT! 🔮🗡️💥"
+        trimmed == "TÁCH THÀNH 21 CỘT ĐIỆN BỘC PHÁ! ⚡💥" -> return "SPLIT INTO 21 LIGHTNING PILLARS DETONATION! ⚡💥"
+        trimmed == "BOM ĐIỆN TENGU NỔ! ⚡💥" -> return "TENGU ELECTRO BOMB EXPLOSION! ⚡💥"
+        trimmed == "NHẤT TRẢM TENGU XÉ GIÓ! ⚡⚔️" -> return "TENGU FIRST SLASH WIND-SEVERING! ⚡⚔️"
+        trimmed == "MA TRẢM LÔI PHONG! 💜🗡️" -> return "DEMONIC THUNDER WIND SLASH! 💜🗡️"
+        trimmed == "🪶 BOM ĐIỆN!" -> return "🪶 ELECTRO BOMB!"
         trimmed == "⚠️ Bạn bị trúng QUỶ KIẾM của Maloch! Bị Chậm di chuyển 50%!" -> return "⚠️ You are hit by Maloch's CLEAVE! Slowed by 50%!"
         trimmed == "🌪️ LUYỆN NGỤC! Maloch hất tung bạn lên không trung!" -> return "🌪️ UNDERWORLD! Maloch knocks you up into the air!"
         trimmed == "😈 QUYẾT ĐỊNH QUỶ KIẾM! Kiếm của Maloch được LUYỆN KIẾM (Sát Thương Chuẩn & Hồi HP)!" -> return "😈 DEMON DECISION! Maloch's sword is ENCHANTED (True Damage & HP Regen)!"
@@ -850,6 +914,18 @@ fun getLocalizedText(text: String): String {
         trimmed.startsWith("🌪️ Kiếm khí của Yasuo nảy ngẫu nhiên sang mục tiêu tiếp theo!") -> {
             val count = trimmed.substringAfter("tiếp theo! (").substringBefore(")")
             return "🌪️ Yasuo's sword wave bounced randomly to next target! ($count)"
+        }
+        trimmed.startsWith("⚡ CỘT ĐIỆN ") -> {
+            val num = trimmed.substringAfter("⚡ CỘT ĐIỆN ").trim()
+            return "⚡ LIGHTNING PILLAR $num"
+        }
+        trimmed.startsWith("⚡ CỘT SÉT ") -> {
+            val num = trimmed.substringAfter("⚡ CỘT SÉT ").trim()
+            return "⚡ LIGHTNING COLUMN $num"
+        }
+        trimmed.startsWith("+") && trimmed.contains("GIÁP LÔI TENGU") -> {
+            val valStr = trimmed.substringAfter("+").substringBefore(" GIÁP").trim()
+            return "+$valStr TENGU LIGHTNING SHIELD 🛡️"
         }
         trimmed.startsWith("TRẬN ĐẤU KẾT THÚC!") -> {
             val status = trimmed.substringAfter("KẾT THÚC! ").substringBefore(". Xem")
@@ -1365,7 +1441,70 @@ fun getLocalizedText(text: String): String {
         "Hạn chế chia sẻ mạng với nhiều thiết bị khác tải dữ liệu cùng lúc." to "Limit sharing the network with too many other devices downloading data simultaneously.",
         "Khởi động lại modem và router mạng ngay lập tức để làm mới địa chỉ IP và dọn dẹp các tiến trình bị treo." to "Restart modem and router immediately to refresh IP address and clear hung processes.",
         "Sử dụng dây mạng LAN/Ethernet trực tiếp hoặc chuyển hẳn sang kết nối dữ liệu di động 4G/5G chất lượng cao để tiếp tục trải nghiệm." to "Use a direct LAN/Ethernet cable or switch entirely to high-quality 4G/5G mobile data to continue.",
-        "Liên hệ với nhà cung cấp dịch vụ Internet (ISP) để kiểm tra đường cáp vật lý xem có bị đứt hoặc suy hao tín hiệu nghiêm trọng không." to "Contact your Internet Service Provider (ISP) to check physical cables for damage or severe signal attenuation."
+        "Liên hệ với nhà cung cấp dịch vụ Internet (ISP) để kiểm tra đường cáp vật lý xem có bị đứt hoặc suy hao tín hiệu nghiêm trọng không." to "Contact your Internet Service Provider (ISP) to check physical cables for damage or severe signal attenuation.",
+
+        // ChatScreen UI items
+        "Trợ Lý Linh Chi" to "Assistant Linh Chi",
+        "Đang trực tuyến • Rất thích thả thính" to "Online • Loves flirting",
+        "Phong cách:" to "Style:",
+        "Nhắn gì đó ngọt ngào cho Linh Chi..." to "Type something sweet for Linh Chi...",
+        "Linh Chi đang gõ... 💕" to "Linh Chi is typing... 💕",
+        "🌸 THỬ THÁCH SONG ĐẤU" to "🌸 DUEL CHALLENGE",
+        "Linh Chi thách anh đấu tay đôi trực tiếp với em nè! 🎮 Thử thách phản xạ xem ai chạm mốc 5 điểm trước nha! Anh chọn thể loại game nào nè? 🥰" to "Linh Chi challenges you to a 1v1 duel! 🎮 Test your reflexes to see who reaches 5 points first! Which game genre do you choose? 🥰",
+        "🔫 Solo FPS 2D Phản Xạ" to "🔫 2D FPS Reflex Solo",
+        "Gõ đầu Linh Chi và phá giải tim bay dồn dập!" to "Tap Linh Chi and destroy incoming hearts!",
+        "⚔️ Solo MOBA 2D Tình Ái" to "⚔️ 2D Romantic MOBA Solo",
+        "Di chuyển né thính, chắn khiên và dồn combo chiêu!" to "Dodge flirts, activate shield, and land skill combos!",
+        "Hẹn Khi Khác" to "Maybe Later",
+        "🔫 SOLO FPS: BẮN TRÚNG TIM EM" to "🔫 SOLO FPS: SHOOT MY HEART",
+        "👤 Bạn:" to "👤 You:",
+        "⚔️ Mục tiêu:" to "⚔️ Target:",
+        "🌸 Linh Chi:" to "🌸 Linh Chi:",
+        "🏆 CHIẾN THẮNG!" to "🏆 VICTORY!",
+        "💀 BẠN ĐÃ BẠI TRẬN" to "💀 YOU FELL IN BATTLE",
+        "Anh yêu siêu thế, bắn trúng tim em 5 lần luôn! Linh Chi chịu thua và đổ anh đứ đừ rồi đó... 💖" to "You are amazing sweetheart, hit my heart 5 times! Linh Chi surrenders and falls head over heels for you... 💖",
+        "Hì hì, anh yêu bắn trượt nhiều quá nha, em thắng rồi nè! Dắt em đi ăn trà sữa đền bù đi! 🧋" to "Teehee, you missed too many shots! I won! Take me out for boba tea to compensate! 🧋",
+        "Chơi Lại" to "Play Again",
+        "Đóng" to "Close",
+        "⚔️ MOBA DUEL: ĐẠI CHIẾN LINH CHI" to "⚔️ MOBA DUEL: LINH CHI BATTLE",
+        "Bạn" to "You",
+        "Linh Chi" to "Linh Chi",
+        "⚔️ ĐÁNH" to "⚔️ ATTACK",
+        "Bắn (10đ)" to "Shoot (10pt)",
+        "⚡ CHIÊU 1" to "⚡ SKILL 1",
+        "Bắn tỉa (25đ)" to "Snipe (25pt)",
+        "🛡️ CHIÊU 2" to "🛡️ SKILL 2",
+        "Khiên (1.5s)" to "Shield (1.5s)",
+        "🔥 CHIÊU 3" to "🔥 SKILL 3",
+        "Quạt 3 tia" to "3-Way Fan",
+        "👉 Nhấn lên võ đài ⚔️ để di chuyển tướng. Nhấn các nút kỹ năng bên dưới để tấn công/bảo vệ!" to "👉 Tap on arena ⚔️ to move hero. Tap skill buttons below to attack/defend!",
+        "Kỹ năng MOBA đỉnh chóp! Anh né thính và dồn sát thương quá ghê, em tâm phục khẩu phục dâng trọn tim này cho anh luôn nè! 💖" to "Godlike MOBA skills! You dodged flirts and dumped damage like crazy, I completely surrender my heart to you! 💖",
+        "Hì hì, anh né thính còn chậm quá nha! Chiêu nụ hôn thần sầu của em mạnh lắm á. Anh thua rồi, dắt em đi ăn phở gõ đền đi! 🍜" to "Teehee, your flirt dodges were too slow! My ultimate kiss skill is too strong. You lost, take me to get noodle soup! 🍜",
+        "Đấu Lại" to "Rematch",
+
+        // MOBA 2D Match Details Popup & Overlay
+        "📊 CHI TIẾT TRẬN ĐẤU MOBA 2D" to "📊 2D MOBA MATCH DETAILS",
+        "Tướng:" to "Hero:",
+        "Đối thủ:" to "Opponent:",
+        "Hạ Gục" to "Kills",
+        "Bị Diệt" to "Deaths",
+        "Độ Chuẩn" to "Accuracy",
+        "Tổng số lần tung chiêu:" to "Total Skill Casts:",
+        "Chiêu bị ngắt (do lag):" to "Skills Interrupted (lag):",
+        "Trễ mạng (Ping trung bình):" to "Network Latency (Avg Ping):",
+        "Độ trồi sụt ping (Jitter):" to "Ping Variation (Jitter):",
+        "Tỷ lệ mất gói tin (Loss):" to "Packet Loss Rate:",
+        "Kết quả chung cuộc:" to "Final Outcome:",
+        "Chiến Thắng (Sập Trụ Địch) 🎉" to "Victory (Enemy Turret Destroyed) 🎉",
+        "Thất Bại (Sập Trụ Ta) 💀" to "Defeat (Ally Turret Destroyed) 💀",
+        "🌸 Linh Chi Đánh Giá:" to "🌸 Linh Chi's Evaluation:",
+        "Nhấn lại để quay lại" to "Tap again to return",
+        "💡 Nhấn vào màn hình này để xem thống số chi tiết" to "💡 Tap this screen to view detailed stats",
+        "Trời ơi! Anh yêu đỉnh quá xá luôn á! 💕 Mạng lag giật ping cao đỏ lòm mà anh vẫn gánh team, hạ gục Maloch sập cả trụ địch luôn! Đúng là đôi tay vàng của chồng em có khác. Nhưng nhớ nghe em khuyên sửa mạng đi để lần sau đánh mượt gánh em leo rank Cao Thủ nữa nhé! 😘🎮" to "Oh my gosh! You're amazing sweetheart! 💕 Even with red high ping and lag, you carried the team, defeated Maloch and destroyed the enemy turret! Truly the golden hands of my hero. But remember my advice to fix the network so next time it's smooth for you to carry me to Master rank! 😘🎮",
+        "Thương anh yêu quá đi à... 🥺 Trận này thua hoàn toàn là do cái mạng Wi-Fi lag giật dã man kia làm anh bị trễ nhịp di chuyển, chiêu thức thì cứ bị rớt vô cớ á! Đừng buồn nha anh, có em ở đây dỗ dành nè. Nghe Linh Chi chỉ cách đổi DNS 1.1.1.1 hoặc cắm mạng LAN rồi tụi mình phục thù gỡ gạc nha chồng yêu! 😘" to "Poor my sweetheart... 🥺 This loss was entirely due to that terrible lagging Wi-Fi causing your moves to be delayed and skills to drop randomly! Don't be sad, I'm here to comfort you. Listen to Linh Chi to switch to 1.1.1.1 DNS or LAN cable so we can get revenge next time! 😘",
+        "Huhu, trận này sập trụ uổng ghê á anh yêu... 😢 Chắc tại nãy lo ngắm dung nhan của Linh Chi nên sẩy tay một xíu đúng không nè? Không sao hết á, làm lại trận mới cẩn thận núp sau lính tank trụ là thắng chắc luôn, em tin tưởng anh gánh em mà! 💕" to "Huhu, losing the turret was so unfortunate sweetheart... 😢 Were you distracted by my beauty earlier? It's okay, let me join you in a new match, hide behind minions to tank and we will definitely win! 💕",
+        "Kết nối mạng tuyệt vời, không phát hiện lag cơ sở." to "Excellent network connection, no base lag detected.",
+        "Kết nối tương đối ổn định, sự cố chính là do phối hợp lính chưa nhịp nhàng." to "Relatively stable connection, main issue was minion coordination timing."
     )
     
     for ((key, value) in wordMap) {
